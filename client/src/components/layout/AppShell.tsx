@@ -78,8 +78,10 @@ function MobileTopBar({ role }: { role: Role }) {
       <div className="flex items-center gap-1">
         <IconButton label="Log out" icon={<LogOut />} onClick={signOut} />
         {role === "student" && (
-          <Link to="/app/profile" aria-label="Your profile" className="rounded-full p-0.5">
+          // Nome pelo texto (e não aria-label): as iniciais visíveis não fazem parte do nome (WCAG 2.5.3).
+          <Link to="/app/profile" className="rounded-full p-0.5">
             <Avatar firstName={user.firstName} lastName={user.lastName} size="md" />
+            <span className="sr-only">Your profile</span>
           </Link>
         )}
       </div>
