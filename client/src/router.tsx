@@ -6,12 +6,15 @@ import { ProfilePage } from "./features/profile/ProfilePage.tsx";
 import { LoginPage } from "./features/public/LoginPage.tsx";
 import { NotFoundPage } from "./features/public/NotFoundPage.tsx";
 import { WelcomePage } from "./features/public/WelcomePage.tsx";
-import { StaffDashboardPage } from "./features/staff/StaffDashboardPage.tsx";
-import { StudentsPage } from "./features/staff/StudentsPage.tsx";
 import { DashboardPage } from "./features/student/DashboardPage.tsx";
 import { NotesPage } from "./features/student/NotesPage.tsx";
 import { TasksPage } from "./features/student/TasksPage.tsx";
-import { TourPage } from "./features/tour/TourPage.tsx";
+
+// A visita e a área de staff carregam à parte (code splitting): um aluno não descarrega
+// o código do staff, e a visita só vem quando é aberta.
+const lazyTour = async () => ({ Component: (await import("./features/tour/TourPage.tsx")).TourPage });
+const lazyStaffDashboard = async () => ({ Component: (await import("./features/staff/StaffDashboardPage.tsx")).StaffDashboardPage });
+const lazyStudents = async () => ({ Component: (await import("./features/staff/StudentsPage.tsx")).StudentsPage });
 
 export const router = createBrowserRouter([
   // Público
@@ -24,7 +27,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth role="student" />,
     children: [
       // A visita ocupa o ecrã inteiro, fora do layout com menu.
-      { path: "/app/tour", element: <TourPage /> },
+      { path: "/app/tour", lazy: lazyTour },
       {
         path: "/app",
         element: <AppShell role="student" />,
@@ -48,8 +51,8 @@ export const router = createBrowserRouter([
         path: "/staff",
         element: <AppShell role="staff" />,
         children: [
-          { index: true, element: <StaffDashboardPage /> },
-          { path: "students", element: <StudentsPage /> },
+          { index: true, lazy: lazyStaffDashboard },
+          { path: "students", lazy: lazyStudents },
           { path: "profile", element: <ProfilePage /> },
         ],
       },

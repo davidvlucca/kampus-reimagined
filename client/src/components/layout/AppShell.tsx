@@ -24,7 +24,7 @@ function Sidebar({ role }: { role: Role }) {
   const user = useCurrentUser();
   const signOut = useSignOut(role);
   return (
-    <aside className="bg-kampus-gradient fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-4 py-6 text-white lg:flex">
+    <aside className="bg-kampus-gradient sticky top-0 z-30 hidden h-dvh w-64 shrink-0 flex-col px-4 py-6 text-white lg:flex">
       <Link to={HOME[role]} className="focus-on-dark mb-8 px-2">
         <Logo onDark />
         <span className="sr-only">, go to home</span>
@@ -118,13 +118,13 @@ function BottomNav({ role }: { role: Role }) {
 /** Layout das áreas privadas: sidebar no desktop (como em 2023), barra em baixo no telemóvel. */
 export function AppShell({ role }: { role: Role }) {
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh lg:flex">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xl focus:bg-card focus:px-4 focus:py-3 focus:shadow-pop">
         Skip to content
       </a>
       <Sidebar role={role} />
       <MobileTopBar role={role} />
-      <main id="main" tabIndex={-1} className="px-4 pt-6 pb-28 outline-none sm:px-6 lg:ml-64 lg:px-10 lg:pt-10 lg:pb-12">
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 pt-6 pb-28 outline-none sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
         <div className="mx-auto w-full max-w-6xl">
           <Outlet />
         </div>
