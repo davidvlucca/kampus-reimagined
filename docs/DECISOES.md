@@ -140,7 +140,9 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 
 ## 11. A visita: visual novel fiel, com Web Speech API
 
-**Porquê.** É o que distingue o Kampus, por isso mantive o formato de 2023 (cenário, guia, caixa de diálogo, "Play audio" e "Next") e corrigi o resto: funciona no telemóvel, tem barra de progresso com as 7 paragens, teclado (← → Enter Esc) e o texto é anunciado a leitores de ecrã. O áudio passou de 7 ficheiros WAV (~10 MB, presos ao texto antigo) para a Web Speech API do browser: zero bytes e lê sempre o texto atual. As imagens de 2023 foram convertidas de JPG (~1,5 MB cada) para WebP (~50–110 KB), com uma versão menor para o telemóvel.
+**Porquê.** É o que distingue o Kampus, por isso mantive o formato de 2023 (cenário, guia, caixa de diálogo, "Play audio" e "Next") e corrigi o resto: funciona no telemóvel, tem barra de progresso com as 7 paragens, teclado (← → Enter Esc) e o texto é anunciado a leitores de ecrã. O áudio passou de 7 ficheiros WAV (~10 MB, presos ao texto antigo) para a Web Speech API do browser: zero bytes e lê sempre o texto atual. As imagens de 2023 (cenários e retratos) tinham sido tiradas do Google, sem licença, por isso saíram do projeto e da história do git. Os cenários e os guias são agora ilustrações SVG feitas para esta versão: cerca de 10 KB cada (os JPG tinham ~1,5 MB), nítidos em qualquer ecrã e na paleta da marca.
+
+**Pergunta.** *"Porque não usaste as imagens originais?"* — Porque não eram nossas: vieram do Google Images em 2023, sem autor nem licença. Num portfólio público isso é um risco e um mau sinal. Os prints de 2023 em `docs/antes/` mostram-nas desfocadas.
 
 **Pergunta.** *"E se o browser não tiver Web Speech?"* — O botão fica desativado com uma explicação; o texto está sempre visível e acessível.
 
