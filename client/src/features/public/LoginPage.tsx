@@ -9,26 +9,24 @@ import { homePathFor, loginPath } from "../../components/layout/paths.ts";
 import { Button, IconButton, Input, Logo, useToast } from "../../components/ui/index.ts";
 import { PublicBackdrop } from "./PublicBackdrop.tsx";
 import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD, useDemoLogin } from "./useDemoLogin.ts";
 
-const COPY: Record<Portal, { title: string; panelTitle: string; panelText: string; demoEmail: string; label: string }> = {
+const COPY: Record<Portal, { title: string; panelTitle: string; panelText: string; label: string }> = {
   student: {
     title: "Student login",
     panelTitle: "Welcome to campus",
     panelText: "Your tour, your week and the right people to ask, all in one place.",
-    demoEmail: "student@example.com",
     label: "Student",
   },
   staff: {
     title: "Staff login",
     panelTitle: "Staff area",
     panelText: "Add new students and see who still needs a hand settling in.",
-    demoEmail: "staff@example.com",
     label: "Staff",
   },
 };
 
 const PREFIX: Record<Portal, string> = { student: "/app", staff: "/staff" };
-const DEMO_PASSWORD = "Kampus123";
 
 type FieldName = "email" | "password";
 
@@ -49,6 +47,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
   const copy = COPY[portal];
   const me = useMe();
   const login = useLogin();
+  const demo = useDemoLogin();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,7 +63,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
   const passwordRef = useRef<HTMLInputElement>(null);
 
   // Já com sessão deste perfil: segue para casa (mas não durante/depois de um login feito aqui).
-  if (me.data && me.data.role === portal && login.isIdle) {
+  if (me.data && me.data.role === portal && login.isIdle && demo.isIdle) {
     return <Navigate to={homePathFor(me.data)} replace />;
   }
 
@@ -112,13 +111,6 @@ export function LoginPage({ portal }: { portal: Portal }) {
         login.reset();
       },
     });
-  };
-
-  const fillDemo = () => {
-    setEmail(copy.demoEmail);
-    setPassword(DEMO_PASSWORD);
-    setErrors({});
-    resetMessages();
   };
 
   return (
@@ -225,12 +217,12 @@ export function LoginPage({ portal }: { portal: Portal }) {
             <p className="mt-1 text-sm text-muted">This is a portfolio project. Use this account to look around.</p>
             <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
               <dt className="text-subtle">Email</dt>
-              <dd className="truncate font-medium text-text">{copy.demoEmail}</dd>
+              <dd className="truncate font-medium text-text">{DEMO_ACCOUNTS[portal]}</dd>
               <dt className="text-subtle">Password</dt>
               <dd className="font-medium text-text">{DEMO_PASSWORD}</dd>
             </dl>
-            <Button variant="secondary" size="sm" className="mt-4" onClick={fillDemo}>
-              Use demo account
+            <Button variant="secondary" size="sm" className="mt-4" loading={demo.isPending} onClick={() => demo.start(portal, (user) => targetAfterLogin(user, portal, redirect?.from))}>
+              Log in with demo account
             </Button>
           </aside>
         </div>

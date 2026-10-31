@@ -2,10 +2,11 @@ import { ArrowRight, BriefcaseBusiness, GraduationCap, type LucideIcon } from "l
 import { Link } from "react-router";
 import { useMe } from "../../api/hooks.ts";
 import { loginPath, homePathFor } from "../../components/layout/paths.ts";
-import { buttonClasses, Logo } from "../../components/ui/index.ts";
+import { Button, buttonClasses, Logo } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { PublicBackdrop } from "./PublicBackdrop.tsx";
 import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
+import { useDemoLogin } from "./useDemoLogin.ts";
 
 const choices: { to: string; label: string; description: string; icon: LucideIcon }[] = [
   {
@@ -26,6 +27,7 @@ export function WelcomePage() {
   useDocumentTitle(undefined);
   const me = useMe();
   const user = me.data;
+  const demo = useDemoLogin();
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-kampus-gradient text-white">
@@ -61,11 +63,31 @@ export function WelcomePage() {
           ))}
         </nav>
 
-        {user && (
+        {user ? (
           <Link to={homePathFor(user)} className={buttonClasses({ variant: "light", size: "lg", className: "mt-8" })}>
             Continue as {user.firstName}
             <ArrowRight aria-hidden className="size-5" />
           </Link>
+        ) : (
+          <section aria-labelledby="demo-title" className="mt-8 flex flex-col items-center gap-3">
+            <h2 id="demo-title" className="text-sm font-medium text-white">
+              Just looking around? Open the demo in one click.
+            </h2>
+            <div className="flex flex-wrap justify-center gap-2">
+              {(["student", "staff"] as const).map((portal) => (
+                <Button
+                  key={portal}
+                  variant="light"
+                  size="sm"
+                  loading={demo.pendingPortal === portal}
+                  disabled={demo.isPending}
+                  onClick={() => demo.start(portal)}
+                >
+                  Try as {portal}
+                </Button>
+              ))}
+            </div>
+          </section>
         )}
       </main>
 
