@@ -1,0 +1,13 @@
+# Referências de 2023 (clones só para leitura)
+referencias/
+
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+server/.data/
+test-results/
+playwright-report/
+.DS_Store
+.claude/
