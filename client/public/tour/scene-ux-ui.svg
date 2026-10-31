@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E8F6FD"/>
+      <stop offset="1" stop-color="#F8FAFC"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D9BC98"/>
+      <stop offset="1" stop-color="#B98F68"/>
+    </linearGradient>
+    <g id="leaf">
+      <path d="M0 0 C-30 -20 -40 -60 -20 -90 C10 -60 14 -24 0 0 Z"/>
+    </g>
+    <g id="lamp">
+      <rect x="-2" y="0" width="4" height="90" fill="#334155"/>
+      <path d="M-40 130 L-18 90 H18 L40 130 Z" fill="#0A2472"/>
+      <ellipse cx="0" cy="130" rx="40" ry="6" fill="#FFF4D6"/>
+      <path d="M-60 136 H60 L120 300 H-120 Z" fill="#FFF4D6" opacity="0.18"/>
+    </g>
+    <g id="stool">
+      <ellipse cx="0" cy="0" rx="44" ry="12" fill="#F28C6B"/>
+      <rect x="-40" y="0" width="80" height="12" fill="#D9734F"/>
+      <path d="M-30 12 L-40 110 M30 12 L40 110 M0 12 V110" stroke="#334155" stroke-width="6"/>
+    </g>
+  </defs>
+
+  <!-- parede e chão -->
+  <rect width="1600" height="900" fill="url(#wall)"/>
+  <rect y="600" width="1600" height="300" fill="url(#floor)"/>
+  <rect y="592" width="1600" height="12" fill="#E2E8F0"/>
+
+  <!-- tapete -->
+  <ellipse cx="900" cy="790" rx="560" ry="90" fill="#A6E1FA" opacity="0.55"/>
+
+  <!-- estante à esquerda -->
+  <rect x="60" y="170" width="250" height="16" fill="#B98A62"/>
+  <rect x="60" y="290" width="250" height="16" fill="#B98A62"/>
+  <g>
+    <rect x="80" y="110" width="22" height="60" fill="#0E6BA8"/>
+    <rect x="106" y="122" width="18" height="48" fill="#F28C6B"/>
+    <rect x="128" y="104" width="24" height="66" fill="#0A2472"/>
+    <rect x="156" y="116" width="16" height="54" fill="#FACC6B"/>
+    <rect x="232" y="128" width="46" height="42" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="3"/>
+    <path d="M255 128 C240 100 250 90 255 84 C262 96 266 110 255 128Z" fill="#4E9A54"/>
+    <rect x="80" y="240" width="60" height="50" rx="4" fill="#E2E8F0"/>
+    <circle cx="110" cy="265" r="14" fill="#0E6BA8"/>
+    <rect x="160" y="226" width="20" height="64" fill="#7BD389"/>
+    <rect x="184" y="236" width="20" height="54" fill="#0E6BA8"/>
+    <rect x="208" y="230" width="20" height="60" fill="#F28C6B"/>
+  </g>
+
+  <!-- quadro branco com wireframes -->
+  <rect x="380" y="90" width="540" height="330" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="6"/>
+  <!-- telemóvel desenhado -->
+  <g fill="none" stroke="#0A2472" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="420" y="130" width="130" height="250" rx="18"/>
+    <path d="M465 146 H505"/>
+    <rect x="440" y="170" width="90" height="60" rx="4"/>
+    <path d="M440 170 L530 230 M530 170 L440 230" stroke-width="3" opacity="0.6"/>
+    <path d="M440 250 H530 M440 272 H510 M440 294 H520"/>
+    <rect x="440" y="320" width="90" height="34" rx="17"/>
+  </g>
+  <!-- seta -->
+  <path d="M570 255 C600 230 620 230 646 250" fill="none" stroke="#F28C6B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M634 238 L648 252 L630 258" fill="none" stroke="#F28C6B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- ecrã desktop desenhado -->
+  <g fill="none" stroke="#0E6BA8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="660" y="140" width="230" height="170" rx="8"/>
+    <path d="M660 166 H890"/>
+    <rect x="676" y="182" width="90" height="70" rx="3"/>
+    <path d="M676 182 L766 252 M766 182 L676 252" stroke-width="3" opacity="0.6"/>
+    <path d="M782 188 H870 M782 210 H850 M782 232 H864"/>
+    <rect x="676" y="268" width="60" height="26" rx="13"/>
+  </g>
+  <circle cx="676" cy="153" r="4" fill="#0E6BA8"/>
+  <circle cx="690" cy="153" r="4" fill="#0E6BA8"/>
+  <!-- paleta desenhada -->
+  <circle cx="690" cy="360" r="18" fill="#0E6BA8"/>
+  <circle cx="734" cy="360" r="18" fill="#A6E1FA"/>
+  <circle cx="778" cy="360" r="18" fill="#F28C6B"/>
+  <circle cx="822" cy="360" r="18" fill="#FACC6B"/>
+  <rect x="420" y="420" width="460" height="10" rx="4" fill="#CBD5E1"/>
+  <rect x="460" y="412" width="34" height="9" rx="3" fill="#F28C6B"/>
+  <rect x="504" y="412" width="34" height="9" rx="3" fill="#0A2472"/>
+
+  <!-- parede de post-its -->
+  <rect x="970" y="90" width="460" height="330" rx="8" fill="#C8A27C"/>
+  <rect x="982" y="102" width="436" height="306" rx="4" fill="#D9BC98"/>
+  <g>
+    <rect x="1000" y="120" width="70" height="70" rx="3" fill="#FACC6B" transform="rotate(-3 1035 155)"/>
+    <rect x="1088" y="118" width="70" height="70" rx="3" fill="#FACC6B" transform="rotate(2 1123 153)"/>
+    <rect x="1176" y="122" width="70" height="70" rx="3" fill="#F9A88A"/>
+    <rect x="1264" y="118" width="70" height="70" rx="3" fill="#A6E1FA" transform="rotate(-2 1299 153)"/>
+    <rect x="1340" y="124" width="62" height="62" rx="3" fill="#9BE0A8" transform="rotate(4 1371 155)"/>
+    <rect x="1002" y="210" width="70" height="70" rx="3" fill="#F9A88A" transform="rotate(3 1037 245)"/>
+    <rect x="1090" y="208" width="70" height="70" rx="3" fill="#A6E1FA"/>
+    <rect x="1178" y="212" width="70" height="70" rx="3" fill="#FACC6B" transform="rotate(-4 1213 247)"/>
+    <rect x="1266" y="208" width="70" height="70" rx="3" fill="#9BE0A8"/>
+    <rect x="1344" y="214" width="60" height="60" rx="3" fill="#FACC6B" transform="rotate(-2 1374 244)"/>
+    <rect x="1000" y="300" width="70" height="70" rx="3" fill="#A6E1FA" transform="rotate(-2 1035 335)"/>
+    <rect x="1090" y="298" width="70" height="70" rx="3" fill="#9BE0A8" transform="rotate(3 1125 333)"/>
+    <rect x="1178" y="302" width="70" height="70" rx="3" fill="#F9A88A"/>
+    <rect x="1266" y="300" width="70" height="70" rx="3" fill="#FACC6B" transform="rotate(2 1301 335)"/>
+  </g>
+  <!-- rabiscos nos post-its -->
+  <g stroke="#001C55" stroke-width="3" stroke-linecap="round" opacity="0.45">
+    <path d="M1012 146 H1056 M1012 160 H1046"/><path d="M1100 144 H1146 M1100 158 H1130"/>
+    <path d="M1188 148 H1234 M1188 162 H1220"/><path d="M1276 144 H1322 M1276 158 H1306"/>
+    <path d="M1104 234 H1148 M1104 248 H1132"/><path d="M1278 234 H1322 M1278 248 H1308"/>
+    <path d="M1014 324 H1058 M1014 338 H1040"/><path d="M1190 328 H1236 M1190 342 H1218"/>
+  </g>
+  <!-- fio entre post-its -->
+  <path d="M1360 330 C1380 360 1400 360 1404 330" fill="none" stroke="#0A2472" stroke-width="3"/>
+  <circle cx="1360" cy="326" r="6" fill="#B91C1C"/>
+
+  <!-- candeeiros suspensos -->
+  <use href="#lamp" x="720" y="0"/>
+  <use href="#lamp" x="1080" y="0"/>
+
+  <!-- mesa grande -->
+  <ellipse cx="900" cy="760" rx="520" ry="24" fill="#001C55" opacity="0.12"/>
+  <rect x="380" y="560" width="1040" height="28" rx="8" fill="#F8FAFC"/>
+  <rect x="380" y="588" width="1040" height="14" fill="#CBD5E1"/>
+  <path d="M430 602 L410 760 M1370 602 L1390 760 M520 602 L540 760 M1280 602 L1260 760" stroke="#B98A62" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- monitor de design na mesa -->
+  <rect x="780" y="420" width="260" height="150" rx="10" fill="#0F172A"/>
+  <rect x="790" y="430" width="240" height="130" rx="4" fill="#F8FAFC"/>
+  <rect x="790" y="430" width="44" height="130" fill="#E2E8F0"/>
+  <rect x="800" y="444" width="24" height="10" rx="3" fill="#94A3B8"/>
+  <rect x="800" y="462" width="24" height="10" rx="3" fill="#94A3B8"/>
+  <rect x="800" y="480" width="24" height="10" rx="3" fill="#0E6BA8"/>
+  <rect x="852" y="446" width="90" height="100" rx="8" fill="#FFFFFF" stroke="#0E6BA8" stroke-width="3"/>
+  <rect x="862" y="458" width="70" height="36" rx="4" fill="#A6E1FA"/>
+  <rect x="862" y="502" width="50" height="8" rx="4" fill="#0A2472"/>
+  <rect x="862" y="518" width="70" height="16" rx="8" fill="#F28C6B"/>
+  <rect x="958" y="446" width="58" height="20" rx="4" fill="#0E6BA8"/>
+  <rect x="958" y="474" width="58" height="20" rx="4" fill="#0A2472"/>
+  <rect x="958" y="502" width="58" height="20" rx="4" fill="#F28C6B"/>
+  <rect x="958" y="530" width="58" height="20" rx="4" fill="#FACC6B"/>
+  <rect x="890" y="570" width="40" height="6" fill="#334155"/>
+
+  <!-- papéis e mesa digitalizadora -->
+  <rect x="560" y="548" width="150" height="14" rx="4" fill="#0A2472"/>
+  <rect x="572" y="550" width="112" height="8" rx="2" fill="#3B508E"/>
+  <rect x="470" y="546" width="110" height="14" rx="2" fill="#FFFFFF" transform="rotate(-4 525 553)"/>
+  <rect x="1110" y="546" width="120" height="14" rx="2" fill="#FFFFFF" transform="rotate(5 1170 553)"/>
+  <!-- leque de cores -->
+  <g transform="translate(1270 556)">
+    <rect x="-6" y="-80" width="14" height="80" rx="4" fill="#0E6BA8" transform="rotate(-30)"/>
+    <rect x="-6" y="-80" width="14" height="80" rx="4" fill="#A6E1FA" transform="rotate(-12)"/>
+    <rect x="-6" y="-80" width="14" height="80" rx="4" fill="#FACC6B" transform="rotate(6)"/>
+    <rect x="-6" y="-80" width="14" height="80" rx="4" fill="#F28C6B" transform="rotate(24)"/>
+    <circle r="6" fill="#334155"/>
+  </g>
+  <!-- copo de lápis -->
+  <rect x="660" y="520" width="34" height="40" rx="4" fill="#0E6BA8"/>
+  <path d="M668 520 L664 494 M678 520 L680 488 M688 520 L694 498" stroke="#F28C6B" stroke-width="5" stroke-linecap="round"/>
+  <!-- planta na mesa -->
+  <path d="M1340 560 L1346 520 H1384 L1390 560 Z" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="3"/>
+  <g fill="#5DAE5F">
+    <use href="#leaf" transform="translate(1365 522) rotate(-20)"/>
+    <use href="#leaf" transform="translate(1365 522) rotate(25)"/>
+  </g>
+
+  <!-- banquinhos -->
+  <use href="#stool" x="620" y="660"/>
+  <use href="#stool" x="900" y="670"/>
+  <use href="#stool" x="1180" y="660"/>
+
+  <!-- planta grande no canto direito -->
+  <path d="M1460 820 L1474 700 H1566 L1580 820 Z" fill="#0A2472"/>
+  <g fill="#3F8448">
+    <use href="#leaf" transform="translate(1520 700) rotate(-40) scale(2.2)"/>
+    <use href="#leaf" transform="translate(1520 700) rotate(-8) scale(2.6)"/>
+  </g>
+  <g fill="#5DAE5F">
+    <use href="#leaf" transform="translate(1520 700) rotate(25) scale(2.3)"/>
+    <use href="#leaf" transform="translate(1520 700) rotate(55) scale(1.8)"/>
+    <use href="#leaf" transform="translate(1520 700) rotate(-62) scale(1.7)"/>
+  </g>
+</svg>

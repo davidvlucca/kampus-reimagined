@@ -7,7 +7,7 @@ import { useCompleteTour, useContacts, useCurrentUser, useSkipTour } from "../..
 import { Button, IconButton, Logo, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { fullName } from "../../lib/format.ts";
-import { sceneSrcSet, SCENE_SIZES } from "./scene.ts";
+import { preloadScene } from "./scene.ts";
 import { SceneImage } from "./SceneImage.tsx";
 import { TourProgress } from "./TourProgress.tsx";
 import { useReducedMotion } from "./useReducedMotion.ts";
@@ -115,10 +115,7 @@ export function TourPage() {
   useEffect(() => {
     const upcoming = TOUR_STOPS[index + 1];
     if (!upcoming) return;
-    const img = new Image();
-    img.sizes = SCENE_SIZES;
-    img.srcset = sceneSrcSet(upcoming.scene);
-    img.src = upcoming.scene;
+    preloadScene(upcoming.scene);
   }, [index]);
 
   function toggleAudio() {

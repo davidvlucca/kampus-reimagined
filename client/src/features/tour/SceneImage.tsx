@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { cn } from "../../lib/cn.ts";
-import { SCENE_SIZES, sceneSrcSet } from "./scene.ts";
 
 /** Cenário a ocupar a área; aparece com fade quando carrega (sem fade com reduced motion, via CSS global). */
 export function SceneImage({ scene, alt, fade = true }: { scene: string; alt: string; fade?: boolean }) {
@@ -8,8 +7,6 @@ export function SceneImage({ scene, alt, fade = true }: { scene: string; alt: st
   return (
     <img
       src={scene}
-      srcSet={sceneSrcSet(scene)}
-      sizes={SCENE_SIZES}
       alt={alt}
       decoding="async"
       onLoad={() => setLoaded(true)}

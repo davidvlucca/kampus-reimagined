@@ -1,6 +1,6 @@
-// srcSet dos cenários: X.webp tem 1600px e X-900.webp tem 900px.
-export const SCENE_SIZES = "100vw";
-
-export function sceneSrcSet(scene: string): string {
-  return `${scene.replace(/\.webp$/, "-900.webp")} 900w, ${scene} 1600w`;
+// Os cenários são SVG: um só ficheiro serve para qualquer largura de ecrã.
+/** Pré-carrega o cenário seguinte, para a mudança de paragem ser imediata. */
+export function preloadScene(scene: string) {
+  const img = new Image();
+  img.src = scene;
 }

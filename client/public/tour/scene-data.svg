@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DDE9F3"/>
+      <stop offset="1" stop-color="#F1F5F9"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C9A27E"/>
+      <stop offset="1" stop-color="#A97F5A"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0A2472"/>
+      <stop offset="1" stop-color="#001C55"/>
+    </linearGradient>
+    <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A6E1FA" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#A6E1FA" stop-opacity="0"/>
+    </linearGradient>
+    <g id="chair">
+      <rect x="0" y="0" width="100" height="96" rx="20" fill="#0A2472"/>
+      <rect x="10" y="10" width="80" height="10" rx="5" fill="#FFFFFF" opacity="0.15"/>
+      <rect x="46" y="96" width="8" height="36" fill="#334155"/>
+      <path d="M12 140 L50 128 L88 140" stroke="#334155" stroke-width="8" fill="none" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#wall)"/>
+  <rect width="1600" height="40" fill="#E2E8F0"/>
+  <g fill="#FFFFFF"><rect x="260" y="13" width="240" height="14" rx="7"/><rect x="1100" y="13" width="240" height="14" rx="7"/></g>
+  <rect y="590" width="1600" height="310" fill="url(#floor)"/>
+  <rect y="582" width="1600" height="12" fill="#CBD5E1"/>
+
+  <!-- painel de parede (faixa azul atrás da videowall) -->
+  <rect x="330" y="70" width="1220" height="380" rx="18" fill="#0E6BA8" opacity="0.12"/>
+
+  <!-- ecrã 1: barras -->
+  <rect x="360" y="96" width="380" height="250" rx="12" fill="#0F172A"/>
+  <rect x="372" y="108" width="356" height="226" rx="6" fill="url(#screen)"/>
+  <rect x="392" y="124" width="110" height="12" rx="6" fill="#A6E1FA" opacity="0.8"/>
+  <g stroke="#3B508E" stroke-width="2">
+    <line x1="400" y1="170" x2="710" y2="170"/><line x1="400" y1="220" x2="710" y2="220"/>
+    <line x1="400" y1="270" x2="710" y2="270"/><line x1="400" y1="316" x2="710" y2="316"/>
+  </g>
+  <g>
+    <rect x="414" y="250" width="34" height="66" rx="4" fill="#5FA9D6"/>
+    <rect x="462" y="210" width="34" height="106" rx="4" fill="#5FA9D6"/>
+    <rect x="510" y="230" width="34" height="86" rx="4" fill="#5FA9D6"/>
+    <rect x="558" y="180" width="34" height="136" rx="4" fill="#A6E1FA"/>
+    <rect x="606" y="196" width="34" height="120" rx="4" fill="#5FA9D6"/>
+    <rect x="654" y="150" width="34" height="166" rx="4" fill="#F28C6B"/>
+  </g>
+
+  <!-- ecrã 2: linhas (o maior, ao centro) -->
+  <rect x="770" y="84" width="470" height="300" rx="12" fill="#0F172A"/>
+  <rect x="782" y="96" width="446" height="276" rx="6" fill="url(#screen)"/>
+  <rect x="804" y="114" width="130" height="12" rx="6" fill="#A6E1FA" opacity="0.8"/>
+  <rect x="1110" y="112" width="18" height="10" rx="3" fill="#A6E1FA"/>
+  <rect x="1134" y="112" width="40" height="10" rx="3" fill="#3B508E"/>
+  <rect x="1110" y="128" width="18" height="10" rx="3" fill="#F28C6B"/>
+  <rect x="1134" y="128" width="40" height="10" rx="3" fill="#3B508E"/>
+  <g stroke="#3B508E" stroke-width="2">
+    <line x1="810" y1="170" x2="1200" y2="170"/><line x1="810" y1="230" x2="1200" y2="230"/>
+    <line x1="810" y1="290" x2="1200" y2="290"/><line x1="810" y1="346" x2="1200" y2="346"/>
+  </g>
+  <path d="M812 320 L870 296 L930 304 L990 250 L1050 262 L1110 200 L1196 168 V346 H812 Z" fill="url(#area)"/>
+  <path d="M812 320 L870 296 L930 304 L990 250 L1050 262 L1110 200 L1196 168" fill="none" stroke="#A6E1FA" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M812 330 L870 324 L930 286 L990 296 L1050 240 L1110 252 L1196 222" fill="none" stroke="#F28C6B" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <g fill="#FFFFFF">
+    <circle cx="990" cy="250" r="7"/><circle cx="1110" cy="200" r="7"/><circle cx="1196" cy="168" r="7"/>
+  </g>
+
+  <!-- ecrã 3: donut e KPIs -->
+  <rect x="1270" y="96" width="250" height="250" rx="12" fill="#0F172A"/>
+  <rect x="1282" y="108" width="226" height="226" rx="6" fill="url(#screen)"/>
+  <circle cx="1352" cy="190" r="48" fill="none" stroke="#3B508E" stroke-width="22"/>
+  <circle cx="1352" cy="190" r="48" fill="none" stroke="#A6E1FA" stroke-width="22" stroke-dasharray="180 302" transform="rotate(-90 1352 190)"/>
+  <circle cx="1352" cy="190" r="48" fill="none" stroke="#F28C6B" stroke-width="22" stroke-dasharray="60 302" stroke-dashoffset="-180" transform="rotate(-90 1352 190)"/>
+  <rect x="1424" y="160" width="64" height="12" rx="6" fill="#A6E1FA"/>
+  <rect x="1424" y="182" width="48" height="12" rx="6" fill="#F28C6B"/>
+  <rect x="1424" y="204" width="56" height="12" rx="6" fill="#3B508E"/>
+  <rect x="1300" y="262" width="94" height="56" rx="8" fill="#0E6BA8"/>
+  <rect x="1312" y="274" width="50" height="14" rx="4" fill="#F8FAFC"/>
+  <path d="M1312 304 L1330 298 L1346 302 L1380 290" stroke="#A6E1FA" stroke-width="3" fill="none"/>
+  <rect x="1402" y="262" width="94" height="56" rx="8" fill="#0E6BA8"/>
+  <rect x="1414" y="274" width="40" height="14" rx="4" fill="#F8FAFC"/>
+  <path d="M1414 304 L1432 300 L1448 306 L1482 296" stroke="#F28C6B" stroke-width="3" fill="none"/>
+
+  <!-- quadro branco pequeno com scatter, à esquerda -->
+  <rect x="70" y="120" width="230" height="200" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="5"/>
+  <path d="M100 150 V290 H272" fill="none" stroke="#64748B" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#0E6BA8">
+    <circle cx="130" cy="262" r="7"/><circle cx="156" cy="250" r="7"/><circle cx="176" cy="236" r="7"/>
+    <circle cx="200" cy="214" r="7"/><circle cx="222" cy="206" r="7"/><circle cx="248" cy="178" r="7"/>
+  </g>
+  <g fill="#F28C6B"><circle cx="146" cy="214" r="7"/><circle cx="236" cy="246" r="7"/></g>
+  <path d="M116 274 L262 168" stroke="#0A2472" stroke-width="3" stroke-dasharray="8 7"/>
+
+  <!-- secretária comprida com monitores -->
+  <ellipse cx="900" cy="770" rx="560" ry="22" fill="#001C55" opacity="0.12"/>
+  <rect x="360" y="560" width="1100" height="24" rx="6" fill="#F8FAFC"/>
+  <rect x="360" y="584" width="1100" height="12" fill="#CBD5E1"/>
+  <rect x="390" y="596" width="16" height="170" fill="#64748B"/>
+  <rect x="1414" y="596" width="16" height="170" fill="#64748B"/>
+
+  <!-- monitor A: barras horizontais -->
+  <rect x="470" y="420" width="220" height="134" rx="8" fill="#0F172A"/>
+  <rect x="480" y="430" width="200" height="114" rx="4" fill="#001C55"/>
+  <rect x="494" y="446" width="140" height="12" rx="4" fill="#A6E1FA"/>
+  <rect x="494" y="468" width="100" height="12" rx="4" fill="#5FA9D6"/>
+  <rect x="494" y="490" width="160" height="12" rx="4" fill="#F28C6B"/>
+  <rect x="494" y="512" width="70" height="12" rx="4" fill="#5FA9D6"/>
+  <rect x="572" y="554" width="16" height="8" fill="#334155"/>
+
+  <!-- monitor B: tabela -->
+  <rect x="790" y="420" width="220" height="134" rx="8" fill="#0F172A"/>
+  <rect x="800" y="430" width="200" height="114" rx="4" fill="#F8FAFC"/>
+  <rect x="800" y="430" width="200" height="22" fill="#0E6BA8"/>
+  <g fill="#CBD5E1">
+    <rect x="812" y="462" width="50" height="8" rx="3"/><rect x="874" y="462" width="40" height="8" rx="3"/><rect x="926" y="462" width="60" height="8" rx="3"/>
+    <rect x="812" y="482" width="50" height="8" rx="3"/><rect x="874" y="482" width="40" height="8" rx="3"/><rect x="926" y="482" width="60" height="8" rx="3"/>
+    <rect x="812" y="502" width="50" height="8" rx="3"/><rect x="874" y="502" width="40" height="8" rx="3"/><rect x="926" y="502" width="60" height="8" rx="3"/>
+    <rect x="812" y="522" width="50" height="8" rx="3"/><rect x="874" y="522" width="40" height="8" rx="3"/>
+  </g>
+  <rect x="926" y="522" width="60" height="8" rx="3" fill="#F28C6B"/>
+  <rect x="892" y="554" width="16" height="8" fill="#334155"/>
+
+  <!-- monitor C: notebook com gráfico -->
+  <rect x="1110" y="420" width="220" height="134" rx="8" fill="#0F172A"/>
+  <rect x="1120" y="430" width="200" height="114" rx="4" fill="#001C55"/>
+  <rect x="1132" y="442" width="90" height="8" rx="3" fill="#7BD389"/>
+  <rect x="1132" y="456" width="130" height="8" rx="3" fill="#A6E1FA"/>
+  <rect x="1132" y="474" width="176" height="60" rx="4" fill="#0A2472"/>
+  <path d="M1140 524 L1170 506 L1200 514 L1232 488 L1262 496 L1300 480" fill="none" stroke="#FACC6B" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="1212" y="554" width="16" height="8" fill="#334155"/>
+
+  <!-- objetos na mesa -->
+  <rect x="720" y="530" width="28" height="32" rx="4" fill="#F8FAFC" stroke="#0E6BA8" stroke-width="4"/>
+  <rect x="1040" y="546" width="54" height="14" rx="3" fill="#F28C6B"/>
+  <rect x="1046" y="536" width="44" height="12" rx="3" fill="#FACC6B"/>
+
+  <!-- cadeiras -->
+  <use href="#chair" x="530" y="586"/>
+  <use href="#chair" x="850" y="586"/>
+  <use href="#chair" x="1170" y="586"/>
+
+  <!-- planta à direita -->
+  <path d="M1490 720 L1500 620 H1570 L1580 720 Z" fill="#F28C6B"/>
+  <g fill="#4E9A54">
+    <ellipse cx="1535" cy="560" rx="30" ry="70"/>
+    <ellipse cx="1500" cy="580" rx="22" ry="54" transform="rotate(-25 1500 580)"/>
+    <ellipse cx="1572" cy="584" rx="22" ry="52" transform="rotate(25 1572 584)"/>
+  </g>
+</svg>

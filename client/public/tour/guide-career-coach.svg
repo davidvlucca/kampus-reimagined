@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <!-- Career Coach: cabelo ruivo pelos ombros, blazer índigo claro, camisa branca, lenço coral -->
+  <!-- cabelo atrás -->
+  <path d="M142 210 C130 120 180 90 240 90 C300 90 350 120 338 210 C344 270 350 320 336 352 H144 C130 320 136 270 142 210 Z" fill="#B5552E"/>
+  <!-- tronco -->
+  <path d="M50 480 C54 402 120 360 240 360 C360 360 426 402 430 480 Z" fill="#3B508E"/>
+  <path d="M196 360 L240 452 L284 360 Z" fill="#F8FAFC"/>
+  <path d="M184 362 L240 480 L214 480 L156 378 Z" fill="#2E4177"/>
+  <path d="M296 362 L240 480 L266 480 L324 378 Z" fill="#2E4177"/>
+  <!-- lenço -->
+  <path d="M206 360 C220 380 260 380 274 360 L268 384 C256 394 224 394 212 384 Z" fill="#F28C6B"/>
+  <path d="M236 384 L226 430 L244 422 L250 386 Z" fill="#E07A58"/>
+  <!-- botão / pin -->
+  <circle cx="340" cy="420" r="10" fill="#A6E1FA"/>
+  <circle cx="340" cy="420" r="4" fill="#0E6BA8"/>
+  <!-- pescoço -->
+  <path d="M210 292 H270 V358 C270 374 210 374 210 358 Z" fill="#D9A27E"/>
+  <path d="M210 322 C230 338 250 338 270 322 V296 H210 Z" fill="#000000" opacity="0.1"/>
+  <!-- cabeça -->
+  <ellipse cx="240" cy="210" rx="84" ry="98" fill="#E8B48F"/>
+  <!-- franja de lado -->
+  <path d="M154 206 C150 140 190 108 244 108 C296 108 330 140 326 200 C306 168 268 148 222 150 C196 152 176 170 154 206 Z" fill="#B5552E"/>
+  <path d="M200 124 C230 112 270 114 296 128" stroke="#C96A42" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- madeixas laterais por cima das orelhas -->
+  <path d="M154 196 C146 250 150 300 170 330 C160 280 162 240 168 210 Z" fill="#B5552E"/>
+  <path d="M326 196 C334 250 330 300 310 330 C320 280 318 240 312 210 Z" fill="#B5552E"/>
+  <!-- sobrancelhas -->
+  <path d="M190 188 Q206 180 222 188" stroke="#8A3E20" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M258 188 Q274 180 290 188" stroke="#8A3E20" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- olhos com pestanas -->
+  <ellipse cx="206" cy="214" rx="8" ry="10" fill="#1E293B"/>
+  <ellipse cx="274" cy="214" rx="8" ry="10" fill="#1E293B"/>
+  <circle cx="209" cy="210" r="3" fill="#FFFFFF"/>
+  <circle cx="277" cy="210" r="3" fill="#FFFFFF"/>
+  <path d="M196 206 L190 200 M284 206 L290 200" stroke="#1E293B" stroke-width="4" stroke-linecap="round"/>
+  <!-- nariz e boca -->
+  <path d="M236 228 Q240 246 248 242" stroke="#C48463" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M216 264 Q240 284 264 264" stroke="#B5453A" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- bochechas -->
+  <ellipse cx="186" cy="248" rx="15" ry="9" fill="#F28C6B" opacity="0.38"/>
+  <ellipse cx="294" cy="248" rx="15" ry="9" fill="#F28C6B" opacity="0.38"/>
+</svg>

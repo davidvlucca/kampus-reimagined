@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <!-- Lead Teacher: cabelo curto castanho, barba, óculos redondos, camisola azul com gola de camisa -->
+  <!-- tronco -->
+  <path d="M46 480 C50 398 120 358 240 358 C360 358 430 398 434 480 Z" fill="#0E6BA8"/>
+  <path d="M120 420 C140 440 150 460 150 480" stroke="#0B5686" stroke-width="6" fill="none"/>
+  <path d="M360 420 C340 440 330 460 330 480" stroke="#0B5686" stroke-width="6" fill="none"/>
+  <!-- gola em V da camisola e camisa -->
+  <path d="M184 360 L240 440 L296 360 Z" fill="#F8FAFC"/>
+  <path d="M196 356 L240 404 L218 412 L184 368 Z" fill="#E2E8F0"/>
+  <path d="M284 356 L240 404 L262 412 L296 368 Z" fill="#E2E8F0"/>
+  <path d="M178 360 L240 446 L302 360 L310 368 L240 462 L170 368 Z" fill="#0B5686"/>
+  <!-- pescoço -->
+  <path d="M208 290 H272 V356 C272 372 208 372 208 356 Z" fill="#E9B894"/>
+  <path d="M208 322 C230 338 250 338 272 322 V296 H208 Z" fill="#000000" opacity="0.1"/>
+  <!-- orelhas -->
+  <ellipse cx="152" cy="216" rx="16" ry="22" fill="#EDBF9B"/>
+  <ellipse cx="328" cy="216" rx="16" ry="22" fill="#EDBF9B"/>
+  <!-- cabeça -->
+  <ellipse cx="240" cy="206" rx="88" ry="100" fill="#F2C9A5"/>
+  <!-- cabelo curto -->
+  <path d="M152 200 C140 130 180 92 240 92 C304 92 344 128 330 200 C326 170 316 150 300 140 C270 152 220 150 190 132 C170 146 156 168 152 200 Z" fill="#6B4430"/>
+  <path d="M190 132 C214 120 250 118 280 124" stroke="#86573D" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- barba -->
+  <path d="M154 222 C156 290 196 318 240 318 C284 318 324 290 326 222 C318 250 300 262 286 262 C270 252 210 252 194 262 C180 262 162 250 154 222 Z" fill="#6B4430"/>
+  <path d="M212 270 Q240 292 268 270 Q240 280 212 270 Z" fill="#8F3B36"/>
+  <!-- sobrancelhas -->
+  <path d="M186 178 Q204 168 222 176" stroke="#5A3826" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M258 176 Q276 168 294 178" stroke="#5A3826" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- óculos -->
+  <g fill="none" stroke="#001C55" stroke-width="6">
+    <circle cx="204" cy="208" r="26"/>
+    <circle cx="276" cy="208" r="26"/>
+    <path d="M230 206 Q240 198 250 206"/>
+    <path d="M178 204 L156 198 M302 204 L324 198"/>
+  </g>
+  <circle cx="204" cy="208" r="26" fill="#A6E1FA" opacity="0.18"/>
+  <circle cx="276" cy="208" r="26" fill="#A6E1FA" opacity="0.18"/>
+  <!-- olhos -->
+  <path d="M194 210 Q204 200 214 210" stroke="#1E293B" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M266 210 Q276 200 286 210" stroke="#1E293B" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- nariz -->
+  <path d="M238 222 Q234 244 248 244" stroke="#C9967A" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- bochechas -->
+  <ellipse cx="184" cy="246" rx="14" ry="8" fill="#F28C6B" opacity="0.3"/>
+  <ellipse cx="296" cy="246" rx="14" ry="8" fill="#F28C6B" opacity="0.3"/>
+</svg>
