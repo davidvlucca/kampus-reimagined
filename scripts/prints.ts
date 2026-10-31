@@ -1,0 +1,106 @@
+// Prints dos ecrãs principais em docs/prints/ (desktop 1440 e mobile 390).
+// Os nomes repetem os de docs/antes/ (2023) quando o ecrã existe nos dois.
+// Uso: npm run prints  (usa o Chromium do Playwright: npx playwright install chromium)
+import { mkdirSync } from "node:fs";
+import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { BROWSER_NOW, startStack } from "./stack.ts";
+
+const OUT = "docs/prints";
+const VIEWPORTS = {
+  desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
+  mobile: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+} as const;
+type ViewportName = keyof typeof VIEWPORTS;
+
+interface Shot {
+  name: string;
+  path: string | ((page: Page) => Promise<string>);
+  /** Espera por este texto antes do print. */
+  waitFor?: string;
+}
+
+const PUBLIC: Shot[] = [
+  { name: "landing", path: "/", waitFor: "Welcome!" },
+  { name: "landing-login-aluno", path: "/login/student", waitFor: "Student login" },
+  { name: "login-staff", path: "/login/staff", waitFor: "Staff login" },
+  { name: "dashboard-sem-sessao", path: "/app", waitFor: "Please log in" },
+  { name: "rota-inexistente", path: "/this-page-does-not-exist", waitFor: "404" },
+];
+
+const STUDENT: Shot[] = [
+  { name: "visita-virtual", path: "/app/tour", waitFor: "Welcome to Kampus" },
+  { name: "dashboard-aluno", path: "/app", waitFor: "Hi Diana!" },
+  { name: "tarefas", path: "/app/tasks", waitFor: "Read the welcome guide" },
+  {
+    name: "notas",
+    // Desktop: lista + editor da primeira nota. Mobile: a lista.
+    path: async (page) => {
+      if ((page.viewportSize()?.width ?? 0) < 1024) return "/app/notes";
+      const res = await page.request.get("/api/notes");
+      const { notes } = (await res.json()) as { notes: { id: string }[] };
+      return `/app/notes/${notes[0]?.id ?? ""}`;
+    },
+    waitFor: "Ideas for the first project",
+  },
+  { name: "contactos-staff", path: "/app/contacts", waitFor: "Marta Lopes" },
+  { name: "perfil-aluno", path: "/app/profile", waitFor: "Change password" },
+];
+
+const STAFF: Shot[] = [
+  { name: "dashboard-staff", path: "/staff", waitFor: "Hi Marta!" },
+  { name: "alunos-staff", path: "/staff/students", waitFor: "Diana" },
+  { name: "perfil-staff", path: "/staff/profile", waitFor: "Change password" },
+];
+
+async function newContext(browser: Browser, baseURL: string, viewport: ViewportName) {
+  const context = await browser.newContext({ ...VIEWPORTS[viewport], baseURL, reducedMotion: "reduce", locale: "en-GB", timezoneId: "Europe/Lisbon" });
+  await context.clock.setFixedTime(BROWSER_NOW);
+  return context;
+}
+
+async function login(context: BrowserContext, email: string, portal: "staff" | "student") {
+  const res = await context.request.post("/api/auth/login", { data: { email, password: "Kampus123", portal } });
+  if (!res.ok()) throw new Error(`Login failed for ${email}: ${res.status()}`);
+}
+
+async function shoot(context: BrowserContext, shots: Shot[], viewport: ViewportName) {
+  const page = await context.newPage();
+  for (const shot of shots) {
+    const path = typeof shot.path === "string" ? shot.path : await shot.path(page);
+    await page.goto(path, { waitUntil: "networkidle" });
+    if (shot.waitFor) await page.getByText(shot.waitFor, { exact: false }).filter({ visible: true }).first().waitFor({ timeout: 10_000 });
+    await page.evaluate(() => document.fonts.ready);
+    // Imagens (cenários da visita) carregadas antes do print.
+    await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
+    const file = `${OUT}/${shot.name}-${viewport}.png`;
+    await page.screenshot({ path: file, fullPage: true });
+    console.log(`  ${file}`);
+  }
+  await page.close();
+}
+
+mkdirSync(OUT, { recursive: true });
+const stack = await startStack("prints");
+const browser = await chromium.launch();
+try {
+  for (const viewport of Object.keys(VIEWPORTS) as ViewportName[]) {
+    console.log(`\n${viewport}`);
+    const anon = await newContext(browser, stack.baseUrl, viewport);
+    await shoot(anon, PUBLIC, viewport);
+    await anon.close();
+
+    const student = await newContext(browser, stack.baseUrl, viewport);
+    await login(student, "student@example.com", "student");
+    await shoot(student, STUDENT, viewport);
+    await student.close();
+
+    const staff = await newContext(browser, stack.baseUrl, viewport);
+    await login(staff, "staff@example.com", "staff");
+    await shoot(staff, STAFF, viewport);
+    await staff.close();
+  }
+} finally {
+  await browser.close();
+  stack.stop();
+}
+console.log("\nPrints done.");

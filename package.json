@@ -8,7 +8,7 @@
     "client"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "demo": "npm install && npm run db:reset && npm run dev",
@@ -17,7 +17,7 @@
     "db:seed": "npm run db:seed -w server",
     "db:reset": "npm run db:reset -w server",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck --workspaces",
+    "typecheck": "npm run typecheck --workspaces && tsc -p scripts",
     "build": "npm run build -w client && npm run build -w server",
     "test": "vitest run",
     "prints": "node scripts/prints.ts",
