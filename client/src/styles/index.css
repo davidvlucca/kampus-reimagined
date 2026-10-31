@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Telemóvel deitado: pouca altura. A visita passa ao layout de cenário em fundo, como no desktop. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 540px) and (max-width: 1023px));
+
 /*
   Tokens da identidade Kampus. Os cinco azuis são os de 2023 (tailwind.config.js do
   original: Color1..Color5); o resto é novo. Todos os pares texto/fundo usados nos

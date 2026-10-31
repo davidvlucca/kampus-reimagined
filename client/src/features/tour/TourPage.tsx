@@ -131,11 +131,11 @@ export function TourPage() {
   const darkButton = "focus-on-dark ring-1 ring-white/25 grow lg:grow-0";
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-x-hidden bg-kampus-ink text-white lg:h-dvh lg:overflow-hidden">
+    <div className="relative flex min-h-dvh flex-col overflow-x-hidden bg-kampus-ink text-white short:h-dvh short:overflow-hidden lg:h-dvh lg:overflow-hidden">
       <h1 className="sr-only">Virtual tour of {CAMPUS_NAME}</h1>
 
       {/* Topo: logótipo, contador, progresso, saltar e sair */}
-      <header className="relative z-20 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
+      <header className="relative z-20 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
         <span className="lg:hidden">
           <Logo onDark showName={false} />
         </span>
@@ -148,7 +148,7 @@ export function TourPage() {
           </span>
           <span className="truncate text-sm font-medium text-white/90">{stop.name}</span>
         </p>
-        <TourProgress index={index} onGo={goTo} className="order-last w-full lg:order-none lg:w-auto lg:max-w-xl lg:flex-1" />
+        <TourProgress index={index} onGo={goTo} className="order-last w-full short:order-none short:w-auto short:flex-1 lg:order-none lg:w-auto lg:max-w-xl lg:flex-1" />
         {canSkip && (
           <button
             type="button"
@@ -163,18 +163,18 @@ export function TourPage() {
       </header>
 
       {/* Cenário */}
-      <div className="relative h-[45dvh] shrink-0 overflow-hidden bg-kampus-ink lg:absolute lg:inset-0 lg:h-auto">
+      <div className="relative h-[45dvh] shrink-0 overflow-hidden bg-kampus-ink short:absolute short:inset-0 short:h-auto lg:absolute lg:inset-0 lg:h-auto">
         {prevStop && (
           <div aria-hidden>
             <SceneImage key={`prev-${prev}`} scene={prevStop.scene} alt="" fade={false} />
           </div>
         )}
         <SceneImage key={index} scene={stop.scene} alt={stop.sceneAlt} />
-        <div aria-hidden className="pointer-events-none absolute inset-0 hidden bg-linear-to-t from-kampus-ink/70 via-transparent to-transparent lg:block" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 hidden bg-linear-to-t from-kampus-ink/70 via-transparent to-transparent short:block lg:block" />
       </div>
 
       {/* Guia e caixa de diálogo */}
-      <main className="relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8">
+      <main className="relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 short:absolute short:inset-x-0 short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8">
         <div className="relative mx-auto w-full max-w-6xl">
           <img
             src={guide.image}
@@ -184,20 +184,20 @@ export function TourPage() {
           />
           <section
             aria-label="Guide"
-            className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 lg:ml-72 lg:backdrop-blur lg:p-7"
+            className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
           >
             <div className="flex items-center gap-3">
               <img
                 src={guide.image}
                 alt=""
                 aria-hidden
-                className="size-14 shrink-0 rounded-full bg-kampus-sky-soft object-cover object-top ring-2 ring-kampus-sky lg:hidden"
+                className="size-14 shrink-0 rounded-full bg-kampus-sky-soft object-cover object-top ring-2 ring-kampus-sky short:size-9 lg:hidden"
               />
               <p className="rounded-lg bg-kampus-sky px-3 py-1 text-sm font-semibold text-kampus-ink">{guideLabel}</p>
             </div>
 
             {/* Clicar no texto mostra-o todo (no teclado: Enter) */}
-            <div onClick={finish} className={cn("mt-4 grid text-base leading-relaxed lg:text-lg", !done && "cursor-pointer")}>
+            <div onClick={finish} className={cn("mt-4 grid text-base leading-relaxed short:mt-2 short:text-sm lg:text-lg", !done && "cursor-pointer")}>
               {/* A versão invisível reserva o espaço do texto completo para nada saltar */}
               <p aria-hidden className="invisible [grid-area:1/1]">
                 {stop.text}
@@ -220,7 +220,7 @@ export function TourPage() {
             )}
 
             {/* Controlos: fila fixa em baixo no telemóvel, dentro da caixa no desktop */}
-            <div className="fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t border-white/10 bg-kampus-ink px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0">
+            <div className="fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t border-white/10 bg-kampus-ink px-4 pt-3 short:flex-nowrap short:bg-kampus-ink/95 short:pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0">
               <Button
                 icon={<ChevronLeft aria-hidden className="size-4" />}
                 onClick={() => goTo(index - 1)}

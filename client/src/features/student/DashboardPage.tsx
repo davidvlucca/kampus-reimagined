@@ -21,7 +21,7 @@ export function DashboardPage() {
     <>
       <PageHeader title={`Hi ${user.firstName}!`} description={today} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-6">
           <WeekProgress tourDone={tourDone} />
           <UpcomingTasks />
