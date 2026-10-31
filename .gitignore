@@ -13,3 +13,6 @@ playwright-report/
 .claude/
 docs/video/*.webm
 .vercel/
+.vercel
+.env*
+!.env.example
