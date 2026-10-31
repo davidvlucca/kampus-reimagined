@@ -1,11 +1,12 @@
 // Build para a Vercel no formato Build Output API (.vercel/output):
 //   static/            o build do client (Vite)
 //   functions/api.func  a API (Hono) num só ficheiro, empacotada com esbuild
-//   config.json        rotas (/api/* → função, resto → SPA) e o cron diário
+//   config.json        rotas (ver scripts/vercel-routes.ts: API, SPA, 404 e noindex) e o cron diário
 // A Vercel corre isto como buildCommand (ver vercel.json) e publica o resultado tal como está.
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
+import { NOINDEX, NOINDEX_META, vercelRoutes } from "./vercel-routes.ts";
 
 const OUT = ".vercel/output";
 const FUNC = `${OUT}/functions/api.func`;
@@ -17,6 +18,10 @@ mkdirSync(FUNC, { recursive: true });
 const client = spawnSync("npm", ["run", "build", "-w", "client"], { stdio: "inherit" });
 if (client.status !== 0) process.exit(client.status ?? 1);
 cpSync("client/dist", `${OUT}/static`, { recursive: true });
+if (NOINDEX) {
+  const indexHtml = `${OUT}/static/index.html`;
+  writeFileSync(indexHtml, readFileSync(indexHtml, "utf8").replace("<head>", `<head>\n    ${NOINDEX_META}`));
+}
 
 // 2. API: um bundle ESM com tudo (Hono, Drizzle, pg, hash-wasm, o shared/).
 await build({
@@ -45,14 +50,7 @@ writeFileSync(
   JSON.stringify(
     {
       version: 3,
-      routes: [
-        // Ficheiros com hash no nome: cache longa.
-        { src: "^/assets/(.*)$", headers: { "cache-control": "public, max-age=31536000, immutable" }, continue: true },
-        { src: "^/api(/.*)?$", dest: "/api" },
-        { handle: "filesystem" },
-        // React Router trata das restantes (incluindo a página 404).
-        { src: "^/(.*)$", dest: "/index.html" },
-      ],
+      routes: vercelRoutes(),
       // Repõe os dados de demonstração todos os dias às 04:00 UTC (ver /api/cron/reset-demo).
       crons: [{ path: "/api/cron/reset-demo", schedule: "0 4 * * *" }],
     },
