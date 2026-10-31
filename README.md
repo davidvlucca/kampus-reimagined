@@ -7,8 +7,7 @@ This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Develo
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
 - **Live demo: https://kampus-reimagined.vercel.app** (demo accounts below; the data resets every day)
-- Original front end: https://github.com/kairoos-studio/kampus-front
-- Original back end: https://github.com/kairoos-studio/kampus-back
+- Original 2023 code: [glowinZero/kampus](https://github.com/glowinZero/kampus) (front end) and [glowinZero/project-3-backend](https://github.com/glowinZero/project-3-backend) (back end)
 - Short video of both flows (40 s): [`docs/video/kampus-demo.mp4`](docs/video/kampus-demo.mp4)
 - Technical decisions (in Portuguese): [`docs/DECISOES.md`](docs/DECISOES.md)
 
@@ -61,8 +60,8 @@ Screenshots of the 2023 app (rendered from the original code, with fictional dat
 | --- | --- | --- |
 | **Welcome**<br><sub>The 2023 app had a separate splash page (`inicio`) before this one; they are now a single entry.</sub> | <img src="docs/antes/landing-desktop.png" alt="" width="420"> | <img src="docs/prints/landing-desktop.png" alt="" width="420"> |
 | **Student login**<br><sub>Was a modal on the landing page.</sub> | <img src="docs/antes/landing-login-aluno-desktop.png" alt="" width="420"> | <img src="docs/prints/landing-login-aluno-desktop.png" alt="" width="420"> |
-| **Staff login**<br><sub>Staff sign-up was removed: accounts are created, not self-registered.</sub> | <img src="docs/antes/login-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/login-staff-desktop.png" alt="" width="420"> |
-| **Virtual tour** | <img src="docs/antes/visita-virtual-desktop.png" alt="" width="420"> | <img src="docs/prints/visita-virtual-desktop.png" alt="" width="420"> |
+| **Staff login**<br><sub>Staff sign-up was removed: accounts are created, not self-registered. Photo blurred: the original image had no license.</sub> | <img src="docs/antes/login-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/login-staff-desktop.png" alt="" width="420"> |
+| **Virtual tour**<br><sub>Scenery blurred: original images had no license.</sub> | <img src="docs/antes/visita-virtual-desktop.png" alt="" width="420"> | <img src="docs/prints/visita-virtual-desktop.png" alt="" width="420"> |
 | **Student dashboard** | <img src="docs/antes/dashboard-aluno-desktop.png" alt="" width="420"> | <img src="docs/prints/dashboard-aluno-desktop.png" alt="" width="420"> |
 | **Staff contacts** | <img src="docs/antes/contactos-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/contactos-staff-desktop.png" alt="" width="420"> |
 | **Student profile**<br><sub>The 2023 profile showed the password hash in the Password field.</sub> | <img src="docs/antes/perfil-aluno-desktop.png" alt="" width="420"> | <img src="docs/prints/perfil-aluno-desktop.png" alt="" width="420"> |
@@ -82,7 +81,7 @@ On a phone (390px), where the 2023 screens broke:
 | | 2023 | 2026 |
 | --- | --- | --- |
 | **Student dashboard** | <img src="docs/antes/dashboard-aluno-mobile.png" alt="" width="260"> | <img src="docs/prints/dashboard-aluno-mobile.png" alt="" width="260"> |
-| **Virtual tour** | <img src="docs/antes/visita-virtual-mobile.png" alt="" width="260"> | <img src="docs/prints/visita-virtual-mobile.png" alt="" width="260"> |
+| **Virtual tour**<br><sub>Scenery blurred: original images had no license.</sub> | <img src="docs/antes/visita-virtual-mobile.png" alt="" width="260"> | <img src="docs/prints/visita-virtual-mobile.png" alt="" width="260"> |
 | **Staff contacts** | <img src="docs/antes/contactos-staff-mobile.png" alt="" width="260"> | <img src="docs/prints/contactos-staff-mobile.png" alt="" width="260"> |
 
 ## What changed and why
@@ -119,18 +118,21 @@ docs/     Before/after screenshots, video, technical decisions
 
 ## Credits
 
-**Kampus (2023)** was a team project at Ironhack's Web Development bootcamp ([POR CONFIRMAR: campus/city]) and won 1st place.
+**Kampus (2023)** was a team project at Ironhack's Web Development bootcamp and won **1st place**.
 
 - **David Lucca** ([@davidvlucca](https://github.com/davidvlucca)): creative and visual direction, most of the CSS, and product ideas.
-- **Bruno Carneiro** ([POR CONFIRMAR: GitHub]): [POR CONFIRMAR: role in the team].
-- **Andre Gomes** ([POR CONFIRMAR: GitHub]): [POR CONFIRMAR: role in the team].
+- **Bruno Carneiro**: API and back end.
+- **Andre Gomes**: authentication and QA.
 
-The 2023 back end started from Ironhack's REST API template ([bernardodemelo/m3-rest-api](https://github.com/bernardodemelo/m3-rest-api)).
+The 2023 code, with everyone's commits:
+- Front end: [glowinZero/kampus](https://github.com/glowinZero/kampus) (my fork: [davidvlucca/kampus](https://github.com/davidvlucca/kampus))
+- Back end: [glowinZero/project-3-backend](https://github.com/glowinZero/project-3-backend) (my fork: [davidvlucca/project-3-backend](https://github.com/davidvlucca/project-3-backend)). It started from Ironhack's REST API template, [bernardodemelo/m3-rest-api](https://github.com/bernardodemelo/m3-rest-api).
+- Runnable copies used for the "before" screenshots, with a report of the 2023 bugs: [kairoos-studio/kampus-front](https://github.com/kairoos-studio/kampus-front) and [kairoos-studio/kampus-back](https://github.com/kairoos-studio/kampus-back).
 
-**This version (2026)** was rebuilt by David Lucca with the help of AI (Claude Code). The code was rewritten from scratch, using the original repositories as a reference for the features, the identity and the bugs to fix; the tour images are the only assets reused from 2023.
+**This version (2026)** was rebuilt from scratch by David Lucca with the help of AI (Claude Code), using the 2023 repositories as a reference for the features, the identity and the bugs to fix.
 
-**Tour images:** the scenes and guide portraits come from the 2023 repository, converted to WebP. [POR CONFIRMAR: authorship and license of the tour images]
+**Images.** The 2023 tour used scenery and guide portraits found on Google Images, with no license. They are not in this repository: the tour scenes and guides are new SVG illustrations made for this version. In the 2023 screenshots in `docs/antes/`, those images and the stock photos of the old login and splash pages are blurred.
 
 ## License
 
-[POR CONFIRMAR: license]
+[MIT](LICENSE) for the code and the new illustrations. The 2023 screenshots in `docs/antes/` are documentation of the original team project and are not covered by the license.
