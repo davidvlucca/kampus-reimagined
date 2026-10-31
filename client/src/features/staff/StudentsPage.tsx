@@ -239,7 +239,7 @@ function RowActions({ student, onEdit, onDelete }: { student: StudentRow; onEdit
 function StudentsTable({ students, onEdit, onDelete }: ListProps) {
   const th = "px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted uppercase";
   return (
-    <Card className="hidden overflow-hidden lg:block">
+    <Card className="hidden overflow-x-auto xl:block">
       <table className="w-full text-sm">
         <caption className="sr-only">Students, with their cohort, tasks, tour and last login</caption>
         <thead className="border-b border-line bg-surface">
@@ -300,7 +300,7 @@ function StudentsTable({ students, onEdit, onDelete }: ListProps) {
 /** Telemóvel e tablet: cartões com a mesma informação. */
 function StudentCards({ students, onEdit, onDelete }: ListProps) {
   return (
-    <ul className="flex flex-col gap-3 lg:hidden">
+    <ul className="flex flex-col gap-3 xl:hidden">
       {students.map((s) => (
         <li key={s.id}>
           <Card className="p-4">
@@ -341,7 +341,7 @@ function StudentsSkeleton() {
   return (
     <div role="status">
       <span className="sr-only">Loading students</span>
-      <Card className="hidden flex-col divide-y divide-line lg:flex">
+      <Card className="hidden flex-col divide-y divide-line xl:flex">
         <Skeleton className="m-4 h-4 w-1/3" />
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3">
@@ -353,7 +353,7 @@ function StudentsSkeleton() {
           </div>
         ))}
       </Card>
-      <div className="flex flex-col gap-3 lg:hidden">
+      <div className="flex flex-col gap-3 xl:hidden">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-36 rounded-[var(--radius-card)]" />
         ))}

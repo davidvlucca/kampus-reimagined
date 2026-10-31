@@ -76,11 +76,11 @@ function Overview({ data }: { data: StaffOverview }) {
         <h2 id="stats-title" className="sr-only">
           Summary
         </h2>
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat icon={<Users aria-hidden />} label="Students" value={String(data.totalStudents)} />
           <Stat icon={<MapPinned aria-hidden />} label="Took the campus tour" value={`${tourPct}%`} />
           <Stat icon={<GraduationCap aria-hidden />} label="Cohorts" value={String(data.byCohort.length)} />
-        </dl>
+        </div>
       </section>
 
       <section aria-labelledby="cohorts-title">
@@ -126,8 +126,8 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: s
     <Card className="flex items-center gap-4 p-5">
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-kampus-blue-soft text-kampus-blue [&_svg]:size-5">{icon}</span>
       <div className="flex min-w-0 flex-col-reverse">
-        <dt className="text-sm text-muted">{label}</dt>
-        <dd className="font-display text-2xl font-semibold text-kampus-navy">{value}</dd>
+        <p className="text-sm text-muted">{label}</p>
+        <p className="font-display text-2xl font-semibold text-kampus-navy">{value}</p>
       </div>
     </Card>
   );

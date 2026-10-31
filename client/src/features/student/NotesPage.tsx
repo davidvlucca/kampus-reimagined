@@ -1,7 +1,7 @@
 import type { Note } from "@kampus/shared";
 import { ArrowLeft, FileQuestion, NotebookPen, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { ApiRequestError, errorMessage, fieldErrors } from "../../api/client.ts";
 import { useCreateNote, useDeleteNote, useNote, useNotes, useUpdateNote } from "../../api/hooks.ts";
 import { Button, buttonClasses, Card, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Skeleton, SkeletonList, Textarea, useToast } from "../../components/ui/index.ts";
@@ -112,7 +112,7 @@ function NoteList({ selectedId, onCreate, creating }: { selectedId?: string; onC
               )}
             >
               <span className="font-semibold break-words text-kampus-navy">{note.title}</span>
-              <span className="text-xs text-subtle">Edited {formatDate(note.updatedAt)}</span>
+              <span className="text-xs text-muted">Edited {formatDate(note.updatedAt)}</span>
               {note.body.trim() && <span className="line-clamp-2 text-sm text-muted">{excerpt(note.body)}</span>}
             </Link>
           </li>
@@ -178,6 +178,18 @@ function NoteForm({ note }: { note: Note }) {
   }, [focusTitle]);
 
   const dirty = title !== note.title || body !== note.body;
+
+  // Sair com alterações por guardar pede confirmação (navegação na app e fechar o separador).
+  const leavingAfterDelete = useRef(false);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) => dirty && !leavingAfterDelete.current && currentLocation.pathname !== nextLocation.pathname,
+  );
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const save = () => {
     if (!dirty || update.isPending) return;
@@ -248,11 +260,23 @@ function NoteForm({ note }: { note: Note }) {
           try {
             await remove.mutateAsync(note.id);
             toast({ title: "Note deleted", tone: "success" });
+            leavingAfterDelete.current = true;
             navigate("/app/notes", { replace: true });
           } catch (e) {
             toast({ title: "Couldn't delete the note", description: errorMessage(e), tone: "error" });
           }
         }}
+      />
+      <ConfirmDialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(open) => {
+          if (!open && blocker.state === "blocked") blocker.reset();
+        }}
+        title="Discard your changes?"
+        description="This note has unsaved changes. If you leave now, they'll be lost."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={() => blocker.proceed?.()}
       />
     </Card>
   );

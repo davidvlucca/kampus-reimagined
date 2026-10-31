@@ -74,7 +74,8 @@ export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api<undefined>("/auth/logout", { method: "POST" }),
-    onSettled: () => {
+    // Só com sucesso: se o pedido falhar (offline), a sessão continua válida no servidor.
+    onSuccess: () => {
       qc.clear();
       qc.setQueryData(keys.me, null);
     },
@@ -198,7 +199,11 @@ export function useDeleteNote() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api<undefined>(`/notes/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notes }),
+    // Só a lista: invalidar ["notes"] inteiro voltava a pedir a nota apagada (404 no ecrã).
+    onSuccess: (_data, id) => {
+      qc.setQueryData<Note[]>(keys.notes, (list) => list?.filter((n) => n.id !== id));
+      return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
+    },
   });
 }
 

@@ -67,7 +67,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
 
   return (
     <Card>
-      <CardHeader icon={<UserRound aria-hidden />} title="Your details" description="This is how staff and classmates see you." />
+      <CardHeader icon={<UserRound aria-hidden />} title="Your details" description="This is how staff see you." />
       <CardBody>
         <form noValidate onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -224,24 +224,25 @@ export function ProfilePage() {
 
   const signOut = () =>
     logout.mutate(undefined, {
-      onSettled: () => {
+      onSuccess: () => {
         navigate(loginPath(user.role), { replace: true });
         toast({ title: "You're logged out", tone: "info" });
       },
+      onError: (e) => toast({ title: "Couldn't log out", description: errorMessage(e), tone: "error" }),
     });
 
   return (
     <>
       <PageHeader title="Your profile" description="Your details, password and session." />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
-        <div className="flex flex-col gap-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
+        <div className="flex flex-col gap-6">
           <ProfileSummary user={user} />
           {user.role === "student" && <TourRow user={user} />}
           <Button variant="secondary" loading={logout.isPending} icon={<LogOut aria-hidden className="size-4" />} onClick={signOut} className="w-full">
             Log out
           </Button>
         </div>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           <DetailsForm user={user} />
           <PasswordForm />
         </div>

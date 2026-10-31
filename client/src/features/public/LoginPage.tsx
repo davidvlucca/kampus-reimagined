@@ -8,6 +8,7 @@ import type { LoginRedirectState } from "../../components/layout/RequireAuth.tsx
 import { homePathFor, loginPath } from "../../components/layout/paths.ts";
 import { Button, IconButton, Input, Logo, useToast } from "../../components/ui/index.ts";
 import { PublicBackdrop } from "./PublicBackdrop.tsx";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 
 const COPY: Record<Portal, { title: string; panelTitle: string; panelText: string; demoEmail: string; label: string }> = {
   student: {
@@ -44,6 +45,7 @@ function targetAfterLogin(user: PublicUser, portal: Portal, from: string | undef
 }
 
 export function LoginPage({ portal }: { portal: Portal }) {
+  useDocumentTitle(portal === "staff" ? "Staff login" : "Student login");
   const copy = COPY[portal];
   const me = useMe();
   const login = useLogin();
@@ -129,7 +131,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
         </Link>
         <div className="relative mt-6 max-w-md lg:mt-0">
           <p className="font-display text-2xl font-semibold text-white lg:text-4xl">{copy.panelTitle}</p>
-          <p className="mt-2 text-sm text-kampus-sky lg:text-lg">{copy.panelText}</p>
+          <p className="mt-2 text-sm text-white lg:text-lg">{copy.panelText}</p>
         </div>
         <p className="relative hidden text-xs text-white/80 lg:block">All data is fictional.</p>
       </section>
@@ -152,7 +154,8 @@ export function LoginPage({ portal }: { portal: Portal }) {
           )}
 
           <form noValidate onSubmit={submit} className="mt-6 flex flex-col gap-4">
-            <div aria-live="assertive">
+            {(formError || wrongPortal) && (
+            <div>
               {formError && (
                 <p role="alert" className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
                   {formError}
@@ -167,6 +170,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
                 </div>
               )}
             </div>
+            )}
 
             <Input
               ref={emailRef}

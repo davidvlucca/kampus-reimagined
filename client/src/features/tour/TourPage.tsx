@@ -13,6 +13,7 @@ import { TourProgress } from "./TourProgress.tsx";
 import { useReducedMotion } from "./useReducedMotion.ts";
 import { useSpeech } from "./useSpeech.ts";
 import { useTypewriter } from "./useTypewriter.ts";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 
 const TOTAL = TOUR_STOPS.length;
 
@@ -23,6 +24,7 @@ function isInteractive(target: EventTarget | null): boolean {
 }
 
 export function TourPage() {
+  useDocumentTitle("Virtual tour");
   const user = useCurrentUser();
   const contacts = useContacts();
   const completeTour = useCompleteTour();

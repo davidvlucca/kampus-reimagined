@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn.ts";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 
 /** Título da página (o único h1), descrição e ações. */
 export function PageHeader({ title, description, actions, className }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; className?: string }) {
+  useDocumentTitle(typeof title === "string" ? title : undefined);
   return (
     <header className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">

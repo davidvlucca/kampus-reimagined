@@ -25,7 +25,7 @@ function ContactCard({ contact }: { contact: Contact }) {
         <div className="flex items-start gap-3">
           <Avatar firstName={contact.firstName} lastName={contact.lastName} size="lg" />
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold">{name}</h2>
+            <h2 className="truncate text-base font-semibold">{name}</h2>
             <Badge tone="blue" className="mt-1 max-w-full whitespace-normal">
               {contact.title}
             </Badge>

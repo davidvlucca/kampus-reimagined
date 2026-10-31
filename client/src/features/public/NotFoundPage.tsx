@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router";
 import { useMe } from "../../api/hooks.ts";
 import { homePathFor } from "../../components/layout/paths.ts";
 import { Button, buttonClasses, Logo } from "../../components/ui/index.ts";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 
 export function NotFoundPage() {
+  useDocumentTitle("Page not found");
   const me = useMe();
   const navigate = useNavigate();
   const home = me.data ? homePathFor(me.data) : "/";
@@ -24,7 +26,7 @@ export function NotFoundPage() {
         </Link>
       </header>
       <main className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center">
-        <p className="animate-fade-up bg-kampus-gradient bg-clip-text font-pixel text-[8rem] leading-none text-transparent sm:text-[11rem]">
+        <p className="animate-fade-up bg-kampus-gradient bg-clip-text font-pixel text-[8rem] leading-none text-transparent forced-colors:text-[CanvasText] sm:text-[11rem]">
           404
         </p>
         <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">This page took a wrong turn</h1>

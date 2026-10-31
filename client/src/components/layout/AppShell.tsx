@@ -1,6 +1,8 @@
 import type { Role } from "@kampus/shared";
 import { LogOut } from "lucide-react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { useEffect, useRef } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { errorMessage } from "../../api/client.ts";
 import { useCurrentUser, useLogout } from "../../api/hooks.ts";
 import { cn } from "../../lib/cn.ts";
 import { Avatar, IconButton, Logo, useToast } from "../ui/index.ts";
@@ -13,10 +15,11 @@ function useSignOut(role: Role) {
   const toast = useToast();
   return () =>
     logout.mutate(undefined, {
-      onSettled: () => {
+      onSuccess: () => {
         navigate(loginPath(role), { replace: true });
         toast({ title: "You're logged out", tone: "info" });
       },
+      onError: (e) => toast({ title: "Couldn't log out", description: errorMessage(e), tone: "error" }),
     });
 }
 
@@ -117,6 +120,22 @@ function BottomNav({ role }: { role: Role }) {
 
 /** Layout das áreas privadas: sidebar no desktop (como em 2023), barra em baixo no telemóvel. */
 export function AppShell({ role }: { role: Role }) {
+  const { pathname } = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+  const firstRender = useRef(true);
+
+  // Ao mudar de página pelo menu, o foco vai para o conteúdo (o leitor de ecrã anuncia a página nova).
+  // Se o foco já está dentro do conteúdo (ex.: nota nova com o foco no título), não mexe.
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const main = mainRef.current;
+    if (main && !main.contains(document.activeElement)) main.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     <div className="min-h-dvh lg:flex">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xl focus:bg-card focus:px-4 focus:py-3 focus:shadow-pop">
@@ -124,7 +143,7 @@ export function AppShell({ role }: { role: Role }) {
       </a>
       <Sidebar role={role} />
       <MobileTopBar role={role} />
-      <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 pt-6 pb-28 outline-none sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
+      <main ref={mainRef} id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 pt-6 pb-28 outline-none sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
         <div className="mx-auto w-full max-w-6xl">
           <Outlet />
         </div>

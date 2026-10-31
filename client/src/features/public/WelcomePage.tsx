@@ -5,6 +5,7 @@ import { loginPath, homePathFor } from "../../components/layout/paths.ts";
 import { buttonClasses, Logo } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { PublicBackdrop } from "./PublicBackdrop.tsx";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 
 const choices: { to: string; label: string; description: string; icon: LucideIcon }[] = [
   {
@@ -22,6 +23,7 @@ const choices: { to: string; label: string; description: string; icon: LucideIco
 ];
 
 export function WelcomePage() {
+  useDocumentTitle(undefined);
   const me = useMe();
   const user = me.data;
 
@@ -35,7 +37,7 @@ export function WelcomePage() {
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-5 py-12 text-center sm:px-10">
         <h1 className="animate-fade-up font-display text-5xl font-semibold tracking-tight text-white sm:text-7xl">Welcome!</h1>
-        <p className="mt-3 text-lg text-kampus-sky sm:text-xl">Your first days on campus, sorted.</p>
+        <p className="mt-3 text-lg text-white sm:text-xl">Your first days on campus, sorted.</p>
 
         <nav aria-label="Choose your profile" className="mt-10 grid w-full max-w-2xl gap-4 sm:grid-cols-2">
           {choices.map(({ to, label, description, icon: Icon }) => (

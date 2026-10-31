@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client.ts";
 import { useCurrentUser, useNotes, useTasks } from "../../api/hooks.ts";
-import { buttonClasses, Card, CardBody, CardHeader, EmptyState, ErrorState, ProgressBar, Skeleton, SkeletonList } from "../../components/ui/index.ts";
+import { buttonClasses, Card, CardBody, CardHeader, EmptyState, ErrorState, ProgressBar, Skeleton, SkeletonList, PageHeader } from "../../components/ui/index.ts";
 import { formatDate } from "../../lib/format.ts";
 import { excerpt } from "./noteText.ts";
 import { Pomodoro } from "./Pomodoro.tsx";
@@ -19,10 +19,7 @@ export function DashboardPage() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold sm:text-3xl">Hi {user.firstName}!</h1>
-        <p className="mt-1 text-muted">{today}</p>
-      </header>
+      <PageHeader title={`Hi ${user.firstName}!`} description={today} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-6">
@@ -182,7 +179,7 @@ function RecentNotes() {
                   className="flex h-full flex-col gap-1 rounded-xl border border-line bg-surface p-4 transition hover:border-kampus-blue/40 hover:bg-kampus-blue-soft"
                 >
                   <span className="font-semibold break-words text-kampus-navy">{note.title}</span>
-                  <span className="text-xs text-subtle">{formatDate(note.updatedAt)}</span>
+                  <span className="text-xs text-muted">{formatDate(note.updatedAt)}</span>
                   {note.body.trim() && <span className="line-clamp-2 text-sm text-muted">{excerpt(note.body)}</span>}
                 </Link>
               </li>

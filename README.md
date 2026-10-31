@@ -1,0 +1,124 @@
+# Kampus Reimagined
+
+**A campus onboarding app for new students: a visual-novel tour of the campus, tasks with deadlines, notes, a focus timer and the staff contacts. Staff add students and see how they're settling in.**
+
+This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
+
+![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
+
+- Original front end: https://github.com/kairoos-studio/kampus-front
+- Original back end: https://github.com/kairoos-studio/kampus-back
+- Short video of both flows (40 s): [`docs/video/kampus-demo.mp4`](docs/video/kampus-demo.mp4)
+- Technical decisions (in Portuguese): [`docs/DECISOES.md`](docs/DECISOES.md)
+
+> All data in this project is **fictional**: the campus, cohorts, people, emails, tasks and notes.
+
+## Run it
+
+Needs Node 22.18+ (tested with Node 24). No database, Docker or accounts needed: in development the app uses [PGlite](https://pglite.dev), a real Postgres that runs inside the Node process.
+
+```bash
+npm run demo
+```
+
+This installs dependencies, creates the database, applies the migrations, loads the demo data and starts the API (http://localhost:3000) and the web app (http://localhost:5173).
+
+| Account | Email | Password |
+| --- | --- | --- |
+| Staff (Program Manager) | `staff@example.com` | `Kampus123` |
+| Student (first login opens the tour) | `student@example.com` | `Kampus123` |
+
+Other scripts:
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Starts API and web app (after a first `npm run demo`) |
+| `npm run db:reset` | Wipes the local database and loads the demo data again |
+| `npm test` | API tests (auth and authorization) and date tests, with Vitest |
+| `npm run lint` / `npm run typecheck` / `npm run build` | ESLint, TypeScript, production build |
+| `npm run prints` | Screenshots of the main screens into `docs/prints/` (Playwright) |
+| `npm run video` | Records the demo video into `docs/video/` (Playwright + ffmpeg) |
+
+In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of PGlite; the schema and migrations are the same. See `.env.example`.
+
+## Before and after
+
+Screenshots of the 2023 app (rendered from the original code, with fictional data) next to the new version. Desktop at 1440px; more in [`docs/antes/`](docs/antes/) and [`docs/prints/`](docs/prints/), including 390px mobile versions of every screen.
+
+| Screen | 2023 | 2026 |
+| --- | --- | --- |
+| **Welcome**<br><sub>The 2023 app had a separate splash page (`inicio`) before this one; they are now a single entry.</sub> | <img src="docs/antes/landing-desktop.png" alt="" width="420"> | <img src="docs/prints/landing-desktop.png" alt="" width="420"> |
+| **Student login**<br><sub>Was a modal on the landing page.</sub> | <img src="docs/antes/landing-login-aluno-desktop.png" alt="" width="420"> | <img src="docs/prints/landing-login-aluno-desktop.png" alt="" width="420"> |
+| **Staff login**<br><sub>Staff sign-up was removed: accounts are created, not self-registered.</sub> | <img src="docs/antes/login-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/login-staff-desktop.png" alt="" width="420"> |
+| **Virtual tour** | <img src="docs/antes/visita-virtual-desktop.png" alt="" width="420"> | <img src="docs/prints/visita-virtual-desktop.png" alt="" width="420"> |
+| **Student dashboard** | <img src="docs/antes/dashboard-aluno-desktop.png" alt="" width="420"> | <img src="docs/prints/dashboard-aluno-desktop.png" alt="" width="420"> |
+| **Staff contacts** | <img src="docs/antes/contactos-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/contactos-staff-desktop.png" alt="" width="420"> |
+| **Student profile**<br><sub>The 2023 profile showed the password hash in the Password field.</sub> | <img src="docs/antes/perfil-aluno-desktop.png" alt="" width="420"> | <img src="docs/prints/perfil-aluno-desktop.png" alt="" width="420"> |
+| **Staff: students**<br><sub>In 2023 the staff dashboard was this list of every user, staff included.</sub> | <img src="docs/antes/dashboard-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/alunos-staff-desktop.png" alt="" width="420"> |
+| **Staff profile** | <img src="docs/antes/perfil-staff-desktop.png" alt="" width="420"> | <img src="docs/prints/perfil-staff-desktop.png" alt="" width="420"> |
+| **Private page, no session** | <img src="docs/antes/dashboard-sem-sessao-desktop.png" alt="" width="420"> | <img src="docs/prints/dashboard-sem-sessao-desktop.png" alt="" width="420"> |
+| **Unknown URL (404)** | <img src="docs/antes/rota-inexistente-desktop.png" alt="" width="420"> | <img src="docs/prints/rota-inexistente-desktop.png" alt="" width="420"> |
+
+New screens with no 2023 equivalent (tasks and notes lived inside the dashboard):
+
+| Tasks | Notes | Staff dashboard |
+| --- | --- | --- |
+| <img src="docs/prints/tarefas-desktop.png" alt="" width="420"> | <img src="docs/prints/notas-desktop.png" alt="" width="420"> | <img src="docs/prints/dashboard-staff-desktop.png" alt="" width="420"> |
+
+On a phone (390px), where the 2023 screens broke:
+
+| | 2023 | 2026 |
+| --- | --- | --- |
+| **Student dashboard** | <img src="docs/antes/dashboard-aluno-mobile.png" alt="" width="260"> | <img src="docs/prints/dashboard-aluno-mobile.png" alt="" width="260"> |
+| **Virtual tour** | <img src="docs/antes/visita-virtual-mobile.png" alt="" width="260"> | <img src="docs/prints/visita-virtual-mobile.png" alt="" width="260"> |
+| **Staff contacts** | <img src="docs/antes/contactos-staff-mobile.png" alt="" width="260"> | <img src="docs/prints/contactos-staff-mobile.png" alt="" width="260"> |
+
+## What changed and why
+
+| 2023 | 2026 | Why |
+| --- | --- | --- |
+| The API had no authentication: `/auth/users` returned every user **with their password hash**, and anyone could edit or delete tasks, notes and users. | Session cookie (`httpOnly`, `SameSite=Lax`), sessions stored in the database, passwords hashed with argon2id. A student only sees their own data, only staff manage students, and the hash never leaves the API. | It's the first thing a reviewer checks. 40+ tests try to break it: reading another student's notes, a student calling staff routes, looking for the hash in every response. |
+| Anyone could sign up as staff. Editing a user saved the password exactly as received. | No public sign-up: staff accounts come from the seed, students are created by staff with a temporary password, and changing a password asks for the current one and logs out other devices. | Fewer ways in, and a real password flow. |
+| The task checkbox always started as "To do", so finished tasks looked unfinished. | The checkbox reads the saved state; ticking it is instant (optimistic) and rolls back if the API fails. | The bug from the original report, fixed and tested. |
+| Not responsive: every screen broke on a phone. | Mobile-first for students (390px), sidebar on desktop and a bottom bar on mobile, like apps students already use. | New students live on their phones. |
+| An unknown URL showed only the background gradient. | A real 404 page with a way home. | Users should never be stuck. |
+| Two `cors()` calls; only two hard-coded origins worked. | One CORS config from the `CORS_ORIGIN` environment variable, plus CSRF protection. | Deployable anywhere without code changes. |
+| The Pomodoro started at 0/0 minutes and didn't run until you moved the sliders. | 25/5 by default, adjustable, with pause, resume and reset, and a timer that doesn't drift in background tabs. | It now works the moment you see it. |
+| Notes could be created and deleted, not edited. | A list and an editor, with "unsaved changes" and Ctrl/Cmd+S. | Notes are meant to grow during the course. |
+| The tour was mouse-only, broke on mobile and used 10 MB of pre-recorded audio. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and images converted from 1.5 MB JPGs to ~80 KB WebPs. | Accessible, faster, and the audio always matches the text. |
+| Deadlines were compared with the current time, so "days left" changed during the day. | Deadlines are dates; "Due today", "3 days left" and "Overdue" use the browser's local date, tested in three time zones. | A deadline is a day, not an instant. |
+
+New, small ideas: a **Week 1 progress** bar on the student dashboard, **Copy email** on staff contacts, and a staff dashboard with students per cohort, who hasn't taken the tour yet and recent activity.
+
+## Stack
+
+- **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react. Fonts served locally: Poppins (headings), Inter (text), VT323 (the pixel touch, used only in the timer, the tour counter and the 404).
+- **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon-ready via `DATABASE_URL`), argon2id, Zod.
+- **Shared:** Zod schemas and types used by both sides, the tour content and the deadline logic.
+- **Quality:** Vitest, ESLint, Playwright for screenshots and the video.
+
+```
+client/   React app (features/ per area, components/ui for the design system)
+server/   Hono API, Drizzle schema, SQL migrations, seed, tests
+shared/   Zod schemas, types, tour content, date helpers
+scripts/  Playwright screenshots and video, image conversion
+docs/     Before/after screenshots, video, technical decisions
+```
+
+## Credits
+
+**Kampus (2023)** was a team project at Ironhack's Web Development bootcamp ([POR CONFIRMAR: campus/city]) and won 1st place.
+
+- **David Lucca** ([@davidvlucca](https://github.com/davidvlucca)): creative and visual direction, most of the CSS, and product ideas.
+- **Bruno Carneiro** ([POR CONFIRMAR: GitHub]): [POR CONFIRMAR: role in the team].
+- **Andre Gomes** ([POR CONFIRMAR: GitHub]): [POR CONFIRMAR: role in the team].
+
+The 2023 back end started from Ironhack's REST API template ([bernardodemelo/m3-rest-api](https://github.com/bernardodemelo/m3-rest-api)).
+
+**This version (2026)** was rebuilt by David Lucca with the help of AI (Claude Code). The code was rewritten from scratch, using the original repositories as a reference for the features, the identity and the bugs to fix; the tour images are the only assets reused from 2023.
+
+**Tour images:** the scenes and guide portraits come from the 2023 repository, converted to WebP. [POR CONFIRMAR: authorship and license of the tour images]
+
+## License
+
+[POR CONFIRMAR: license]
