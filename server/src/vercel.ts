@@ -17,6 +17,8 @@ const app = createApp({
   // Na Vercel é sempre HTTPS.
   session: { ttlDays: Number(process.env.SESSION_TTL_DAYS ?? 7), secureCookies: true },
   cronSecret: process.env.CRON_SECRET || undefined,
+  // A Vercel reescreve o x-forwarded-for com o IP real do cliente.
+  trustProxy: true,
 });
 
 // Handler Node (req, res): a Vercel chama-o por cada pedido a /api/*.

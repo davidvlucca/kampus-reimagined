@@ -8,5 +8,7 @@ export interface AppEnv {
     session: SessionConfig;
     user: UserRow;
     sessionId: string;
+    /** IP de quem fez o pedido (para o limite de logins). */
+    clientIp: string;
   };
 }

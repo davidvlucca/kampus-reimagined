@@ -51,6 +51,19 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+// Tentativas de login falhadas, para o limite de 5 por email+IP em 15 minutos. Fica em
+// Postgres (e não em memória) porque na Vercel cada pedido pode cair numa instância diferente.
+// A chave é o sha256 de "email|ip": não guardamos o email nem o IP em claro.
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_attempts_key_idx").on(t.key, t.attemptedAt)],
+);
+
 export const tasks = pgTable(
   "tasks",
   {

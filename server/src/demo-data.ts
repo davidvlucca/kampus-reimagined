@@ -194,5 +194,5 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
 }
 
 export async function resetDatabase(db: Db) {
-  await db.execute(sql`truncate table sessions, notes, tasks, users, cohorts restart identity cascade`);
+  await db.execute(sql`truncate table login_attempts, sessions, notes, tasks, users, cohorts restart identity cascade`);
 }

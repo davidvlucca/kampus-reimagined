@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
@@ -25,6 +26,24 @@ export interface AppConfig {
    * repõe os dados de demonstração; sem ele, a rota não existe (404).
    */
   cronSecret?: string;
+  /**
+   * Atrás de um proxy de confiança (Vercel), o IP vem do header x-forwarded-for, que a
+   * Vercel reescreve. Sem proxy, um cliente podia inventar esse header: usa-se o socket.
+   */
+  trustProxy?: boolean;
+}
+
+function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => string | undefined): string {
+  if (trustProxy) {
+    const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    if (forwarded) return forwarded;
+  }
+  try {
+    return socketAddress() ?? "unknown";
+  } catch {
+    // Sem socket (ex.: app.request() nos testes).
+    return "unknown";
+  }
 }
 
 function sameSecret(given: string, expected: string): boolean {
@@ -40,6 +59,7 @@ export function createApp(config: AppConfig) {
     .use(async (c, next) => {
       c.set("db", config.db);
       c.set("session", config.session);
+      c.set("clientIp", clientIp(c.req.raw.headers, config.trustProxy ?? false, () => getConnInfo(c).remote.address));
       await next();
     })
     .get("/health", (c) => c.json({ ok: true }))
