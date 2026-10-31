@@ -192,3 +192,33 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 ## 15. `noindex`
 
 Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` em `scripts/vercel-routes.ts` põe o header `X-Robots-Tag: noindex` em todas as respostas (páginas, ficheiros e API) e a meta `robots` no `index.html`. Para deixar indexar, muda-se essa constante e volta-se a publicar.
+
+---
+
+## 16. Entrar na demo com um clique
+
+**Porquê.** Quem abre um portfólio dá poucos minutos a cada projeto. Antes, ver a visita pedia três passos: escolher o perfil, carregar em "Use demo account" e depois em "Log in". Agora o Welcome tem "Try as student" e "Try as staff", que entram logo na conta demo, e no ecrã de login o botão do cartão "Demo account" entra diretamente (respeitando a página pedida, se a pessoa veio de um link privado).
+
+**O custo.** Nenhum para a segurança: as contas demo já eram públicas (email e password estão no ecrã) e estão protegidas: ninguém as pode apagar nem mudar o email ou a password. Os logins pelo botão contam para o mesmo limite de tentativas falhadas.
+
+---
+
+## 17. Testes de ponta a ponta com Playwright e axe, no GitHub Actions
+
+**O que correm.** `npm run e2e` arranca uma cópia isolada da app (a mesma de `scripts/stack.ts`, com PGlite) e testa num Chromium de desktop e noutro de telemóvel:
+- o clique em "Try as student" abre a visita, que se percorre até ao fim (com teclado e botões);
+- marcar uma tarefa como feita sobrevive a um reload (o bug de 2023);
+- um aluno que abre `/staff/...` volta para a sua área e a API responde 403;
+- sem sessão, uma página privada manda para o login;
+- o staff cria e apaga um aluno;
+- a 404;
+- o axe (regras WCAG 2.1 A e AA) em todos os ecrãs principais, incluindo o dialog de criar aluno.
+
+**Cada teste começa com a demo reposta.** A API local passou a aceitar `CRON_SECRET` como na Vercel, e os testes chamam `/api/cron/reset-demo` antes de cada um. Correm um de cada vez porque partilham a base; são 20 testes em cerca de 25 segundos.
+
+**O que já apanharam.** No telemóvel, o link do avatar tinha `aria-label="Your profile"` mas mostrava as iniciais: o nome acessível não incluía o texto visível (WCAG 2.5.3, quem usa controlo por voz diz o que vê). Passou a ter o nome em texto `sr-only`.
+
+**CI.** `.github/workflows/ci.yml` corre em cada push e pull request: lint, tipos, Vitest e build num job, e os testes E2E noutro, em paralelo. Não precisa de segredos (tudo corre com PGlite). Se os E2E falharem, o relatório e os traces do Playwright ficam como artefacto durante 7 dias.
+
+**Pergunta.** *"Porque não testar no Safari, se fizeste QA no iPhone?"* — O WebKit do Playwright não é o Safari do iOS; o QA no simulador apanhou coisas (zoom nos campos, o campo de data) que nenhum browser de CI apanharia. Os E2E protegem os fluxos contra regressões; o QA em dispositivo continua a ser à mão.
+

@@ -1,12 +1,14 @@
 # Kampus Reimagined
 
+[![CI](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml/badge.svg)](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml)
+
 **A campus onboarding app for new students: a visual-novel tour of the campus, tasks with deadlines, notes, a focus timer and the staff contacts. Staff add students and see how they're settling in.**
 
 This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
 
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
-- **Live demo: https://kampus-reimagined.vercel.app** (demo accounts below; the data resets every day)
+- **Live demo: https://kampus-reimagined.vercel.app** (one click on "Try as student" or "Try as staff"; the data resets every day)
 - Original 2023 code: [glowinZero/kampus](https://github.com/glowinZero/kampus) (front end) and [glowinZero/project-3-backend](https://github.com/glowinZero/project-3-backend) (back end)
 - Short video of both flows (40 s): [`docs/video/kampus-demo.mp4`](docs/video/kampus-demo.mp4)
 - Technical decisions (in Portuguese): [`docs/DECISOES.md`](docs/DECISOES.md)
@@ -35,6 +37,7 @@ Other scripts:
 | `npm run dev` | Starts API and web app (after a first `npm run demo`) |
 | `npm run db:reset` | Wipes the local database and loads the demo data again |
 | `npm test` | API tests (auth and authorization) and date tests, with Vitest |
+| `npm run e2e` | End-to-end tests in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen (Playwright) |
 | `npm run lint` / `npm run typecheck` / `npm run build` | ESLint, TypeScript, production build |
 | `npm run prints` | Screenshots of the main screens into `docs/prints/` (Playwright) |
 | `npm run video` | Records the demo video into `docs/video/` (Playwright + ffmpeg) |
@@ -106,13 +109,14 @@ New, small ideas: a **Week 1 progress** bar on the student dashboard, **Copy ema
 - **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react. Fonts served locally: Poppins (headings), Inter (text), VT323 (the pixel touch, used only in the timer, the tour counter and the 404).
 - **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon in production), argon2id (hash-wasm), Zod. Deployed on Vercel.
 - **Shared:** Zod schemas and types used by both sides, the tour content and the deadline logic.
-- **Quality:** Vitest, ESLint, Playwright for screenshots and the video.
+- **Quality:** Vitest, ESLint, Playwright (end-to-end tests, screenshots and the video), axe for accessibility. GitHub Actions runs lint, types, unit and end-to-end tests on every push.
 
 ```
 client/   React app (features/ per area, components/ui for the design system)
 server/   Hono API, Drizzle schema, SQL migrations, seed, tests
 shared/   Zod schemas, types, tour content, date helpers
-scripts/  Playwright screenshots and video, image conversion
+e2e/      Playwright end-to-end and accessibility tests
+scripts/  Playwright screenshots and video, Vercel build
 docs/     Before/after screenshots, video, technical decisions
 ```
 

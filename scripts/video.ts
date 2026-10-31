@@ -10,17 +10,18 @@ const OUT = "docs/video";
 const SIZE = { width: 1280, height: 720 };
 const pause = (page: Page, ms: number) => page.waitForTimeout(ms);
 
-async function loginWithDemo(page: Page, profile: "Student" | "Staff") {
-  await page.getByRole("link", { name: new RegExp(profile, "i") }).first().click();
-  await page.getByRole("button", { name: "Use demo account" }).click();
-  await pause(page, 600);
-  await page.getByRole("button", { name: "Log in", exact: true }).click();
+/** O botão "Try as …" do Welcome: entra na conta demo com um clique. */
+async function loginWithDemo(page: Page, profile: "student" | "staff") {
+  const button = page.getByRole("button", { name: `Try as ${profile}` });
+  await button.hover();
+  await pause(page, 500);
+  await button.click();
 }
 
 async function studentFlow(page: Page) {
   await page.goto("/");
   await pause(page, 1800);
-  await loginWithDemo(page, "Student");
+  await loginWithDemo(page, "student");
 
   // Primeiro login: a visita abre sozinha.
   await page.waitForURL("**/app/tour");
@@ -66,7 +67,7 @@ async function studentFlow(page: Page) {
 async function staffFlow(page: Page) {
   await page.goto("/");
   await pause(page, 800);
-  await loginWithDemo(page, "Staff");
+  await loginWithDemo(page, "staff");
   await page.waitForURL("**/staff");
   await pause(page, 3000);
 
