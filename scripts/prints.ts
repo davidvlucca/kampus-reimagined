@@ -69,6 +69,8 @@ async function shoot(context: BrowserContext, shots: Shot[], viewport: ViewportN
     const path = typeof shot.path === "string" ? shot.path : await shot.path(page);
     await page.goto(path, { waitUntil: "networkidle" });
     if (shot.waitFor) await page.getByText(shot.waitFor, { exact: false }).filter({ visible: true }).first().waitFor({ timeout: 10_000 });
+    // Print de página inteira: a barra inferior (fixed) iria aparecer a meio da imagem; aqui fica no fim da página.
+    await page.addStyleTag({ content: 'nav[aria-label="Main"].fixed { position: static !important; }' });
     await page.evaluate(() => document.fonts.ready);
     // Imagens (cenários da visita) carregadas antes do print.
     await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));

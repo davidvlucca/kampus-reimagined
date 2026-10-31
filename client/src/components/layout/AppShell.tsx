@@ -27,7 +27,9 @@ function Sidebar({ role }: { role: Role }) {
   const user = useCurrentUser();
   const signOut = useSignOut(role);
   return (
-    <aside className="bg-kampus-gradient sticky top-0 z-30 hidden h-dvh w-64 shrink-0 flex-col px-4 py-6 text-white lg:flex">
+    // A coluna estica com a página (fundo no tom final do gradiente); o painel com o gradiente fica preso ao topo.
+    <div className="hidden w-64 shrink-0 bg-kampus-indigo lg:block">
+    <aside className="bg-kampus-gradient sticky top-0 z-30 flex h-dvh flex-col px-4 py-6 text-white">
       <Link to={HOME[role]} className="focus-on-dark mb-8 px-2">
         <Logo onDark />
         <span className="sr-only">, go to home</span>
@@ -61,6 +63,7 @@ function Sidebar({ role }: { role: Role }) {
         <IconButton label="Log out" icon={<LogOut />} variant="onDark" size="sm" onClick={signOut} />
       </div>
     </aside>
+    </div>
   );
 }
 

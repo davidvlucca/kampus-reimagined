@@ -124,7 +124,7 @@ if (ffmpeg.status === 0) {
   // GIF curto para o README: os primeiros 14 s (entrada, login e visita).
   spawnSync(
     "ffmpeg",
-    ["-y", "-loglevel", "error", "-t", "14", "-i", `${OUT}/kampus-demo.webm`, "-vf", "fps=10,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer", `${OUT}/kampus-demo.gif`],
+    ["-y", "-loglevel", "error", "-t", "14", "-i", `${OUT}/kampus-demo.webm`, "-vf", "fps=8,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer", `${OUT}/kampus-demo.gif`],
     { stdio: "inherit" },
   );
   console.log("Video done: docs/video/kampus-demo.{webm,mp4,gif}");
