@@ -1,4 +1,4 @@
-import { changePasswordSchema, updateProfileSchema, type PublicUser } from "@kampus/shared";
+import { changePasswordSchema, updateProfileSchema, type PublicUser, isProtectedDemoEmail } from "@kampus/shared";
 import { CheckCircle2, KeyRound, LogOut, Map as MapIcon, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
@@ -106,7 +106,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
 
 const emptyPasswords = { currentPassword: "", newPassword: "", confirmPassword: "" };
 
-function PasswordForm() {
+function PasswordForm({ email }: { email: string }) {
   const change = useChangePassword();
   const toast = useToast();
   const [values, setValues] = useState(emptyPasswords);
@@ -148,6 +148,11 @@ function PasswordForm() {
       <CardHeader icon={<KeyRound aria-hidden />} title="Change password" />
       <CardBody>
         <form noValidate onSubmit={submit} className="flex flex-col gap-4">
+          {isProtectedDemoEmail(email) && (
+            <p className="rounded-xl border border-kampus-blue/20 bg-kampus-blue-soft px-4 py-3 text-sm text-kampus-navy">
+              You're using a shared demo account, so its password can't be changed.
+            </p>
+          )}
           <Input
             label="Current password"
             type="password"
@@ -244,7 +249,7 @@ export function ProfilePage() {
         </div>
         <div className="flex flex-col gap-6">
           <DetailsForm user={user} />
-          <PasswordForm />
+          <PasswordForm email={user.email} />
         </div>
       </div>
     </>

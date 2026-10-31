@@ -1,4 +1,4 @@
-import { createStudentSchema, updateStudentSchema, type StudentRow, type UpdateStudentInput } from "@kampus/shared";
+import { createStudentSchema, isProtectedDemoEmail, updateStudentSchema, type StudentRow, type UpdateStudentInput } from "@kampus/shared";
 import { useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors } from "../../api/client.ts";
 import { useCohorts, useCreateStudent, useUpdateStudent } from "../../api/hooks.ts";
@@ -100,6 +100,11 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
       }
     >
       <form id={FORM_ID} noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
+        {student && isProtectedDemoEmail(student.email) && (
+          <p className="rounded-xl border border-kampus-blue/20 bg-kampus-blue-soft px-4 py-3 text-sm text-kampus-navy">
+            This is the shared demo account. You can change the name and cohort, but not the email or password.
+          </p>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             label="First name"
