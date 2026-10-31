@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { createApp } from "../src/app.ts";
 import { createDb } from "../src/db/client.ts";
 import { users } from "../src/db/schema.ts";
-import { DEMO_PASSWORD, seedDatabase } from "../src/seed.ts";
+import { DEMO_PASSWORD, seedDatabase } from "../src/demo-data.ts";
 
 export const ORIGIN = "http://localhost:5173";
 

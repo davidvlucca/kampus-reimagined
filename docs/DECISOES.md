@@ -77,7 +77,7 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 
 **Perguntas.**
 - *"Porque guardas o hash do token e não o token?"* — Se alguém tiver acesso à base (um backup, por exemplo), não consegue usar as sessões, tal como acontece com as passwords.
-- *"Que hash usas para as passwords?"* — argon2id (`@node-rs/argon2`), o recomendado pela OWASP. O hash nunca sai da API: os utilizadores passam todos por uma função `toPublicUser()` que lista os campos um a um, e há um teste que procura o hash em todas as respostas.
+- *"Que hash usas para as passwords?"* — argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 iterações), pela biblioteca `hash-wasm` (argon2 em WebAssembly). Comecei com `@node-rs/argon2`, que é um binário nativo; troquei para o deploy na Vercel não depender da plataforma onde o bundle é feito. O hash nunca sai da API: os utilizadores passam todos por uma função `toPublicUser()` que lista os campos um a um, e há um teste que procura o hash em todas as respostas.
 - *"O login diz se o email existe?"* — Não. Email inexistente e password errada dão a mesma resposta 401, e quando o email não existe verifico a password contra um hash falso para o tempo de resposta ser parecido. Só depois de a password estar certa é que digo "esta conta é de aluno, entra pelo login de aluno" (403). Há um teste que compara as duas respostas.
 
 ---
@@ -143,3 +143,18 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 **Porquê.** É o que distingue o Kampus, por isso mantive o formato de 2023 (cenário, guia, caixa de diálogo, "Play audio" e "Next") e corrigi o resto: funciona no telemóvel, tem barra de progresso com as 7 paragens, teclado (← → Enter Esc) e o texto é anunciado a leitores de ecrã. O áudio passou de 7 ficheiros WAV (~10 MB, presos ao texto antigo) para a Web Speech API do browser: zero bytes e lê sempre o texto atual. As imagens de 2023 foram convertidas de JPG (~1,5 MB cada) para WebP (~50–110 KB), com uma versão menor para o telemóvel.
 
 **Pergunta.** *"E se o browser não tiver Web Speech?"* — O botão fica desativado com uma explicação; o texto está sempre visível e acessível.
+
+---
+
+## 12. Deploy na Vercel com Neon
+
+**O que é.** O client é publicado como ficheiros estáticos e a API é uma Vercel Function em Node. O `scripts/build-vercel.ts` gera a pasta `.vercel/output` (o formato "Build Output API" da Vercel): o build do Vite, a API num só ficheiro feito com esbuild e as rotas (`/api/*` vai para a função, o resto para o React Router). A base de dados é Postgres no Neon, ligado pelo `DATABASE_URL`.
+
+**Porquê assim.** Com um bundle meu sei exatamente o que vai para produção: o PGlite fica de fora (só serve para dev e testes) e o bundle não depende de binários nativos. As rotas e o cron ficam no mesmo script, versionados com o código.
+
+**A demo pública.** As contas de demo estão no README e qualquer visitante pode apagar alunos, por isso um Vercel Cron chama `/api/cron/reset-demo` todos os dias às 04:00 UTC. A rota só existe com `CRON_SECRET` definido e compara o segredo em tempo constante.
+
+**Perguntas.**
+- *"PGlite em dev e Neon em produção não dá surpresas?"* — O SQL e as migrações são os mesmos (Postgres nos dois). A diferença é só o driver, e os dois estão num ficheiro cada (`db/client.ts` e `db/postgres.ts`).
+- *"Porque não um servidor sempre ligado?"* — Para uma demo de portfólio com pouco tráfego, funções serverless custam zero e não há nada para manter. O custo é o arranque a frio (a primeira chamada demora mais) e menos ligações à base por instância, por isso o pool tem no máximo 3.
+- *"O que falta para produção a sério?"* — Rate limiting no login, que numa demo pública evita força bruta e o gasto de CPU do argon2.

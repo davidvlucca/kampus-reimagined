@@ -41,6 +41,17 @@ Other scripts:
 
 In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of PGlite; the schema and migrations are the same. See `.env.example`.
 
+### Deploy (Vercel + Neon)
+
+`npm run build:vercel` writes `.vercel/output` ([Build Output API](https://vercel.com/docs/build-output-api)): the static client, the API bundled into one Vercel Function, the routes and a daily cron. `vercel.json` runs it as the build command.
+
+1. Add a Neon database to the Vercel project (Storage → Neon); it sets `DATABASE_URL`.
+2. Set `CRON_SECRET` (any long random string) and `CORS_ORIGIN` (the site URL) in the project's environment variables.
+3. Apply the migrations and load the demo data once: `vercel env pull .env.production.local`, then `DATABASE_URL=… npm run db:migrate` and `DATABASE_URL=… node server/src/seed.ts --reset --allow-remote`.
+4. `vercel deploy --prod`.
+
+The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`).
+
 ## Before and after
 
 Screenshots of the 2023 app (rendered from the original code, with fictional data) next to the new version. Desktop at 1440px; more in [`docs/antes/`](docs/antes/) and [`docs/prints/`](docs/prints/), including 390px mobile versions of every screen.
@@ -93,7 +104,7 @@ New, small ideas: a **Week 1 progress** bar on the student dashboard, **Copy ema
 ## Stack
 
 - **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react. Fonts served locally: Poppins (headings), Inter (text), VT323 (the pixel touch, used only in the timer, the tour counter and the 404).
-- **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon-ready via `DATABASE_URL`), argon2id, Zod.
+- **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon in production), argon2id (hash-wasm), Zod. Deployed on Vercel.
 - **Shared:** Zod schemas and types used by both sides, the tour content and the deadline logic.
 - **Quality:** Vitest, ESLint, Playwright for screenshots and the video.
 

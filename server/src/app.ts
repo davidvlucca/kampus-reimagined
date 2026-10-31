@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
@@ -5,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 import type { Db } from "./db/client.ts";
 import type { SessionConfig } from "./auth/session.ts";
+import { resetDatabase, seedDatabase } from "./demo-data.ts";
 import type { AppEnv } from "./lib/env.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { meRoutes } from "./routes/me.ts";
@@ -18,6 +20,17 @@ export interface AppConfig {
   /** Origens autorizadas a chamar a API com cookies (vem de CORS_ORIGIN). */
   corsOrigins: string[];
   session: SessionConfig;
+  /**
+   * Segredo do Vercel Cron (CRON_SECRET). Com ele definido, GET /api/cron/reset-demo
+   * repõe os dados de demonstração; sem ele, a rota não existe (404).
+   */
+  cronSecret?: string;
+}
+
+function sameSecret(given: string, expected: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export function createApp(config: AppConfig) {
@@ -30,6 +43,16 @@ export function createApp(config: AppConfig) {
       await next();
     })
     .get("/health", (c) => c.json({ ok: true }))
+    // A demo é pública e qualquer visitante pode apagar alunos: o Vercel Cron repõe tudo uma vez por dia.
+    .get("/cron/reset-demo", async (c) => {
+      if (!config.cronSecret) return c.json({ error: "Not found." }, 404);
+      if (!sameSecret(c.req.header("authorization") ?? "", `Bearer ${config.cronSecret}`)) {
+        return c.json({ error: "Unauthorized." }, 401);
+      }
+      await resetDatabase(config.db);
+      const result = await seedDatabase(config.db);
+      return c.json({ ok: true, ...result });
+    })
     .route("/auth", authRoutes)
     .route("/me", meRoutes)
     .route("/tasks", taskRoutes)

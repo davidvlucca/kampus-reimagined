@@ -12,3 +12,4 @@ playwright-report/
 .DS_Store
 .claude/
 docs/video/*.webm
+.vercel/

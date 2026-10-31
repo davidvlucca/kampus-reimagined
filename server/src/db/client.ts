@@ -4,9 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
-import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
-import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
-import pg from "pg";
+import { createPostgresDb } from "./postgres.ts";
 import * as schema from "./schema.ts";
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -27,16 +25,7 @@ const migrationsFolder = fileURLToPath(new URL("../../drizzle", import.meta.url)
  * `pgliteDir` "memory" cria uma base só em memória (testes).
  */
 export function createDb(options: { databaseUrl?: string; pgliteDir?: string } = {}): DbHandle {
-  if (options.databaseUrl) {
-    const pool = new pg.Pool({ connectionString: options.databaseUrl });
-    const db = drizzlePg(pool, { schema });
-    return {
-      db,
-      kind: "postgres",
-      migrate: () => migratePg(db, { migrationsFolder }),
-      close: () => pool.end(),
-    };
-  }
+  if (options.databaseUrl) return createPostgresDb(options.databaseUrl);
 
   const dir = options.pgliteDir ?? "memory";
   if (dir !== "memory") mkdirSync(dir, { recursive: true });
