@@ -17,14 +17,16 @@
     "db:seed": "npm run db:seed -w server",
     "db:reset": "npm run db:reset -w server",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck --workspaces && tsc -p scripts",
+    "typecheck": "npm run typecheck --workspaces && tsc -p scripts && tsc -p e2e",
     "build": "npm run build -w client && npm run build -w server",
     "test": "vitest run",
+    "e2e": "playwright test",
     "prints": "node scripts/prints.ts",
     "video": "node scripts/video.ts",
     "build:vercel": "node scripts/build-vercel.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.64.1",
     "@types/node": "^24.19.2",
