@@ -124,6 +124,16 @@ describe("gestão de alunos pelo staff", () => {
     expect((await t.request("GET", "/api/auth/me", { cookie: newCookie })).status).toBe(401);
   });
 
+  it("uma nova password definida pelo staff termina as sessões abertas do aluno", async () => {
+    const email = "hana.sato@example.com";
+    const studentCookie = await t.login(email, "student");
+    const id = await t.userId(email);
+    const res = await t.request("PATCH", `/api/staff/students/${id}`, { cookie: staff, body: { password: "ResetPass1" } });
+    expect(res.status).toBe(200);
+    expect((await t.request("GET", "/api/auth/me", { cookie: studentCookie })).status).toBe(401);
+    await t.login(email, "student", "ResetPass1");
+  });
+
   it("procura por nome e filtra por turma", async () => {
     const res = await t.request<{ students: StudentRow[] }>("GET", "/api/staff/students?q=diana%20cos", { cookie: staff });
     expect(res.json.students.map((s) => s.email)).toEqual([STUDENT_A]);
@@ -148,6 +158,17 @@ describe("visita e tarefas do aluno", () => {
   it("concluir a visita fica guardado no utilizador", async () => {
     const res = await t.request<{ user: { tourCompletedAt: string | null } }>("POST", "/api/tour/complete", { cookie: a });
     expect(res.json.user.tourCompletedAt).not.toBeNull();
+  });
+
+  it("refazer a visita mantém a data da primeira conclusão", async () => {
+    const first = await t.request<{ user: { tourCompletedAt: string } }>("POST", "/api/tour/complete", { cookie: a });
+    const again = await t.request<{ user: { tourCompletedAt: string } }>("POST", "/api/tour/complete", { cookie: a });
+    expect(again.json.user.tourCompletedAt).toBe(first.json.user.tourCompletedAt);
+  });
+
+  it("um prazo que não existe no calendário dá 400 (e não 500)", async () => {
+    const res = await t.request("POST", "/api/tasks", { cookie: a, body: { title: "Bad date", dueDate: "2026-02-31" } });
+    expect(res.status).toBe(400);
   });
 
   it("marcar e desmarcar uma tarefa guarda o estado certo (bug do checkbox de 2023)", async () => {

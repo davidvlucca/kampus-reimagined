@@ -11,7 +11,7 @@ import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { hashPassword } from "../auth/password.ts";
 import type { Db } from "../db/client.ts";
-import { cohorts, notes, tasks, users } from "../db/schema.ts";
+import { cohorts, notes, sessions, tasks, users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { iso, toCohort } from "../lib/serialize.ts";
 import { findUserByEmail, isUuid } from "../lib/users.ts";
@@ -78,6 +78,14 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
 async function cohortExists(db: Db, id: string) {
   const [row] = await db.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.id, id)).limit(1);
   return Boolean(row);
+}
+
+/** Violação de UNIQUE (dois pedidos ao mesmo tempo com o mesmo email). */
+function isUniqueViolation(error: unknown): boolean {
+  for (let e: unknown = error; e && typeof e === "object"; e = (e as { cause?: unknown }).cause) {
+    if ((e as { code?: unknown }).code === "23505") return true;
+  }
+  return false;
 }
 
 const UNKNOWN_COHORT = { error: "Please check the highlighted fields.", fields: { cohortId: "Unknown cohort" } };
@@ -162,17 +170,24 @@ export const staffRoutes = new Hono<AppEnv>()
     const db = c.var.db;
     if (await findUserByEmail(db, input.email)) return c.json(EMAIL_TAKEN, 409);
     if (!(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
-    const [row] = await db
-      .insert(users)
-      .values({
-        email: input.email,
-        passwordHash: await hashPassword(input.password),
-        role: "student",
-        firstName: input.firstName,
-        lastName: input.lastName,
-        cohortId: input.cohortId,
-      })
-      .returning({ id: users.id });
+    const passwordHash = await hashPassword(input.password);
+    let row: { id: string } | undefined;
+    try {
+      [row] = await db
+        .insert(users)
+        .values({
+          email: input.email,
+          passwordHash,
+          role: "student",
+          firstName: input.firstName,
+          lastName: input.lastName,
+          cohortId: input.cohortId,
+        })
+        .returning({ id: users.id });
+    } catch (error) {
+      if (isUniqueViolation(error)) return c.json(EMAIL_TAKEN, 409);
+      throw error;
+    }
     const [student] = await listStudents(db, eq(users.id, row!.id));
     return c.json({ student }, 201);
   })
@@ -193,19 +208,28 @@ export const staffRoutes = new Hono<AppEnv>()
     if (input.cohortId && !(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
 
     // Só toca em alunos: um staff com este id responde 404, como um id que não existe.
-    const [row] = await db
-      .update(users)
-      .set({
-        ...(input.firstName && { firstName: input.firstName }),
-        ...(input.lastName && { lastName: input.lastName }),
-        ...(input.email && { email: input.email }),
-        ...(input.cohortId && { cohortId: input.cohortId }),
-        ...(input.password && { passwordHash: await hashPassword(input.password) }),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(users.id, id), isStudent))
-      .returning({ id: users.id });
+    const passwordHash = input.password ? await hashPassword(input.password) : undefined;
+    let row: { id: string } | undefined;
+    try {
+      [row] = await db
+        .update(users)
+        .set({
+          ...(input.firstName && { firstName: input.firstName }),
+          ...(input.lastName && { lastName: input.lastName }),
+          ...(input.email && { email: input.email }),
+          ...(input.cohortId && { cohortId: input.cohortId }),
+          ...(passwordHash && { passwordHash }),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(users.id, id), isStudent))
+        .returning({ id: users.id });
+    } catch (error) {
+      if (isUniqueViolation(error)) return c.json(EMAIL_TAKEN, 409);
+      throw error;
+    }
     if (!row) return c.json(NOT_FOUND, 404);
+    // Nova password ou novo email: as sessões abertas do aluno deixam de valer.
+    if (passwordHash || input.email) await db.delete(sessions).where(eq(sessions.userId, id));
     const [student] = await listStudents(db, eq(users.id, id));
     return c.json({ student });
   })

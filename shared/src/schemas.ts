@@ -16,7 +16,15 @@ export const passwordRule = z
   .max(128, "Max 128 characters");
 
 /** Data sem hora, no formato YYYY-MM-DD. */
-export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD");
+export const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
+  .refine((v) => {
+    // Recusa datas que não existem (2026-02-31): o Postgres dava erro 500.
+    const [y, m, d] = v.split("-").map(Number);
+    const date = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1));
+    return date.getUTCFullYear() === y && date.getUTCMonth() + 1 === m && date.getUTCDate() === d;
+  }, "Not a real date");
 
 // ---------- Auth e perfil ----------
 

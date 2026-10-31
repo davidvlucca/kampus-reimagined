@@ -1,5 +1,5 @@
 import type { Contact } from "@kampus/shared";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { users } from "../db/schema.ts";
@@ -29,7 +29,11 @@ export const tourRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("student"))
   .post("/complete", async (c) => {
     const now = new Date();
-    await c.var.db.update(users).set({ tourCompletedAt: now, updatedAt: now }).where(eq(users.id, c.var.user.id));
+    // Refazer a visita não muda a data da primeira conclusão (nem repete a "atividade" do staff).
+    await c.var.db
+      .update(users)
+      .set({ tourCompletedAt: sql`coalesce(${users.tourCompletedAt}, ${now})`, updatedAt: now })
+      .where(eq(users.id, c.var.user.id));
     return c.json({ user: await loadPublicUser(c.var.db, c.var.user.id) });
   })
   .post("/skip", async (c) => {
