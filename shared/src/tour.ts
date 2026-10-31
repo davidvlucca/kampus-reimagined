@@ -3,7 +3,7 @@
 // Cenários e guias: ilustrações SVG feitas para esta versão (client/public/tour/).
 // As imagens de 2023 vinham do Google, sem licença, e saíram do projeto.
 
-export const CAMPUS_NAME = "Kampus Lisbon"; // [POR CONFIRMAR: nome do campus fictício]
+export const CAMPUS_NAME = "Kampus Lisbon"; // Campus fictício
 
 export type GuideId = "program-manager" | "lead-teacher" | "teaching-assistant" | "career-coach";
 
