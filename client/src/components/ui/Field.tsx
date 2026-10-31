@@ -10,7 +10,8 @@ interface FieldBase {
 }
 
 const control = cn(
-  "w-full rounded-xl border bg-card px-3.5 text-[15px] text-text placeholder:text-subtle transition",
+  // 16px no mínimo: abaixo disso o Safari do iOS amplia a página ao focar o campo.
+  "w-full min-w-0 rounded-xl border bg-card px-3.5 text-base text-text placeholder:text-subtle transition",
   "border-line-strong hover:border-kampus-blue/50 focus:border-kampus-blue focus:outline-none focus:ring-3 focus:ring-kampus-blue/20",
   "disabled:cursor-not-allowed disabled:bg-surface disabled:text-subtle",
   "aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/20",

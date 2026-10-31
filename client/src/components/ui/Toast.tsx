@@ -53,8 +53,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </ToastPrimitive.Close>
           </ToastPrimitive.Root>
         ))}
-        {/* Acima da barra inferior no telemóvel. */}
-        <ToastPrimitive.Viewport className="fixed inset-x-4 bottom-24 z-[60] flex flex-col gap-2 outline-none sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96" />
+        {/* No telemóvel ficam no topo, para não taparem botões nem a barra inferior. */}
+        <ToastPrimitive.Viewport className="fixed inset-x-4 top-[max(0.75rem,env(safe-area-inset-top))] z-[60] flex flex-col gap-2 outline-none sm:inset-x-auto sm:top-auto sm:right-6 sm:bottom-6 sm:w-96" />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
   );

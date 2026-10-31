@@ -90,6 +90,15 @@
     outline-offset: 2px;
     border-radius: 0.5rem;
   }
+  /* iOS: o campo de data tem uma largura mínima própria (saía do cartão) e centra o valor. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
   ::selection {
     background: var(--color-kampus-sky);
     color: var(--color-kampus-ink);
