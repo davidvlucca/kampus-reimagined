@@ -157,4 +157,36 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 **Perguntas.**
 - *"PGlite em dev e Neon em produção não dá surpresas?"* — O SQL e as migrações são os mesmos (Postgres nos dois). A diferença é só o driver, e os dois estão num ficheiro cada (`db/client.ts` e `db/postgres.ts`).
 - *"Porque não um servidor sempre ligado?"* — Para uma demo de portfólio com pouco tráfego, funções serverless custam zero e não há nada para manter. O custo é o arranque a frio (a primeira chamada demora mais) e menos ligações à base por instância, por isso o pool tem no máximo 3.
-- *"O que falta para produção a sério?"* — Rate limiting no login, que numa demo pública evita força bruta e o gasto de CPU do argon2.
+- *"Como protegeste a demo pública?"* — Quatro coisas: (1) limite de 5 logins falhados por email+IP em 15 minutos, depois 429 com `Retry-After`; (2) as contas partilhadas (`staff@example.com` e `student@example.com`) não podem ser apagadas nem mudar de email ou password (403); (3) reposição diária dos dados; (4) `noindex`, para o site não aparecer em pesquisas.
+
+---
+
+## 13. Limite de logins guardado em Postgres
+
+**O que é.** Cada login falhado grava uma linha em `login_attempts` com o sha256 de "email|IP". Antes de verificar a password, a API conta as falhas dos últimos 15 minutos para esse par; a partir de 5 responde 429 com `Retry-After` (os segundos até a falha mais antiga sair da janela), mesmo que a password esteja certa. Um login certo apaga as falhas desse par.
+
+**Porquê em Postgres e não em memória.** Na Vercel cada pedido pode cair numa instância diferente da função, e as instâncias morrem quando querem. Um contador em memória deixava passar quase tudo. A base já existe e é partilhada por todas as instâncias.
+
+**Porquê email+IP.** Só por IP, uma turma inteira atrás do mesmo Wi-Fi bloqueava-se. Só por email, qualquer pessoa podia bloquear a conta de outra. Com o par, um atacante bloqueia-se a si próprio.
+
+**Perguntas.**
+- *"De onde vem o IP?"* — Na Vercel, do `x-forwarded-for`, que a Vercel reescreve com o IP real (o cliente não o consegue falsificar). Fora da Vercel, do socket: confiar nesse header sem um proxy à frente deixava qualquer um inventar IPs.
+- *"Porque guardas um hash e não o email?"* — Para não guardar dados pessoais que não fazem falta: só preciso de saber se é o mesmo par.
+
+---
+
+## 14. 404 a sério numa SPA alojada na Vercel
+
+**O problema.** Numa SPA, o servidor devolve o `index.html` para qualquer caminho e é o React Router que decide o que mostrar. Por isso `/qualquer-coisa` mostrava a página 404, mas com status 200, e os motores de busca e outras ferramentas viam uma página válida.
+
+**A solução.** Em `scripts/vercel-routes.ts` há a lista das rotas que a app conhece (as mesmas de `client/src/router.tsx`). Essas recebem o `index.html` com 200; tudo o resto recebe o mesmo `index.html` com **404**, e o React Router mostra a página "This page took a wrong turn".
+
+**O custo.** A lista tem de acompanhar o `router.tsx`: uma rota nova esquecida na lista daria 404 no primeiro carregamento (a app aparece, mas com o status errado). Um teste (`scripts/vercel-routes.test.ts`) tem um exemplo de cada rota da app e falha se a lista não os aceitar.
+
+**Pergunta.** *"Não era mais simples usar SSR?"* — Era mais pesado: um servidor a renderizar React só para acertar o status. Para 14 rotas fixas, uma lista testada chega.
+
+---
+
+## 15. `noindex`
+
+Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` em `scripts/vercel-routes.ts` põe o header `X-Robots-Tag: noindex` em todas as respostas (páginas, ficheiros e API) e a meta `robots` no `index.html`. Para deixar indexar, muda-se essa constante e volta-se a publicar.

@@ -51,7 +51,7 @@ In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of 
 3. Apply the migrations and load the demo data once: `vercel env pull .env.production.local`, then `DATABASE_URL=… npm run db:migrate` and `DATABASE_URL=… node server/src/seed.ts --reset --allow-remote`.
 4. `vercel deploy --prod`.
 
-The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`).
+The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits failed logins (5 per email and IP in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
 
 ## Before and after
 
