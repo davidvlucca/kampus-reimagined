@@ -1,5 +1,7 @@
 import {
   createStudentSchema,
+  DEMO_ACCOUNT_MESSAGES,
+  isProtectedDemoEmail,
   studentQuerySchema,
   updateStudentSchema,
   type ActivityItem,
@@ -197,6 +199,17 @@ export const staffRoutes = new Hono<AppEnv>()
     const input = c.req.valid("json");
     const db = c.var.db;
 
+    // Contas da demo: o nome e a turma podem mudar, o email e a password não.
+    if (input.email !== undefined || input.password !== undefined) {
+      const [target] = await db.select({ email: users.email }).from(users).where(eq(users.id, id)).limit(1);
+      if (target && isProtectedDemoEmail(target.email)) {
+        const fields: Record<string, string> = {};
+        if (input.email !== undefined) fields.email = "Can't change the demo account's email";
+        if (input.password !== undefined) fields.password = "Can't change the demo account's password";
+        return c.json({ error: DEMO_ACCOUNT_MESSAGES.credentials, fields }, 403);
+      }
+    }
+
     if (input.email) {
       const [taken] = await db
         .select({ id: users.id })
@@ -236,6 +249,8 @@ export const staffRoutes = new Hono<AppEnv>()
   .delete("/students/:id", async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json(NOT_FOUND, 404);
+    const [target] = await c.var.db.select({ email: users.email }).from(users).where(eq(users.id, id)).limit(1);
+    if (target && isProtectedDemoEmail(target.email)) return c.json({ error: DEMO_ACCOUNT_MESSAGES.delete }, 403);
     // Tarefas, notas e sessões do aluno vão em cascata (ON DELETE CASCADE).
     const [row] = await c.var.db
       .delete(users)

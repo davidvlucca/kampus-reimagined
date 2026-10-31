@@ -1,4 +1,4 @@
-import { changePasswordSchema, updateProfileSchema } from "@kampus/shared";
+import { changePasswordSchema, DEMO_ACCOUNT_MESSAGES, isProtectedDemoEmail, updateProfileSchema } from "@kampus/shared";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireUser } from "../auth/middleware.ts";
@@ -22,6 +22,7 @@ export const meRoutes = new Hono<AppEnv>()
   .post("/password", validate("json", changePasswordSchema), async (c) => {
     const { currentPassword, newPassword } = c.req.valid("json");
     const user = c.var.user;
+    if (isProtectedDemoEmail(user.email)) return c.json({ error: DEMO_ACCOUNT_MESSAGES.ownPassword }, 403);
     if (!(await verifyPassword(user.passwordHash, currentPassword))) {
       return c.json({ error: "Current password is not correct.", fields: { currentPassword: "Not correct" } }, 400);
     }

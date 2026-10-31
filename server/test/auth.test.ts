@@ -100,7 +100,7 @@ describe("sessão", () => {
 
 describe("mudar password", () => {
   it("recusa a password atual errada", async () => {
-    const cookie = await t.login(STAFF, "staff");
+    const cookie = await t.login("rui.matos@example.com", "staff");
     const res = await t.request("POST", "/api/me/password", {
       cookie,
       body: { currentPassword: "nope", newPassword: "NewPassword1" },
