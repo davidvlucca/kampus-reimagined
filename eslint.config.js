@@ -5,7 +5,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "referencias/**", "server/drizzle/**", "**/.data/**", "docs/**"] },
+  { ignores: ["**/dist/**", ".vercel/**", "referencias/**", "server/drizzle/**", "**/.data/**", "docs/**"] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
