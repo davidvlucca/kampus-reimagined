@@ -1,0 +1,11 @@
+# O que não vai para o build da Vercel
+referencias
+node_modules
+**/dist
+server/.data
+docs
+test-results
+playwright-report
+.env*
+!.env.example
+.claude

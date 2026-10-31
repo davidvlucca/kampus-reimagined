@@ -6,6 +6,7 @@ This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Develo
 
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
+- **Live demo: https://kampus-reimagined.vercel.app** (demo accounts below; the data resets every day)
 - Original front end: https://github.com/kairoos-studio/kampus-front
 - Original back end: https://github.com/kairoos-studio/kampus-back
 - Short video of both flows (40 s): [`docs/video/kampus-demo.mp4`](docs/video/kampus-demo.mp4)
