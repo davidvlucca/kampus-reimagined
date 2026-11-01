@@ -102,7 +102,7 @@ function Overview({ data }: { data: StaffOverview }) {
                 <Card className="h-full">
                   <CardBody className="flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base font-semibold">{cohort.name}</h3>
+                      <h3 className="min-w-0 text-base font-semibold break-words">{cohort.name}</h3>
                       <Badge tone="blue">{students === 1 ? "1 student" : `${students} students`}</Badge>
                     </div>
                     <ProgressBar value={done} max={students} label={`${cohort.name}: tour progress`} />
@@ -231,7 +231,7 @@ function OpenAssignments() {
             {open.map((a) => (
               <li key={a.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:gap-6">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium break-words text-text">{a.title}</p>
+                  <p className="clip-marks font-medium break-words text-text">{a.title}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
                     <Badge tone="sky">{a.cohort.name}</Badge>
                     <AssignmentDeadline assignment={a} />
@@ -273,7 +273,7 @@ function RecentActivity({ items }: { items: ActivityItem[] }) {
               <li key={`${item.kind}-${item.student.id}-${item.at}`} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
                 <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-surface text-kampus-blue [&_svg]:size-4">{activityIcon[item.kind]}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-text">{activityText(item)}</p>
+                  <p className="clip-marks text-sm break-words text-text">{activityText(item)}</p>
                   <time dateTime={item.at} className="text-xs text-subtle">
                     {timeAgo(item.at)}
                   </time>

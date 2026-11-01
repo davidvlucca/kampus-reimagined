@@ -1,5 +1,6 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "./components/layout/AppShell.tsx";
+import { FullPageSpinner } from "./components/ui/index.ts";
 import { RequireAuth } from "./components/layout/RequireAuth.tsx";
 import { ContactsPage } from "./features/contacts/ContactsPage.tsx";
 import { ProfilePage } from "./features/profile/ProfilePage.tsx";
@@ -70,6 +71,9 @@ export const router = createBrowserRouter([
     // Rota raiz sem caminho, só para o errorElement: um erro de render ou um chunk que não
     // carrega (deploy novo com o separador aberto) mostra uma página da app, não a stack.
     errorElement: <RouteErrorPage />,
+    // Abrir de raiz uma rota lazy (/app/tour, /staff...) espera pelo chunk antes do primeiro
+    // render: mostra o spinner nesse intervalo (sem isto o React Router avisava na consola).
+    hydrateFallbackElement: <FullPageSpinner />,
     children: routes,
   },
 ]);

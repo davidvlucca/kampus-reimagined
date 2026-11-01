@@ -23,13 +23,15 @@ import type {
   UpdateTaskInput,
 } from "@kampus/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiRequestError, isNotFound } from "./client.ts";
+import { api, ApiRequestError, isNotFound, unexpectedResponse } from "./client.ts";
 
 // Um 404 numa mutation quer dizer que a linha já não existe (apagada noutro separador ou
 // por outra pessoa): cada hook volta a pedir a lista, para ela deixar de aparecer.
 
 export const keys = {
   me: ["me"] as const,
+  /** `true` depois de um "Log out": o RequireAuth leva ao login sem "Please log in to continue". */
+  signedOut: ["signedOut"] as const,
   tasks: ["tasks"] as const,
   tasksBy: (filter: TaskFilter) => ["tasks", filter] as const,
   notes: ["notes"] as const,
@@ -62,12 +64,8 @@ export function useMe() {
   });
 }
 
-/** Para ecrãs dentro de RequireAuth: o utilizador já está carregado. */
-export function useCurrentUser(): PublicUser {
-  const { data } = useMe();
-  if (!data) throw new Error("useCurrentUser must be used inside <RequireAuth>");
-  return data;
-}
+// Vem do RequireAuth (contexto), não da cache: ver currentUser.ts.
+export { useCurrentUser } from "./currentUser.ts";
 
 export function useLogin() {
   const qc = useQueryClient();
@@ -87,6 +85,7 @@ export function useLogout() {
     // Só com sucesso: se o pedido falhar (offline), a sessão continua válida no servidor.
     onSuccess: () => {
       qc.clear();
+      qc.setQueryData(keys.signedOut, true);
       qc.setQueryData(keys.me, null);
     },
   });
@@ -246,8 +245,22 @@ export function useCohorts() {
   });
 }
 
+/** Um 200 com outra forma (proxy, versão antiga da API) dá um ErrorState em vez de rebentar no render. */
+function isStaffOverview(data: unknown): data is StaffOverview {
+  if (!data || typeof data !== "object") return false;
+  const o = data as Record<string, unknown>;
+  return typeof o.totalStudents === "number" && Array.isArray(o.byCohort) && Array.isArray(o.pendingTour) && Array.isArray(o.recentActivity);
+}
+
 export function useStaffOverview() {
-  return useQuery({ queryKey: keys.overview, queryFn: () => api<StaffOverview>("/staff/overview") });
+  return useQuery({
+    queryKey: keys.overview,
+    queryFn: async () => {
+      const data = await api<unknown>("/staff/overview");
+      if (!isStaffOverview(data)) throw unexpectedResponse();
+      return data;
+    },
+  });
 }
 
 export function useStudents(filters: { q?: string; cohortId?: string } = {}) {
