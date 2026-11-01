@@ -1,6 +1,7 @@
 // Prints dos ecrãs principais em docs/prints/ (desktop 1440 e mobile 390).
 // Os nomes repetem os de docs/antes/ (2023) quando o ecrã existe nos dois.
 // Uso: npm run prints  (usa o Chromium do Playwright: npx playwright install chromium)
+//      npm run prints -- --tour-3d  (só os prints da visita 3D)
 import { mkdirSync } from "node:fs";
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { BROWSER_NOW, startStack } from "./stack.ts";
@@ -82,12 +83,40 @@ async function shoot(context: BrowserContext, shots: Shot[], viewport: ViewportN
   await page.close();
 }
 
+/**
+ * A visita 3D: o Chromium headless desenha WebGL com o SwiftShader (no CPU). Os outros prints
+ * usam reduced motion, por isso a visita aparece lá em 2D (visita-virtual).
+ */
+async function shootTour3D(browser: Browser, baseURL: string, viewport: ViewportName) {
+  const context = await browser.newContext({ ...VIEWPORTS[viewport], baseURL, reducedMotion: "no-preference", locale: "en-GB", timezoneId: "Europe/Lisbon" });
+  await context.clock.setFixedTime(BROWSER_NOW);
+  await login(context, "student@example.com", "student");
+  const page = await context.newPage();
+  await page.goto("/app/tour", { waitUntil: "networkidle" });
+  const root = page.locator("[data-tour-mode]");
+  if ((await root.getAttribute("data-tour-mode")) !== "3d") throw new Error("No WebGL in headless Chromium: the 3D tour fell back to 2D");
+  // A visita abre na vista geral e voa sozinha para a Entrance.
+  await page.locator('[data-tour-view="room"]').waitFor({ timeout: 20_000 });
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${OUT}/visita-3d-sala-${viewport}.png` });
+  await page.getByRole("button", { name: "Back to map" }).click();
+  await page.locator('[data-tour-view="map"]').waitFor();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${OUT}/visita-3d-mapa-${viewport}.png` });
+  console.log(`  ${OUT}/visita-3d-{sala,mapa}-${viewport}.png`);
+  await context.close();
+}
+
 mkdirSync(OUT, { recursive: true });
 const stack = await startStack("prints");
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const only3D = process.argv.includes("--tour-3d");
 try {
   for (const viewport of Object.keys(VIEWPORTS) as ViewportName[]) {
     console.log(`\n${viewport}`);
+    await shootTour3D(browser, stack.baseUrl, viewport);
+    if (only3D) continue;
     const anon = await newContext(browser, stack.baseUrl, viewport);
     await shoot(anon, PUBLIC, viewport);
     await anon.close();

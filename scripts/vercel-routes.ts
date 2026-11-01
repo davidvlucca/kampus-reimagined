@@ -22,6 +22,13 @@ export const SPA_ROUTES = [
   "^/staff(/(students|assignments|profile))?/?$",
 ];
 
+/**
+ * Um ficheiro de /assets/ que não existe (ex.: um chunk de um deploy anterior, pedido por um
+ * separador que ficou aberto) recebe este texto com 404, nunca o index.html: um import()
+ * que recebesse HTML falhava com um erro confuso. O build escreve-o no output estático.
+ */
+export const MISSING_ASSET = { path: "/asset-not-found.txt", body: "Not found.\n" } as const;
+
 export function isKnownSpaPath(path: string): boolean {
   return SPA_ROUTES.some((pattern) => new RegExp(pattern).test(path));
 }
@@ -33,6 +40,8 @@ export function vercelRoutes() {
     { src: "^/assets/(.*)$", headers: { "cache-control": "public, max-age=31536000, immutable" }, continue: true },
     { src: "^/api(/.*)?$", dest: "/api" },
     { handle: "filesystem" },
+    // Já passou pelo filesystem: um /assets/* que chega aqui não existe. Sem a cache longa de cima.
+    { src: "^/assets/(.*)$", dest: MISSING_ASSET.path, status: 404, headers: { "cache-control": "no-store" } },
     ...SPA_ROUTES.map((src) => ({ src, dest: "/index.html" })),
     { src: "^/(.*)$", dest: "/index.html", status: 404 },
   ];

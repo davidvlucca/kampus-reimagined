@@ -5,6 +5,7 @@ import { errorMessage, fieldErrors } from "../../api/client.ts";
 import { useCreateTask, useTasks } from "../../api/hooks.ts";
 import { Button, Card, CardBody, EmptyState, ErrorState, Input, PageHeader, SkeletonList, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 import { TaskItem } from "./TaskItem.tsx";
 
 const FILTERS: { value: TaskFilter; label: string }[] = [
@@ -35,7 +36,7 @@ export function TasksPage() {
         </CardBody>
       </Card>
 
-      <div role="group" aria-label="Filter tasks" className="mb-4 inline-flex rounded-xl border border-line bg-card p-1 shadow-card">
+      <div role="group" aria-label="Filter tasks" className="mb-4 inline-flex max-w-full flex-wrap rounded-xl border border-line bg-card p-1 shadow-card">
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -44,7 +45,10 @@ export function TasksPage() {
             onClick={() => setFilter(f.value)}
             className={cn(
               "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition",
-              filter === f.value ? "bg-kampus-blue text-white" : "text-kampus-navy hover:bg-kampus-blue-soft",
+              filter === f.value
+                ? // Alto contraste: o filtro ativo com as cores de seleção do sistema (o fundo azul desaparecia).
+                  "bg-kampus-blue text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:forced-color-adjust-none"
+                : "text-kampus-navy hover:bg-kampus-blue-soft",
             )}
           >
             {f.label}
@@ -82,6 +86,7 @@ function CreateTaskForm({ titleRef }: { titleRef: RefObject<HTMLInputElement | n
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -92,20 +97,19 @@ function CreateTaskForm({ titleRef }: { titleRef: RefObject<HTMLInputElement | n
       return;
     }
     setErrors({});
-    create.mutate(
-      { title: trimmed, dueDate: dueDate || null },
-      {
-        onSuccess: () => {
+    void lock(() =>
+      create.mutateAsync({ title: trimmed, dueDate: dueDate || null }).then(
+        () => {
           setTitle("");
           setDueDate("");
           toast({ title: "Task added", tone: "success" });
           titleRef.current?.focus();
         },
-        onError: (err) => {
+        (err: unknown) => {
           setErrors(fieldErrors(err));
           toast({ title: "Couldn't add the task", description: errorMessage(err), tone: "error" });
         },
-      },
+      ),
     );
   };
 

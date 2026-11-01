@@ -97,6 +97,8 @@ test.describe("visita com animações", () => {
   test.use({ reducedMotion: "no-preference" });
 
   test("perguntar pelo teclado não perde o foco enquanto a resposta se escreve", async ({ page }) => {
+    // Visita 2D (escolhida no botão 2D/3D, que fica guardado): o 3D tem o seu próprio teste.
+    await page.addInitScript(() => localStorage.setItem("kampus.tourMode", "2d"));
     await loginAs(page, "student");
     await page.goto("/app/tour");
     const question = page.getByRole("button", { name: "Where do I get my student card?" });

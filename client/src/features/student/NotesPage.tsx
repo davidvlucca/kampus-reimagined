@@ -2,12 +2,13 @@ import type { Note } from "@kampus/shared";
 import { ArrowLeft, FileQuestion, NotebookPen, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
-import { ApiRequestError, errorMessage, fieldErrors } from "../../api/client.ts";
+import { ApiRequestError, errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useCreateNote, useDeleteNote, useNote, useNotes, useUpdateNote } from "../../api/hooks.ts";
 import { Button, buttonClasses, Card, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Skeleton, SkeletonList, Textarea, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { formatDate, timeAgo } from "../../lib/format.ts";
-import { excerpt } from "./noteText.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
+import { excerpt, noteChanges } from "./noteText.ts";
 
 /** Estado passado ao navegar para uma nota acabada de criar (põe o foco no título). */
 interface NoteLocationState {
@@ -20,17 +21,18 @@ export function NotesPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const create = useCreateNote();
+  const lock = useSubmitLock();
 
+  // Com a trava, um duplo clique em "New note" não cria duas "Untitled note".
   const newNote = () =>
-    create.mutate(
-      { title: "Untitled note", body: "" },
-      {
-        onSuccess: (note) => {
+    void lock(() =>
+      create.mutateAsync({ title: "Untitled note", body: "" }).then(
+        (note) => {
           toast({ title: "Note created", tone: "success" });
           navigate(`/app/notes/${note.id}`, { state: { focusTitle: true } satisfies NoteLocationState });
         },
-        onError: (e) => toast({ title: "Couldn't create the note", description: errorMessage(e), tone: "error" }),
-      },
+        (e: unknown) => toast({ title: "Couldn't create the note", description: errorMessage(e), tone: "error" }),
+      ),
     );
 
   return (
@@ -55,7 +57,7 @@ export function NotesPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <section aria-label="All notes" className={cn(noteId && "max-lg:hidden")}>
           <NoteList selectedId={noteId} onCreate={newNote} creating={create.isPending} />
         </section>
@@ -111,9 +113,9 @@ function NoteList({ selectedId, onCreate, creating }: { selectedId?: string; onC
                 selected ? "border-kampus-blue bg-kampus-blue-soft" : "border-line bg-card shadow-card hover:border-kampus-blue/40",
               )}
             >
-              <span className="font-semibold break-words text-kampus-navy">{note.title}</span>
+              <span className="clip-marks font-semibold break-words text-kampus-navy">{note.title}</span>
               <span className="text-xs text-muted">Edited {formatDate(note.updatedAt)}</span>
-              {note.body.trim() && <span className="line-clamp-2 text-sm text-muted">{excerpt(note.body)}</span>}
+              {note.body.trim() && <span className="line-clamp-2 text-sm break-words text-muted">{excerpt(note.body)}</span>}
             </Link>
           </li>
         );
@@ -163,11 +165,15 @@ function NoteForm({ note }: { note: Note }) {
   const location = useLocation();
   const update = useUpdateNote();
   const remove = useDeleteNote();
+  // `seed`: os valores com que o formulário começou (ou foi reposto). O "Unsaved changes" e o
+  // que se envia ao guardar comparam com eles, não com a nota em cache, que pode mudar por baixo.
+  const [seed, setSeed] = useState({ title: note.title, body: note.body });
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [titleError, setTitleError] = useState<string | undefined>();
   const [deleting, setDeleting] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const lock = useSubmitLock();
   const focusTitle = (location.state as NoteLocationState | null)?.focusTitle === true;
 
   // Nota acabada de criar: foco no título, já selecionado para escrever por cima.
@@ -177,7 +183,15 @@ function NoteForm({ note }: { note: Note }) {
     titleRef.current?.select();
   }, [focusTitle]);
 
-  const dirty = title !== note.title || body !== note.body;
+  const dirty = title !== seed.title || body !== seed.body;
+
+  // A nota mudou no servidor (refetch, guardada noutro separador) e aqui não há nada por
+  // guardar: o formulário passa a mostrá-la. Com alterações por guardar, fica como está.
+  if (!dirty && (note.title !== seed.title || note.body !== seed.body)) {
+    setSeed({ title: note.title, body: note.body });
+    setTitle(note.title);
+    setBody(note.body);
+  }
 
   // Sair com alterações por guardar pede confirmação (navegação na app e fechar o separador).
   const leavingAfterDelete = useRef(false);
@@ -200,18 +214,28 @@ function NoteForm({ note }: { note: Note }) {
       return;
     }
     setTitleError(undefined);
-    update.mutate(
-      { id: note.id, title: trimmed, body },
-      {
-        onSuccess: (saved) => {
-          setTitle(saved.title);
+    // Só o que mudou: guardar o título num separador antigo já não repõe o corpo antigo.
+    const changes = noteChanges(seed, title, body);
+    if (Object.keys(changes).length === 0) {
+      setTitle(seed.title);
+      return;
+    }
+    const sent = { title, body };
+    void lock(() =>
+      update.mutateAsync({ id: note.id, ...changes }).then(
+        (saved) => {
+          setSeed({ title: saved.title, body: saved.body });
+          // O que não foi mexido enquanto guardava passa a ser o que o servidor tem.
+          setTitle((current) => (current === sent.title ? saved.title : current));
+          setBody((current) => (current === sent.body ? saved.body : current));
           toast({ title: "Note saved", tone: "success" });
         },
-        onError: (e) => {
-          setTitleError(fieldErrors(e).title);
+        (e: unknown) => {
+          // 404: apagada noutro separador; o hook volta a pedir a nota e o editor mostra "Note not found".
+          if (!isNotFound(e)) setTitleError(fieldErrors(e).title);
           toast({ title: "Couldn't save the note", description: errorMessage(e), tone: "error" });
         },
-      },
+      ),
     );
   };
 
@@ -264,6 +288,11 @@ function NoteForm({ note }: { note: Note }) {
             navigate("/app/notes", { replace: true });
           } catch (e) {
             toast({ title: "Couldn't delete the note", description: errorMessage(e), tone: "error" });
+            // Já tinha sido apagada (noutro separador): sai do editor de uma nota que não existe.
+            if (isNotFound(e)) {
+              leavingAfterDelete.current = true;
+              navigate("/app/notes", { replace: true });
+            }
           }
         }}
       />

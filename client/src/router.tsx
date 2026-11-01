@@ -1,10 +1,12 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "./components/layout/AppShell.tsx";
+import { FullPageSpinner } from "./components/ui/index.ts";
 import { RequireAuth } from "./components/layout/RequireAuth.tsx";
 import { ContactsPage } from "./features/contacts/ContactsPage.tsx";
 import { ProfilePage } from "./features/profile/ProfilePage.tsx";
 import { LoginPage } from "./features/public/LoginPage.tsx";
 import { NotFoundPage } from "./features/public/NotFoundPage.tsx";
+import { RouteErrorPage } from "./features/public/RouteErrorPage.tsx";
 import { WelcomePage } from "./features/public/WelcomePage.tsx";
 import { DashboardPage } from "./features/student/DashboardPage.tsx";
 import { NotesPage } from "./features/student/NotesPage.tsx";
@@ -17,7 +19,7 @@ const lazyStaffDashboard = async () => ({ Component: (await import("./features/s
 const lazyStudents = async () => ({ Component: (await import("./features/staff/StudentsPage.tsx")).StudentsPage });
 const lazyAssignments = async () => ({ Component: (await import("./features/staff/AssignmentsPage.tsx")).AssignmentsPage });
 
-export const router = createBrowserRouter([
+const routes: RouteObject[] = [
   // Público
   { path: "/", element: <WelcomePage /> },
   { path: "/login/student", element: <LoginPage portal="student" /> },
@@ -62,4 +64,16 @@ export const router = createBrowserRouter([
   },
 
   { path: "*", element: <NotFoundPage /> },
+];
+
+export const router = createBrowserRouter([
+  {
+    // Rota raiz sem caminho, só para o errorElement: um erro de render ou um chunk que não
+    // carrega (deploy novo com o separador aberto) mostra uma página da app, não a stack.
+    errorElement: <RouteErrorPage />,
+    // Abrir de raiz uma rota lazy (/app/tour, /staff...) espera pelo chunk antes do primeiro
+    // render: mostra o spinner nesse intervalo (sem isto o React Router avisava na consola).
+    hydrateFallbackElement: <FullPageSpinner />,
+    children: routes,
+  },
 ]);

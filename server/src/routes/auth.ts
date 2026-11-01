@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireUser } from "../auth/middleware.ts";
 import { burnPasswordCheck, verifyPassword } from "../auth/password.ts";
-import { attemptKey, clearFailures, recordFailure, retryAfterSeconds } from "../auth/rateLimit.ts";
+import { attemptKey, claimLoginAttempt, clearFailures, ipAttemptKey } from "../auth/rateLimit.ts";
 import { clearSessionCookie, createSession, deleteSession, setSessionCookie } from "../auth/session.ts";
 import { users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
@@ -17,9 +17,10 @@ export const authRoutes = new Hono<AppEnv>()
     const { email, password, portal } = c.req.valid("json");
     const db = c.var.db;
 
-    // 0. Limite: 5 falhas por email+IP em 15 minutos. Vem antes de tudo, mesmo de uma password certa.
+    // 0. Limites: 5 falhas por email+IP e 30 tentativas por IP em 15 minutos. Vêm antes de
+    //    tudo, mesmo de uma password certa. A tentativa fica gravada já aqui (ver claimLoginAttempt).
     const key = attemptKey(email, c.var.clientIp);
-    const wait = await retryAfterSeconds(db, key);
+    const wait = await claimLoginAttempt(db, { account: key, ip: ipAttemptKey(c.var.clientIp) });
     if (wait > 0) {
       const minutes = Math.ceil(wait / 60);
       c.header("Retry-After", String(wait));
@@ -31,13 +32,9 @@ export const authRoutes = new Hono<AppEnv>()
     const user = await findUserByEmail(db, email);
     if (!user) {
       await burnPasswordCheck(password);
-      await recordFailure(db, key);
       return c.json(WRONG_CREDENTIALS, 401);
     }
-    if (!(await verifyPassword(user.passwordHash, password))) {
-      await recordFailure(db, key);
-      return c.json(WRONG_CREDENTIALS, 401);
-    }
+    if (!(await verifyPassword(user.passwordHash, password))) return c.json(WRONG_CREDENTIALS, 401);
     await clearFailures(db, key);
 
     // 2. Só com a password certa é que dizemos que o portal é o errado.

@@ -22,6 +22,7 @@ import { cn } from "../../lib/cn.ts";
 import { fullName } from "../../lib/format.ts";
 import { AssignmentFormDialog } from "./AssignmentFormDialog.tsx";
 import { AssignmentDeadline, AssignmentProgress } from "./AssignmentProgress.tsx";
+import { cohortFilter } from "./cohortFilter.ts";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -29,9 +30,8 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export function AssignmentsPage() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
-  const cohortId = params.get("cohort") ?? "";
-
   const cohorts = useCohorts();
+  const cohortId = cohortFilter(params.get("cohort"), cohorts.data);
   const assignments = useAssignments(cohortId || undefined);
   const deleteAssignment = useDeleteAssignment();
 

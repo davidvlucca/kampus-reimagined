@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import { dbFromEnv } from "./db/client.ts";
 import { users } from "./db/schema.ts";
-import { DEMO_PASSWORD, resetDatabase, seedDatabase } from "./demo-data.ts";
+import { DEMO_PASSWORD, resetDemo, seedDatabase } from "./demo-data.ts";
 
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -25,9 +25,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   const handle = dbFromEnv();
   await handle.migrate();
-  if (reset) {
-    await resetDatabase(handle.db);
-  } else {
+  if (!reset) {
     const [row] = await handle.db.select({ n: sql<number>`count(*)::int` }).from(users);
     if ((row?.n ?? 0) > 0) {
       console.log("The database already has data. Use `npm run db:reset` to start over.");
@@ -35,7 +33,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(0);
     }
   }
-  const result = await seedDatabase(handle.db, today ? { today } : {});
+  const options = today ? { today } : {};
+  // Com --reset, apagar e repor vão na mesma transação (ver resetDemo).
+  const result = reset ? await resetDemo(handle.db, options) : await seedDatabase(handle.db, options);
   await handle.close();
   console.log(
     `Seed done: ${result.cohorts} cohorts, ${result.staff} staff, ${result.students} students. Password for every account: ${DEMO_PASSWORD}`,

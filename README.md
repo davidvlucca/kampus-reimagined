@@ -49,12 +49,12 @@ In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of 
 `npm run build:vercel` writes `.vercel/output` ([Build Output API](https://vercel.com/docs/build-output-api)): the static client, the API bundled into one Vercel Function, the routes and a daily cron. `vercel.json` runs it as the build command.
 
 1. Add a Neon database to the Vercel project (Storage → Neon); it sets `DATABASE_URL`.
-2. Set `CRON_SECRET` (any long random string) and `CORS_ORIGIN` (the site URL) in the project's environment variables.
+2. Set `CRON_SECRET` (a random string of at least 32 characters, e.g. `openssl rand -hex 32`; a shorter one leaves the reset route disabled) and `CORS_ORIGIN` (the site URL) in the project's environment variables.
 3. Apply the migrations and load the demo data once: `vercel env pull .env.production.local`, then `DATABASE_URL=… npm run db:migrate` and `DATABASE_URL=… node server/src/seed.ts --reset --allow-remote`.
 4. `vercel deploy --prod`.
 5. Later, when a commit adds a migration (`server/drizzle/`), run `npm run db:migrate` against Neon **before** pushing it: the build doesn't migrate, and the new code expects the new tables.
 
-The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits failed logins (5 per email and IP in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
+The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits logins (5 failures per email and IP, and 30 attempts per IP, in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
 
 ## Before and after
 
@@ -100,7 +100,7 @@ On a phone (390px), where the 2023 screens broke:
 | Two `cors()` calls; only two hard-coded origins worked. | One CORS config from the `CORS_ORIGIN` environment variable, plus CSRF protection. | Deployable anywhere without code changes. |
 | The Pomodoro started at 0/0 minutes and didn't run until you moved the sliders. | 25/5 by default, adjustable, with pause, resume and reset, and a timer that doesn't drift in background tabs. | It now works the moment you see it. |
 | Notes could be created and deleted, not edited. | A list and an editor, with "unsaved changes" and Ctrl/Cmd+S. | Notes are meant to grow during the course. |
-| The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). Like a visual novel, you can ask each guide questions, and the guides change expression and move their lips while they talk. | Accessible, faster, legally clean, and the audio always matches the text. |
+| The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). Like a visual novel, you can ask each guide questions, and the guides change expression and move their lips while they talk. On top of it, a **3D model of the campus** (React Three Fiber, every desk and sofa built in code): tap a room and the camera flies in, the next room glows, and the 2D tour stays as the fallback. | Accessible, faster, legally clean, and the audio always matches the text. |
 | Deadlines were compared with the current time, so "days left" changed during the day. | Deadlines are dates; "Due today", "3 days left" and "Overdue" use the browser's local date, tested in three time zones. | A deadline is a day, not an instant. |
 
 **Cohort tasks**, which the 2023 version didn't have: staff give a task to a whole cohort ("Sign the learning agreement"), students see it in their list as "From Marta Lopes · Program Manager" and can only tick it, and staff see "12 of 20 done" and who hasn't done it yet. One row per cohort task plus one row per completion, so editing the deadline reaches everyone and students who join later see it too.
@@ -109,7 +109,7 @@ New, small ideas: a **Week 1 progress** bar on the student dashboard, **Copy ema
 
 ## Stack
 
-- **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react. Fonts served locally: Poppins (headings), Inter (text), VT323 (the pixel touch, used only in the timer, the tour counter and the 404).
+- **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react, three.js with React Three Fiber (only on the tour page, loaded on demand). Fonts served locally: Poppins (headings), Inter (text), VT323 (the pixel touch, used only in the timer, the tour counter and the 404).
 - **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon in production), argon2id (hash-wasm), Zod. Deployed on Vercel.
 - **Shared:** Zod schemas and types used by both sides, the tour content and the deadline logic.
 - **Quality:** Vitest, ESLint, Playwright (end-to-end tests, screenshots and the video), axe for accessibility. GitHub Actions runs lint, types, unit and end-to-end tests on every push.

@@ -250,3 +250,41 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 
 **O que ficou de fora.** As perguntas feitas não são guardadas na base de dados: servem para a visita, não para o staff. O perfil já mostrava "Campus tour · Completed" com a data, por isso não acrescentei um selo novo.
 
+---
+
+## 20. A visita em 3D: React Three Fiber, um canvas acessível e um fallback a sério
+
+**O que é.** Por cima da visita visual novel há uma maqueta 3D do campus, sem teto, vista de cima. Clicar numa sala (ou num botão das paragens) leva a câmara até ela e abre o diálogo do guia que já existia. O Next segue a ordem. No mapa, a sala seguinte fica acesa (chão azul-céu, pino e etiqueta branca); dentro de uma sala, acende-se a própria sala e o resto da planta fica apagado (as cores puxadas para o fundo). A primeira versão acendia sempre a seguinte: num portátil a câmara mostra também as salas do lado, e quem testou achou que o clique tinha ido parar à sala errada. **Entrar na sala.** A câmara não para por cima da sala: desce para dentro dela e, quando para, a ilustração da visita 2D aparece por cima com um fade. O 3D é o mapa e o caminho; a ilustração é o sítio. Isto juntou os dois modos (as ilustrações já existiam) e resolveu o portátil, onde o diálogo tapava metade da sala. O Next sai para a vista geral e volta a mergulhar na sala seguinte (cerca de 2,5 s; escolhido pelo David, em vez de trocar logo a ilustração). Enquanto a ilustração está à vista, tapa o canvas, por isso não há cliques nas outras salas: muda-se pelo Next, pelos botões das paragens ou pelo mapa. "Back to map" volta à vista geral. A planta é uma volta: Entrance → Web Dev → UX/UI → Data → Kitchen → Lounge → Entrance, sempre para a sala ao lado. Os móveis são caixas, cilindros e planos feitos em código: nada descarregado, nenhum modelo nem textura.
+
+**Porquê React Three Fiber (e não three.js à mão).** A visita já é React e o estado vive todo na `TourPage` (paragem, perguntas, voz, teclado). Com o R3F, a cena 3D é só mais um componente que recebe a paragem e chama o `goTo` que já existia: não há um segundo estado da visita para manter em sincronia. three.js à mão obrigava a uma ponte imperativa entre os dois mundos. O drei ficou de fora: usei-o para as etiquetas e o `Html` dele cria uma raiz React por etiqueta, que com o React 19 se desmontava a meio de uma renderização e fazia desaparecer a etiqueta da sala acesa. As etiquetas passaram a ser DOM normal por cima do canvas, posicionadas a cada frame a partir da câmara, e o chunk ficou mais leve.
+
+**Orçamento e desempenho.**
+- O arranque da app não muda: o three.js vem num chunk à parte (`React.lazy`), que só se pede quando o 3D vai mesmo aparecer. Quem tem reduced motion, não tem WebGL ou escolheu 2D nunca o descarrega (há um teste E2E que verifica que esse pedido não acontece).
+- Medido no build: arranque 187,3 KB gz no main e 187,8 KB gz no ramo (+0,5 KB, a divisão em chunks mudou); o chunk 3D tem 244 KB gz com `gzip -9` (o Vite mostra 248 KB), abaixo do orçamento de 250 KB mas com pouca margem: o próximo passo, se crescer, é importar só as partes do three que se usam.
+- `frameloop="demand"`: o canvas só desenha durante um voo de câmara, o pulso do pino ou um hover. Parado, não gasta bateria.
+- DPR limitado a 2, uma luz hemisférica e uma direcional, sem shadow maps (as sombras são planos escuros semitransparentes), geometrias e materiais partilhados, menos de 35 peças por sala.
+
+**Acessibilidade de um canvas.** Um canvas WebGL não tem nada para um leitor de ecrã, por isso o 3D é decoração (`aria-hidden`) e tudo o que se faz nele também se faz com HTML:
+- as salas são os botões reais da barra de paragens ("Go to stop 3: UX/UI room"), que já existiam;
+- o aria-live anuncia "Campus map. Next: Web Dev room." na vista geral e a fala do guia dentro das salas;
+- quando o elemento com o foco desaparece (o cartão do diálogo, o do mapa ou o botão "Back to map"), o foco passa para o cartão novo, e um clique no 3D leva-o ao diálogo;
+- Esc numa sala volta ao mapa; no mapa, sai da visita sem a marcar como saltada;
+- nenhum atalho de uma só tecla (WCAG 2.1.4).
+
+**Fallback.** A visita SVG de antes fica intacta e é usada quando não há WebGL, quando o WebGL falha a meio (error boundary à volta do canvas e o evento `webglcontextlost`, com um aviso "Showing the 2D tour") e com `prefers-reduced-motion` (sem aviso: é uma escolha, não uma falha). Há um botão "2D/3D" no topo, guardado no browser; quem tem reduced motion e escolhe o 3D à mão tem cortes secos, sem voos nem pulso.
+
+**O que a revisão apanhou.** Um subagente revisor mediu e reproduziu quatro problemas, já corrigidos:
+- ao sair da visita ou passar a 2D, o R3F liberta o contexto WebGL e isso disparava o aviso "Showing the 2D tour" (e escondia o botão 2D/3D); agora o aviso só aparece se o contexto se perder com o 3D ainda montado;
+- a página volta a renderizar a cada letra da fala, e o canvas redesenhava com ela (~20 frames por segundo); com `memo` e callbacks de identidade fixa, só desenha durante os voos e o pulso do pino (medido: 0 frames parado);
+- a introdução podia tirar o foco de quem já estava no botão "Start at the Entrance";
+- o cursor do rato perdia a mãozinha ao passar diretamente de uma sala para outra.
+
+**Telemóvel.** Ao alto a planta roda 90°, para a grelha 3×2 caber como 2×3 (a orientação vem do ecrã e não do canvas, para não rodar a meio da visita). A câmara mede o que o diálogo e o topo tapam e enquadra a sala no espaço que sobra; deitado, o diálogo passa para a direita e a sala fica à esquerda.
+
+**Testes.** Os E2E da visita 2D continuam iguais. Um projeto Playwright próprio corre o 3D no Chromium com SwiftShader (WebGL no CPU, porque o CI não tem GPU): o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende a seguinte, "Back to map" volta, o foco e o Esc, sem WebGL, com o contexto perdido e com reduced motion.
+
+**Perguntas.**
+- *"Como é que um utilizador de leitor de ecrã faz a visita 3D?"* — Exatamente como a 2D: os botões das paragens, o diálogo e o aria-live são os mesmos. O canvas está escondido porque não acrescenta informação que não esteja no texto.
+- *"E num telemóvel fraco?"* — O 3D só é descarregado quando vai ser usado, desenha só quando algo se mexe e tem um botão para passar a 2D. Se o WebGL cair, a visita continua em 2D no mesmo sítio.
+- *"Porque não usaste modelos 3D prontos?"* — Licenças (o projeto de 2023 tinha imagens sem licença) e peso: caixas e cilindros em código pesam quase nada e ficam na paleta do Kampus.
+

@@ -19,7 +19,9 @@ import {
   Skeleton,
   useToast,
 } from "../../components/ui/index.ts";
+import { cn } from "../../lib/cn.ts";
 import { fullName, timeAgo } from "../../lib/format.ts";
+import { cohortFilter } from "./cohortFilter.ts";
 import { StudentFormDialog } from "./StudentFormDialog.tsx";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -28,7 +30,6 @@ export function StudentsPage() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
-  const cohortId = params.get("cohort") ?? "";
 
   // O texto da pesquisa vive no estado local e vai para o URL com debounce.
   const [search, setSearch] = useState(q);
@@ -49,6 +50,7 @@ export function StudentsPage() {
   }, [search, q, setParams]);
 
   const cohorts = useCohorts();
+  const cohortId = cohortFilter(params.get("cohort"), cohorts.data);
   const students = useStudents({ q, cohortId });
   const deleteStudent = useDeleteStudent();
 
@@ -124,24 +126,27 @@ export function StudentsPage() {
         }
       />
 
-      <div role="search" className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Input
-          label="Search students"
-          hideLabel
-          type="search"
-          placeholder="Search by name or email"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          wrapperClassName="sm:flex-1"
-        />
-        <Select label="Filter by cohort" hideLabel value={cohortId} onChange={(e) => setCohort(e.target.value)} wrapperClassName="sm:w-60">
-          <option value="">All cohorts</option>
-          {cohorts.data?.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
+      {/* Pela largura do conteúdo (container query): com o texto a 200% a pesquisa ficava com uma letra. */}
+      <div className="@container mb-4">
+        <div role="search" className="flex flex-col gap-3 @2xl:flex-row @2xl:items-end">
+          <Input
+            label="Search students"
+            hideLabel
+            type="search"
+            placeholder="Search by name or email"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            wrapperClassName="@2xl:flex-1"
+          />
+          <Select label="Filter by cohort" hideLabel value={cohortId} onChange={(e) => setCohort(e.target.value)} wrapperClassName="@2xl:w-60">
+            <option value="">All cohorts</option>
+            {cohorts.data?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       <p aria-live="polite" className="mb-3 text-sm text-muted">
@@ -181,10 +186,12 @@ export function StudentsPage() {
           )}
         </Card>
       ) : (
-        <>
+        // Tabela ou cartões pela largura do conteúdo em rem (container query), não do ecrã:
+        // com o texto a 200% num portátil a tabela já não cabe e passa a cartões.
+        <div className="@container">
           <StudentsTable students={students.data} onEdit={openEdit} onDelete={setDeleting} />
           <StudentCards students={students.data} onEdit={openEdit} onDelete={setDeleting} />
-        </>
+        </div>
       )}
 
       <StudentFormDialog key={formKey} open={formOpen} onOpenChange={setFormOpen} student={editing} />
@@ -236,31 +243,34 @@ function RowActions({ student, onEdit, onDelete }: { student: StudentRow; onEdit
   );
 }
 
-/** Desktop (≥ lg): tabela semântica. */
+/** Conteúdo com 56rem ou mais (desktop): tabela semântica. */
 function StudentsTable({ students, onEdit, onDelete }: ListProps) {
   const th = "px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted uppercase";
+  // table-fixed com larguras por coluna: numa tabela automática o nome e o email compridos
+  // (o `truncate` não segura sem largura) alargavam a tabela para fora do cartão e da página.
+  // A coluna do aluno fica com o resto e corta com reticências.
   return (
-    <Card className="hidden overflow-x-auto xl:block">
-      <table className="w-full text-sm">
+    <Card className="hidden overflow-x-auto @4xl:block">
+      <table className="w-full table-fixed text-sm">
         <caption className="sr-only">Students, with their cohort, tasks, tour and last login</caption>
         <thead className="border-b border-line bg-surface">
           <tr>
             <th scope="col" className={th}>
               Student
             </th>
-            <th scope="col" className={th}>
+            <th scope="col" className={cn(th, "w-56")}>
               Cohort
             </th>
-            <th scope="col" className={th}>
+            <th scope="col" className={cn(th, "w-28")}>
               Tasks
             </th>
-            <th scope="col" className={th}>
+            <th scope="col" className={cn(th, "w-28")}>
               Tour
             </th>
-            <th scope="col" className={th}>
+            <th scope="col" className={cn(th, "w-32")}>
               Last login
             </th>
-            <th scope="col" className={th}>
+            <th scope="col" className={cn(th, "w-28")}>
               <span className="sr-only">Actions</span>
             </th>
           </tr>
@@ -271,13 +281,13 @@ function StudentsTable({ students, onEdit, onDelete }: ListProps) {
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Avatar firstName={s.firstName} lastName={s.lastName} size="sm" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-text">{fullName(s)}</p>
                     <p className="truncate text-muted">{s.email}</p>
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3">{s.cohort ? <Badge tone="sky">{s.cohort.name}</Badge> : <span className="text-subtle">No cohort</span>}</td>
+              <td className="truncate px-4 py-3">{s.cohort ? <Badge tone="sky">{s.cohort.name}</Badge> : <span className="text-subtle">No cohort</span>}</td>
               <td className="px-4 py-3 whitespace-nowrap text-text">
                 {s.doneTaskCount}/{s.taskCount} done
               </td>
@@ -301,11 +311,12 @@ function StudentsTable({ students, onEdit, onDelete }: ListProps) {
 /** Telemóvel e tablet: cartões com a mesma informação. */
 function StudentCards({ students, onEdit, onDelete }: ListProps) {
   return (
-    <ul className="flex flex-col gap-3 xl:hidden">
+    <ul className="flex flex-col gap-3 @4xl:hidden">
       {students.map((s) => (
         <li key={s.id}>
           <Card className="p-4">
-            <div className="flex items-start gap-3">
+            {/* flex-wrap: sem espaço (texto a 200%), os botões passam para a linha de baixo. */}
+            <div className="flex flex-wrap items-start gap-3">
               <Avatar firstName={s.firstName} lastName={s.lastName} />
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-base font-semibold">{fullName(s)}</h2>
@@ -340,9 +351,9 @@ function StudentCards({ students, onEdit, onDelete }: ListProps) {
 
 function StudentsSkeleton() {
   return (
-    <div role="status">
+    <div role="status" className="@container">
       <span className="sr-only">Loading students</span>
-      <Card className="hidden flex-col divide-y divide-line xl:flex">
+      <Card className="hidden flex-col divide-y divide-line @4xl:flex">
         <Skeleton className="m-4 h-4 w-1/3" />
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3">
@@ -354,7 +365,7 @@ function StudentsSkeleton() {
           </div>
         ))}
       </Card>
-      <div className="flex flex-col gap-3 xl:hidden">
+      <div className="flex flex-col gap-3 @4xl:hidden">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-36 rounded-[var(--radius-card)]" />
         ))}

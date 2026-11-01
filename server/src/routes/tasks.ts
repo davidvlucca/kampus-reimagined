@@ -1,4 +1,4 @@
-import { COHORT_TASK_MESSAGE, createTaskSchema, TASK_FILTERS, updateTaskSchema, type Task, type TaskFilter } from "@kampus/shared";
+import { COHORT_TASK_MESSAGE, createTaskSchema, LIMITS, limitMessage, TASK_FILTERS, updateTaskSchema, type Task, type TaskFilter } from "@kampus/shared";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -7,6 +7,7 @@ import type { Db } from "../db/client.ts";
 import { assignmentCompletions, assignments, tasks, type TaskRow, type UserRow } from "../db/schema.ts";
 import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
+import { atLimit } from "../lib/limits.ts";
 import { iso } from "../lib/serialize.ts";
 import { isUuid } from "../lib/users.ts";
 import { validate } from "../lib/validate.ts";
@@ -25,6 +26,7 @@ const toTask = (t: TaskRow): Task => ({
 
 const NOT_FOUND = { error: "Task not found." };
 const COHORT_TASK = { error: COHORT_TASK_MESSAGE };
+const TOO_MANY = { error: limitMessage(LIMITS.tasksPerStudent, "tasks") };
 
 /**
  * Tarefas da turma ATUAL do aluno, no formato de `Task`. "Feita" quer dizer que existe
@@ -103,6 +105,8 @@ export const taskRoutes = new Hono<AppEnv>()
   })
   .post("/", validate("json", createTaskSchema), async (c) => {
     const { title, dueDate } = c.req.valid("json");
+    // Só as tarefas pessoais contam: as da turma são do staff.
+    if (await atLimit(c.var.db, tasks, eq(tasks.userId, c.var.user.id), LIMITS.tasksPerStudent)) return c.json(TOO_MANY, 409);
     const [row] = await c.var.db
       .insert(tasks)
       .values({ userId: c.var.user.id, title, dueDate: dueDate ?? null })

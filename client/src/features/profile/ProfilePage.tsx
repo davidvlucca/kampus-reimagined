@@ -7,6 +7,7 @@ import { useChangePassword, useCurrentUser, useLogout, useUpdateProfile } from "
 import { loginPath } from "../../components/layout/paths.ts";
 import { Avatar, Badge, Button, buttonClasses, Card, CardBody, CardHeader, Input, PageHeader, useToast } from "../../components/ui/index.ts";
 import { formatDate, fullName } from "../../lib/format.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 
 /** Primeira mensagem de erro por campo, a partir dos issues do Zod. */
 function issuesByField(issues: readonly { path: readonly PropertyKey[]; message: string }[]): Record<string, string> {
@@ -25,7 +26,7 @@ function ProfileSummary({ user }: { user: PublicUser }) {
       <div aria-hidden className="h-16 bg-kampus-gradient" />
       <CardBody className="-mt-12 flex flex-col items-center text-center">
         <Avatar firstName={user.firstName} lastName={user.lastName} size="xl" className="ring-4 ring-card" />
-        <h2 className="mt-3 text-xl font-semibold break-words">{fullName(user)}</h2>
+        <h2 className="clip-marks mt-3 max-w-full text-xl font-semibold break-words">{fullName(user)}</h2>
         <p className="mt-0.5 text-sm break-all text-muted">{user.email}</p>
         <Badge tone="sky" className="mt-3">
           {badge}
@@ -41,6 +42,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
 
   const dirty = firstName.trim() !== user.firstName || lastName.trim() !== user.lastName;
 
@@ -52,17 +54,19 @@ function DetailsForm({ user }: { user: PublicUser }) {
       return;
     }
     setErrors({});
-    update.mutate(parsed.data, {
-      onSuccess: ({ user: saved }) => {
-        setFirstName(saved.firstName);
-        setLastName(saved.lastName);
-        toast({ title: "Changes saved" });
-      },
-      onError: (error) => {
-        setErrors(fieldErrors(error));
-        toast({ title: "Couldn't save your changes", description: errorMessage(error), tone: "error" });
-      },
-    });
+    void lock(() =>
+      update.mutateAsync(parsed.data).then(
+        ({ user: saved }) => {
+          setFirstName(saved.firstName);
+          setLastName(saved.lastName);
+          toast({ title: "Changes saved" });
+        },
+        (error: unknown) => {
+          setErrors(fieldErrors(error));
+          toast({ title: "Couldn't save your changes", description: errorMessage(error), tone: "error" });
+        },
+      ),
+    );
   };
 
   return (
@@ -70,7 +74,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
       <CardHeader icon={<UserRound aria-hidden />} title="Your details" description="This is how staff see you." />
       <CardBody>
         <form noValidate onSubmit={submit} className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="First name"
               name="firstName"
@@ -90,7 +94,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
           </div>
           <div>
             <p className="text-sm font-medium text-kampus-navy">Email</p>
-            <p className="mt-1 text-[15px] break-all text-text">{user.email}</p>
+            <p className="mt-1 text-[0.9375rem] break-all text-text">{user.email}</p>
             {user.role === "student" && <p className="mt-1 text-xs text-subtle">Ask staff to change your email.</p>}
           </div>
           <div>
@@ -111,6 +115,7 @@ function PasswordForm({ email }: { email: string }) {
   const toast = useToast();
   const [values, setValues] = useState(emptyPasswords);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
 
   const set = (field: keyof typeof emptyPasswords) => (value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -128,19 +133,22 @@ function PasswordForm({ email }: { email: string }) {
       return;
     }
     setErrors({});
-    change.mutate(parsed.data, {
-      onSuccess: () => {
-        setValues(emptyPasswords);
-        toast({ title: "Password changed. You were logged out on other devices." });
-      },
-      onError: (error) => {
-        if (error instanceof ApiRequestError && error.status === 400) {
-          const fields = fieldErrors(error);
-          setErrors(Object.keys(fields).length > 0 ? fields : { currentPassword: errorMessage(error) });
-        }
-        toast({ title: "Couldn't change your password", description: errorMessage(error), tone: "error" });
-      },
-    });
+    // Um duplo clique mudava a password e logo a seguir dava "password atual errada".
+    void lock(() =>
+      change.mutateAsync(parsed.data).then(
+        () => {
+          setValues(emptyPasswords);
+          toast({ title: "Password changed. You were logged out on other devices." });
+        },
+        (error: unknown) => {
+          if (error instanceof ApiRequestError && error.status === 400) {
+            const fields = fieldErrors(error);
+            setErrors(Object.keys(fields).length > 0 ? fields : { currentPassword: errorMessage(error) });
+          }
+          toast({ title: "Couldn't change your password", description: errorMessage(error), tone: "error" });
+        },
+      ),
+    );
   };
 
   return (
@@ -239,7 +247,7 @@ export function ProfilePage() {
   return (
     <>
       <PageHeader title="Your profile" description="Your details, password and session." />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="flex flex-col gap-6">
           <ProfileSummary user={user} />
           {user.role === "student" && <TourRow user={user} />}

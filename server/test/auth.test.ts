@@ -136,6 +136,33 @@ describe("CORS", () => {
     expect(evil.headers.get("access-control-allow-origin")).toBeNull();
   });
 
+  it("num preview da Vercel (origem fora do CORS_ORIGIN) o login e o logout funcionam", async () => {
+    // O preview tem outro endereço e o CORS_ORIGIN só existe em produção. O csrf() do Hono só
+    // trava pedidos com aspeto de formulário: o login vai em JSON, e um POST sem corpo passa
+    // porque o browser diz que é da mesma origem (Sec-Fetch-Site).
+    const preview = "https://kampus-reimagined-git-feat-davidvluccas-projects.vercel.app";
+    const login = await t.app.request(`${preview}/api/auth/login`, {
+      method: "POST",
+      headers: { origin: preview, "sec-fetch-site": "same-origin", "content-type": "application/json" },
+      body: JSON.stringify({ email: STUDENT_A, password: "Kampus123", portal: "student" }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0]!;
+    const logout = await t.app.request(`${preview}/api/auth/logout`, {
+      method: "POST",
+      headers: { origin: preview, "sec-fetch-site": "same-origin", cookie },
+    });
+    expect(logout.status).toBe(204);
+  });
+
+  it("um POST sem corpo de outro site continua barrado", async () => {
+    const res = await t.app.request("/api/auth/logout", {
+      method: "POST",
+      headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" },
+    });
+    expect(res.status).toBe(403);
+  });
+
   it("bloqueia um formulário enviado de outro site (CSRF)", async () => {
     const res = await t.app.request("/api/auth/login", {
       method: "POST",

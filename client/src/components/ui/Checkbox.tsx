@@ -30,7 +30,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
         />
         <Check aria-hidden strokeWidth={3} className="pointer-events-none absolute size-4 text-white opacity-0 transition peer-checked:opacity-100" />
       </span>
-      <span className={cn(hideLabel && "sr-only")}>{label}</span>
+      {/* min-w-0: sem ele, um título comprido sem espaços empurrava a linha para fora do ecrã. */}
+      <span className={cn("min-w-0", hideLabel && "sr-only")}>{label}</span>
     </label>
   );
 });

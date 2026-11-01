@@ -1,9 +1,10 @@
 import { createAssignmentSchema, updateAssignmentSchema, type Assignment, type UpdateAssignmentInput } from "@kampus/shared";
 import { CalendarX } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { errorMessage, fieldErrors } from "../../api/client.ts";
+import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useCohorts, useCreateAssignment, useUpdateAssignment } from "../../api/hooks.ts";
 import { Button, Dialog, Input, Select, useToast } from "../../components/ui/index.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 
 type FieldName = "cohortId" | "title" | "dueDate";
 type Values = Record<FieldName, string>;
@@ -52,6 +53,7 @@ export function AssignmentFormDialog({
   const updateAssignment = useUpdateAssignment();
   const [values, setValues] = useState<Values>(() => initialValues(assignment, defaultCohortId));
   const [errors, setErrors] = useState<Errors>({});
+  const lock = useSubmitLock();
 
   const set = (field: FieldName) => (value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -62,33 +64,38 @@ export function AssignmentFormDialog({
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    try {
-      if (!isEdit) {
-        const parsed = createAssignmentSchema.safeParse({ ...values, dueDate: values.dueDate || null });
-        if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
-        const created = await createAssignment.mutateAsync(parsed.data);
-        toast({ title: "Task added", description: `Everyone in ${created.cohort.name} can see it now.`, tone: "success" });
-      } else {
-        // Só envia o que mudou.
-        const changes: UpdateAssignmentInput = {};
-        const base = initialValues(assignment, "");
-        if (values.title.trim() !== base.title) changes.title = values.title;
-        if (values.dueDate !== base.dueDate) changes.dueDate = values.dueDate || null;
-        if (Object.keys(changes).length === 0) {
-          onOpenChange(false);
-          return;
+    // Um duplo clique não cria dois (ver useSubmitLock).
+    await lock(async () => {
+      try {
+        if (!isEdit) {
+          const parsed = createAssignmentSchema.safeParse({ ...values, dueDate: values.dueDate || null });
+          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          const created = await createAssignment.mutateAsync(parsed.data);
+          toast({ title: "Task added", description: `Everyone in ${created.cohort.name} can see it now.`, tone: "success" });
+        } else {
+          // Só envia o que mudou.
+          const changes: UpdateAssignmentInput = {};
+          const base = initialValues(assignment, "");
+          if (values.title.trim() !== base.title) changes.title = values.title;
+          if (values.dueDate !== base.dueDate) changes.dueDate = values.dueDate || null;
+          if (Object.keys(changes).length === 0) {
+            onOpenChange(false);
+            return;
+          }
+          const parsed = updateAssignmentSchema.safeParse(changes);
+          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          await updateAssignment.mutateAsync({ id: assignment.id, ...parsed.data });
+          toast({ title: "Changes saved", tone: "success" });
         }
-        const parsed = updateAssignmentSchema.safeParse(changes);
-        if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
-        await updateAssignment.mutateAsync({ id: assignment.id, ...parsed.data });
-        toast({ title: "Changes saved", tone: "success" });
+        onOpenChange(false);
+      } catch (error) {
+        // Apagado entretanto (noutro separador ou por outra pessoa): fecha, a lista já se atualiza.
+        if (isEdit && isNotFound(error)) onOpenChange(false);
+        const fields = fieldErrors(error);
+        if (Object.keys(fields).length > 0) setErrors(fields);
+        toast({ title: isEdit ? "Couldn't save changes" : "Couldn't add the task", description: errorMessage(error), tone: "error" });
       }
-      onOpenChange(false);
-    } catch (error) {
-      const fields = fieldErrors(error);
-      if (Object.keys(fields).length > 0) setErrors(fields);
-      toast({ title: isEdit ? "Couldn't save changes" : "Couldn't add the task", description: errorMessage(error), tone: "error" });
-    }
+    });
   };
 
   return (

@@ -2,6 +2,8 @@ import {
   createStudentSchema,
   DEMO_ACCOUNT_MESSAGES,
   isProtectedDemoEmail,
+  LIMITS,
+  limitMessage,
   studentQuerySchema,
   updateStudentSchema,
   type ActivityItem,
@@ -15,11 +17,13 @@ import { hashPassword } from "../auth/password.ts";
 import type { Db } from "../db/client.ts";
 import { assignmentCompletions, assignments, cohorts, notes, sessions, tasks, users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
+import { atLimit } from "../lib/limits.ts";
 import { iso, toCohort } from "../lib/serialize.ts";
 import { findUserByEmail, isUuid } from "../lib/users.ts";
 import { validate } from "../lib/validate.ts";
 
 const NOT_FOUND = { error: "Student not found." };
+const TOO_MANY = { error: limitMessage(LIMITS.students, "students") };
 const EMAIL_TAKEN = { error: "This email already has an account.", fields: { email: "Already in use" } };
 
 const isStudent = eq(users.role, "student");
@@ -187,6 +191,7 @@ export const staffRoutes = new Hono<AppEnv>()
   .post("/students", validate("json", createStudentSchema), async (c) => {
     const input = c.req.valid("json");
     const db = c.var.db;
+    if (await atLimit(db, users, isStudent, LIMITS.students)) return c.json(TOO_MANY, 409);
     if (await findUserByEmail(db, input.email)) return c.json(EMAIL_TAKEN, 409);
     if (!(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
     const passwordHash = await hashPassword(input.password);
