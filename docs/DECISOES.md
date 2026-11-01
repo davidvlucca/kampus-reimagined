@@ -236,3 +236,15 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 
 **Pergunta.** *"Porque não deixar o aluno apagar a tarefa da turma da sua lista?"* — Porque o staff deixava de saber se ela foi feita ou ignorada. Se for preciso, o passo seguinte é um "Not relevant for me" que o staff também vê, não um apagar silencioso.
 
+---
+
+## 19. A visita mais visual novel: perguntas e expressões
+
+**Perguntas ao guia.** Em cada sala há duas perguntas que o aluno pode fazer ("What time do classes start?", "Is the coffee really free?"). A resposta substitui a fala, escreve-se letra a letra e o guia muda de expressão; voltar a carregar na mesma pergunta regressa à fala da sala, e as já feitas ficam com um visto. No teclado, as teclas 1 e 2 fazem as perguntas, como as escolhas de um visual novel. Os botões são um grupo com `aria-pressed`, e o texto para leitores de ecrã anuncia "Marta Lopes · Program Manager answers: …".
+
+**Porque só aparecem no fim da fala.** É como nos visual novels: primeiro lê-se, depois escolhe-se. O espaço fica reservado (invisível) para a caixa não saltar, e também se reserva a altura da resposta mais longa da sala.
+
+**Expressões.** Cada guia tem quatro caras: sorriso, piscar de olho, curiosa e a falar. As três novas não foram desenhadas à mão: `scripts/guide-moods.ts` gera-as a partir do SVG base, trocando a boca, o olho direito ou a sobrancelha. Um teste confirma que os ficheiros publicados batem com o que o script gera, para não ficarem desatualizados se alguém mudar uma ilustração. Enquanto o texto se escreve, a boca alterna entre a expressão e "a falar" a cada 140 ms; com `prefers-reduced-motion` o texto aparece de uma vez e a boca não mexe. As quatro imagens ficam empilhadas e só uma é visível, porque trocar o `src` de uma só imagem fazia piscar.
+
+**O que ficou de fora.** As perguntas feitas não são guardadas na base de dados: servem para a visita, não para o staff. O perfil já mostrava "Campus tour · Completed" com a data, por isso não acrescentei um selo novo.
+

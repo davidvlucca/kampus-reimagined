@@ -99,7 +99,7 @@ On a phone (390px), where the 2023 screens broke:
 | Two `cors()` calls; only two hard-coded origins worked. | One CORS config from the `CORS_ORIGIN` environment variable, plus CSRF protection. | Deployable anywhere without code changes. |
 | The Pomodoro started at 0/0 minutes and didn't run until you moved the sliders. | 25/5 by default, adjustable, with pause, resume and reset, and a timer that doesn't drift in background tabs. | It now works the moment you see it. |
 | Notes could be created and deleted, not edited. | A list and an editor, with "unsaved changes" and Ctrl/Cmd+S. | Notes are meant to grow during the course. |
-| The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). | Accessible, faster, legally clean, and the audio always matches the text. |
+| The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). Like a visual novel, you can ask each guide questions (click, or press 1 and 2), and the guides change expression and move their lips while they talk. | Accessible, faster, legally clean, and the audio always matches the text. |
 | Deadlines were compared with the current time, so "days left" changed during the day. | Deadlines are dates; "Due today", "3 days left" and "Overdue" use the browser's local date, tested in three time zones. | A deadline is a day, not an instant. |
 
 **Cohort tasks**, which the 2023 version didn't have: staff give a task to a whole cohort ("Sign the learning agreement"), students see it in their list as "From Marta Lopes · Program Manager" and can only tick it, and staff see "12 of 20 done" and who hasn't done it yet. One row per cohort task plus one row per completion, so editing the deadline reaches everyone and students who join later see it too.
@@ -118,7 +118,7 @@ client/   React app (features/ per area, components/ui for the design system)
 server/   Hono API, Drizzle schema, SQL migrations, seed, tests
 shared/   Zod schemas, types, tour content, date helpers
 e2e/      Playwright end-to-end and accessibility tests
-scripts/  Playwright screenshots and video, Vercel build
+scripts/  Playwright screenshots and video, guide expressions, Vercel build
 docs/     Before/after screenshots, video, technical decisions
 ```
 

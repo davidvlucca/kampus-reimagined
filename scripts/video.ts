@@ -27,7 +27,10 @@ async function studentFlow(page: Page) {
   await page.waitForURL("**/app/tour");
   await pause(page, 3500);
   await page.keyboard.press("Enter");
-  await pause(page, 1500);
+  await pause(page, 1200);
+  // Uma pergunta ao guia (tecla 1): a resposta escreve-se e a Marta muda de expressão.
+  await page.keyboard.press("1");
+  await pause(page, 4000);
   await page.keyboard.press("ArrowRight");
   await pause(page, 3000);
   await page.keyboard.press("ArrowRight");
