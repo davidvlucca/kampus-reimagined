@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { createApp, parseOrigins } from "./app.ts";
+import { createApp, parseOrigins, parseSessionTtlDays } from "./app.ts";
 import { dbFromEnv } from "./db/client.ts";
 
 const handle = dbFromEnv();
@@ -10,7 +10,7 @@ const app = createApp({
   db: handle.db,
   corsOrigins: parseOrigins(process.env.CORS_ORIGIN),
   session: {
-    ttlDays: Number(process.env.SESSION_TTL_DAYS ?? 7),
+    ttlDays: parseSessionTtlDays(process.env.SESSION_TTL_DAYS),
     secureCookies: process.env.NODE_ENV === "production",
   },
   // Com CRON_SECRET, GET /api/cron/reset-demo repõe a demo (os testes E2E usam-no). Só com

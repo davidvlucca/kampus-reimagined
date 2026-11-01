@@ -49,12 +49,12 @@ In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of 
 `npm run build:vercel` writes `.vercel/output` ([Build Output API](https://vercel.com/docs/build-output-api)): the static client, the API bundled into one Vercel Function, the routes and a daily cron. `vercel.json` runs it as the build command.
 
 1. Add a Neon database to the Vercel project (Storage → Neon); it sets `DATABASE_URL`.
-2. Set `CRON_SECRET` (any long random string) and `CORS_ORIGIN` (the site URL) in the project's environment variables.
+2. Set `CRON_SECRET` (a random string of at least 32 characters, e.g. `openssl rand -hex 32`; a shorter one leaves the reset route disabled) and `CORS_ORIGIN` (the site URL) in the project's environment variables.
 3. Apply the migrations and load the demo data once: `vercel env pull .env.production.local`, then `DATABASE_URL=… npm run db:migrate` and `DATABASE_URL=… node server/src/seed.ts --reset --allow-remote`.
 4. `vercel deploy --prod`.
 5. Later, when a commit adds a migration (`server/drizzle/`), run `npm run db:migrate` against Neon **before** pushing it: the build doesn't migrate, and the new code expects the new tables.
 
-The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits failed logins (5 per email and IP in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
+The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits logins (5 failures per email and IP, and 30 attempts per IP, in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
 
 ## Before and after
 

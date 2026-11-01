@@ -86,6 +86,8 @@ const slug = (s: string) =>
 export interface SeedOptions {
   /** "Hoje" do seed, YYYY-MM-DD. */
   today?: string;
+  /** Hash de DEMO_PASSWORD já calculado (o resetDemo calcula-o fora da transação). */
+  passwordHash?: string;
 }
 
 export async function seedDatabase(db: Db, options: SeedOptions = {}) {
@@ -94,7 +96,7 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
   const noon = new Date(`${today}T12:00:00Z`).getTime();
   const hoursAgo = (h: number) => new Date(noon - h * 60 * 60 * 1000);
 
-  const passwordHash = await hashPassword(DEMO_PASSWORD);
+  const passwordHash = options.passwordHash ?? (await hashPassword(DEMO_PASSWORD));
 
   const cohortRows = await db
     .insert(cohorts)
@@ -220,4 +222,20 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
 
 export async function resetDatabase(db: Db) {
   await db.execute(sql`truncate table login_attempts, sessions, assignment_completions, assignments, notes, tasks, users, cohorts restart identity cascade`);
+}
+
+/**
+ * Apaga tudo e volta a pôr a demo numa só transação: se o seed falhar a meio, o TRUNCATE
+ * é desfeito e a demo fica como estava (em vez de vazia até à reposição do dia seguinte).
+ * O lock (pg_advisory_xact_lock) faz duas reposições ao mesmo tempo (o cron entregue duas
+ * vezes) correrem uma depois da outra; sai sozinho no fim da transação.
+ */
+export async function resetDemo(db: Db, options: SeedOptions = {}) {
+  // O argon2 é a parte lenta: fica fora da transação, para ela durar o mínimo.
+  const passwordHash = options.passwordHash ?? (await hashPassword(DEMO_PASSWORD));
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('kampus:reset-demo'))`);
+    await resetDatabase(tx);
+    return seedDatabase(tx, { ...options, passwordHash });
+  });
 }
