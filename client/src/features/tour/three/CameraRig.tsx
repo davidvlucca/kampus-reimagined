@@ -103,8 +103,9 @@ export function CameraRig({ room, insets, instant }: { room: RoomId | null; inse
   useFrame((_, delta) => {
     const f = flight.current;
     if (!f) return;
-    // Depois de muito tempo parado (frameloop "demand") o delta pode ser enorme.
-    f.t = Math.min(1, f.t + Math.min(delta, 1 / 30) / FLY_S);
+    // Depois de muito tempo parado (frameloop "demand") o delta pode ser enorme; o limite de
+    // 0,1 s evita esse salto sem tornar o voo mais lento num telemóvel a poucos frames.
+    f.t = Math.min(1, f.t + Math.min(delta, 0.1) / FLY_S);
     const pose = lerpPose(f.from, f.to, easeInOutCubic(f.t));
     current.current = pose;
     applyPose(camera, pose, width, height);

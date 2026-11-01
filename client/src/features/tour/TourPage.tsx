@@ -99,8 +99,9 @@ export function TourPage() {
   const line = answer?.answer ?? stop.text;
   const mood = answer?.mood ?? stop.mood;
 
-  const { shown, done, finish } = useTypewriter(line, `${index}:${question ?? ""}`, reducedMotion);
-  const mouthOpen = useMouthFlap(!done && !reducedMotion);
+  // A fala recomeça ao entrar na sala: no 3D, enquanto se vê o mapa, o diálogo está escondido.
+  const { shown, done, finish } = useTypewriter(line, `${index}:${question ?? ""}:${inRoom ? "room" : "map"}`, reducedMotion);
+  const mouthOpen = useMouthFlap(inRoom && !done && !reducedMotion);
   // As perguntas aparecem quando a fala da paragem acaba e ficam visíveis daí em diante
   // (esconder o botão que tem o foco fazia o teclado perder o sítio).
   const showQuestions = done || question !== null || stop.questions.some((q) => asked.has(q.id));
@@ -141,14 +142,28 @@ export function TourPage() {
   /** 3D: entra na sala de uma paragem (a câmara voa até lá e o diálogo abre). */
   const enterRoom = useCallback(
     (i: number, { focusDialog = false } = {}) => {
-      keepFocus();
-      if (focusDialog) focusAfterViewChange.current = true;
+      if (view === "room") {
+        // Já na sala: o cartão não muda, por isso não há foco a passar (só o clique no 3D o pede).
+        if (focusDialog) cardRef.current?.focus({ preventScroll: true });
+      } else {
+        keepFocus();
+        if (focusDialog) focusAfterViewChange.current = true;
+      }
       goTo(i);
       markVisited(i);
       setView("room");
     },
-    [goTo, keepFocus, markVisited],
+    [goTo, keepFocus, markVisited, view],
   );
+  // Identidade fixa para o 3D (memo): com o enterRoom direto, mudava a cada letra da fala e o
+  // canvas voltava a desenhar enquanto o texto se escreve.
+  const enterRoomRef = useRef(enterRoom);
+  useEffect(() => {
+    enterRoomRef.current = enterRoom;
+  }, [enterRoom]);
+  const selectFromMap = useCallback((i: number) => enterRoomRef.current(i, { focusDialog: true }), []);
+  const onMapReady = useCallback(() => setMapReady(true), []);
+  const introDone = useRef(false);
 
   const backToMap = useCallback(() => {
     keepFocus();
@@ -227,22 +242,25 @@ export function TourPage() {
 
   // 3D: começa na vista geral e, ao fim de um momento (contado a partir do primeiro frame,
   // não do clique: num telemóvel lento o 3D demora a carregar), voa para a Entrance.
+  // Só acontece uma vez por visita, e só se a pessoa ainda não escolheu nenhuma sala.
   useEffect(() => {
-    if (!is3D || !mapReady) return;
+    if (!is3D || !mapReady || introDone.current) return;
     const id = window.setTimeout(() => {
-      // Só se a pessoa ainda não escolheu nenhuma sala.
-      setVisited((s) => (s.size > 0 ? s : new Set([0])));
-      setView((v) => (v === "map" ? "room" : v));
+      introDone.current = true;
+      if (view !== "map" || visited.size > 0) return;
+      keepFocus();
+      markVisited(index);
+      setView("room");
     }, 1200);
     return () => window.clearTimeout(id);
-  }, [is3D, mapReady]);
+  }, [is3D, mapReady, view, visited, index, keepFocus, markVisited]);
 
   // Depois de mudar de vista, o foco passa para o cartão novo (se estava no que desapareceu).
   useEffect(() => {
     if (!focusAfterViewChange.current) return;
     focusAfterViewChange.current = false;
-    (view === "map" ? mapHeadingRef.current : cardRef.current)?.focus({ preventScroll: true });
-  }, [view]);
+    (is3D && view === "map" ? mapHeadingRef.current : cardRef.current)?.focus({ preventScroll: true });
+  }, [view, is3D]);
 
   // A faixa do canvas que fica livre (o topo e o diálogo tapam partes dele no desktop e deitado).
   useEffect(() => {
@@ -279,14 +297,21 @@ export function TourPage() {
   }, [is3D, view]);
 
   const onLost = useCallback(() => {
+    // O 3D desaparece: se o foco estava nele (cartão do mapa ou "Back to map"), vai para o diálogo 2D.
+    keepFocus();
     setLost(true);
+    setMapReady(false);
     toast({ title: "Showing the 2D tour", description: "3D isn't available on this device right now.", tone: "info" });
-  }, [toast]);
+  }, [keepFocus, toast]);
 
   function switchMode() {
     const mode: TourMode = is3D ? "2d" : "3d";
     saveModePref(mode);
     setModePref(mode);
+    // Ao mudar a meio da visita: o 3D entra já na sala da paragem atual, sem a introdução.
+    introDone.current = true;
+    markVisited(index);
+    setMapReady(false);
     setView("room");
   }
 
@@ -376,9 +401,9 @@ export function TourPage() {
                 nextIndex={nextIndex}
                 insets={insets}
                 instant={reducedMotion}
-                onSelectStop={(i) => enterRoom(i, { focusDialog: true })}
+                onSelectStop={selectFromMap}
                 onLost={onLost}
-                onReady={() => setMapReady(true)}
+                onReady={onMapReady}
               />
             </Suspense>
           </Tour3DErrorBoundary>
