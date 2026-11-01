@@ -49,6 +49,7 @@ const STUDENT: Shot[] = [
 const STAFF: Shot[] = [
   { name: "dashboard-staff", path: "/staff", waitFor: "Hi Marta!" },
   { name: "alunos-staff", path: "/staff/students", waitFor: "Diana" },
+  { name: "tarefas-turma-staff", path: "/staff/assignments", waitFor: "See who" },
   { name: "perfil-staff", path: "/staff/profile", waitFor: "Change password" },
 ];
 

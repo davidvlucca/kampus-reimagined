@@ -89,7 +89,13 @@ async function staffFlow(page: Page) {
   await dialog.getByLabel(/password/i).fill("Welcome2026");
   await pause(page, 500);
   await dialog.getByRole("button", { name: "Add student" }).click();
-  await pause(page, 2500);
+  await pause(page, 2000);
+
+  // Tarefas da turma: quem já fez o quê.
+  await nav.getByRole("link", { name: "Cohort tasks" }).click();
+  await pause(page, 1500);
+  await page.getByRole("button", { name: "See who" }).first().click();
+  await pause(page, 3000);
 }
 
 mkdirSync(OUT, { recursive: true });

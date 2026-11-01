@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml/badge.svg)](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml)
 
-**A campus onboarding app for new students: a visual-novel tour of the campus, tasks with deadlines, notes, a focus timer and the staff contacts. Staff add students and see how they're settling in.**
+**A campus onboarding app for new students: a visual-novel tour of the campus, tasks with deadlines, notes, a focus timer and the staff contacts. Staff add students, give each cohort its tasks and see how everyone is settling in.**
 
 This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
 
@@ -75,9 +75,9 @@ Screenshots of the 2023 app (rendered from the original code, with fictional dat
 
 New screens with no 2023 equivalent (tasks and notes lived inside the dashboard):
 
-| Tasks | Notes | Staff dashboard |
-| --- | --- | --- |
-| <img src="docs/prints/tarefas-desktop.png" alt="" width="420"> | <img src="docs/prints/notas-desktop.png" alt="" width="420"> | <img src="docs/prints/dashboard-staff-desktop.png" alt="" width="420"> |
+| Tasks | Notes | Staff dashboard | Cohort tasks |
+| --- | --- | --- | --- |
+| <img src="docs/prints/tarefas-desktop.png" alt="" width="320"> | <img src="docs/prints/notas-desktop.png" alt="" width="320"> | <img src="docs/prints/dashboard-staff-desktop.png" alt="" width="320"> | <img src="docs/prints/tarefas-turma-staff-desktop.png" alt="" width="320"> |
 
 On a phone (390px), where the 2023 screens broke:
 
@@ -101,6 +101,8 @@ On a phone (390px), where the 2023 screens broke:
 | Notes could be created and deleted, not edited. | A list and an editor, with "unsaved changes" and Ctrl/Cmd+S. | Notes are meant to grow during the course. |
 | The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). | Accessible, faster, legally clean, and the audio always matches the text. |
 | Deadlines were compared with the current time, so "days left" changed during the day. | Deadlines are dates; "Due today", "3 days left" and "Overdue" use the browser's local date, tested in three time zones. | A deadline is a day, not an instant. |
+
+**Cohort tasks**, which the 2023 version didn't have: staff give a task to a whole cohort ("Sign the learning agreement"), students see it in their list as "From Marta Lopes · Program Manager" and can only tick it, and staff see "12 of 20 done" and who hasn't done it yet. One row per cohort task plus one row per completion, so editing the deadline reaches everyone and students who join later see it too.
 
 New, small ideas: a **Week 1 progress** bar on the student dashboard, **Copy email** on staff contacts, and a staff dashboard with students per cohort, who hasn't taken the tour yet and recent activity.
 

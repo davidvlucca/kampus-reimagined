@@ -28,7 +28,7 @@ Cada decisão tem: o que escolhi, porquê, o que ficou de fora, e 2 ou 3 pergunt
 
 **Perguntas.**
 - *"Porque não Express, que toda a gente conhece?"* — Express funcionava. Hono deu-me tipos de ponta a ponta e testes sem servidor a correr; para um projeto novo em TypeScript foi menos código para o mesmo resultado.
-- *"Como testas as rotas?"* — Com Vitest e `app.request()`: cada ficheiro de teste cria uma base PGlite em memória, aplica as migrações e o seed, e faz pedidos reais à app (62 testes).
+- *"Como testas as rotas?"* — Com Vitest e `app.request()`: cada ficheiro de teste cria uma base PGlite em memória, aplica as migrações e o seed, e faz pedidos reais à app (86 testes no servidor).
 
 ---
 
@@ -56,7 +56,7 @@ Cada decisão tem: o que escolhi, porquê, o que ficou de fora, e 2 ou 3 pergunt
 
 **Perguntas.**
 - *"O PGlite aguenta produção?"* — Não é para isso: é single-connection e vive no processo. Em produção o `DATABASE_URL` aponta para o Neon. O que interessa é que o SQL é o mesmo.
-- *"Como garantes que as migrações funcionam no Neon?"* — São geradas pelo drizzle-kit em SQL Postgres standard e aplicadas pelo migrador do Drizzle, que tem uma versão para cada driver. Ainda não corri contra um Neon real (está fora do âmbito desta versão).
+- *"Como garantes que as migrações funcionam no Neon?"* — São geradas pelo drizzle-kit em SQL Postgres standard e aplicadas pelo migrador do Drizzle, que tem uma versão para cada driver. As mesmas migrações correm no Neon de produção, aplicadas com `npm run db:migrate` e `DATABASE_URL` antes de cada publicação que as traz.
 - *"E o seed? Não apaga a produção por engano?"* — O seed recusa correr se houver `DATABASE_URL`, a não ser com `--allow-remote` (há um teste para isso).
 
 ---
@@ -221,4 +221,18 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 **CI.** `.github/workflows/ci.yml` corre em cada push e pull request: lint, tipos, Vitest e build num job, e os testes E2E noutro, em paralelo. Não precisa de segredos (tudo corre com PGlite). Se os E2E falharem, o relatório e os traces do Playwright ficam como artefacto durante 7 dias.
 
 **Pergunta.** *"Porque não testar no Safari, se fizeste QA no iPhone?"* — O WebKit do Playwright não é o Safari do iOS; o QA no simulador apanhou coisas (zoom nos campos, o campo de data) que nenhum browser de CI apanharia. Os E2E protegem os fluxos contra regressões; o QA em dispositivo continua a ser à mão.
+
+---
+
+## 18. Tarefas da turma: uma tabela própria, não cópias
+
+**O que é.** O staff dá uma tarefa a uma turma inteira (por exemplo "Sign the learning agreement"). Cada aluno vê-a na sua lista com "From Marta Lopes · Program Manager" e só a pode marcar como feita ou não; o staff vê "4 of 6 done" e, ao abrir "See who", quem ainda não a fez. Em 2023 o staff não tinha forma de chegar às tarefas dos alunos.
+
+**O modelo.** Duas tabelas: `assignments` (uma linha por tarefa da turma) e `assignment_completions` (uma linha por aluno que a marcou; desmarcar apaga a linha). A alternativa era copiar a tarefa para `tasks` de cada aluno. Com cópias, editar o prazo obrigava a atualizar N linhas, um aluno que entrasse depois na turma não a recebia, e o progresso dependia de as cópias estarem certas. Com uma fonte só, o prazo muda num sítio e quem entra na turma vê logo as tarefas dela.
+
+**O custo.** O `GET /api/tasks` junta duas origens (tarefas pessoais e da turma) e ordena-as em JS. O aluno usa a mesma rota `PATCH /api/tasks/:id` para as duas, e a API decide pelo id: na tarefa da turma só aceita `done`, e título, prazo ou apagar dão **403** com uma mensagem clara. A tarefa de outra turma dá **404**, como a de outro aluno (ver 7).
+
+**Casos de fronteira testados.** Um aluno que muda de turma deixa de ver as tarefas da antiga (as conclusões ficam guardadas e voltam se ele regressar). Se a pessoa do staff que a criou deixar de existir, a tarefa fica, "From staff". Os totais do staff contam só quem está hoje na turma. Apagar um aluno apaga as conclusões dele, mas não as tarefas da turma.
+
+**Pergunta.** *"Porque não deixar o aluno apagar a tarefa da turma da sua lista?"* — Porque o staff deixava de saber se ela foi feita ou ignorada. Se for preciso, o passo seguinte é um "Not relevant for me" que o staff também vê, não um apagar silencioso.
 
