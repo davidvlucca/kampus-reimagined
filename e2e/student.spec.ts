@@ -15,6 +15,13 @@ test("um clique no Welcome abre a demo de aluno e a visita, que se faz até ao f
   await expect(page.getByText("STOP 1/7")).toBeVisible();
   await expectAccessible(page);
 
+  // Perguntas ao guia: a tecla 1 faz a primeira e a resposta substitui a fala.
+  await page.keyboard.press("1");
+  await expect(page.getByRole("button", { name: "What time do classes start?" })).toHaveAttribute("aria-pressed", "true");
+  // Duas cópias visíveis: a fala e o texto para leitores de ecrã.
+  await expect(page.getByText(/Classes run from 9:00 to 18:00/).filter({ visible: true }).first()).toBeVisible();
+  await expectAccessible(page);
+
   // Teclado: → avança uma paragem.
   await page.keyboard.press("ArrowRight");
   await expect(page.getByText("STOP 2/7")).toBeVisible();
