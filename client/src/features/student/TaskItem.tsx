@@ -45,7 +45,7 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
         label={
           <span className="flex min-w-0 flex-col gap-1">
             <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-              <span className={cn("min-w-0 break-words", task.done ? "text-subtle line-through" : "text-text")}>{task.title}</span>
+              <span className={cn("clip-marks min-w-0 break-words", task.done ? "text-subtle line-through" : "text-text")}>{task.title}</span>
               {(task.done || task.dueDate) && (
                 <span className="flex flex-wrap items-center gap-2">
                   <DeadlineBadge task={task} />

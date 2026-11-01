@@ -36,7 +36,7 @@ export function TasksPage() {
         </CardBody>
       </Card>
 
-      <div role="group" aria-label="Filter tasks" className="mb-4 inline-flex rounded-xl border border-line bg-card p-1 shadow-card">
+      <div role="group" aria-label="Filter tasks" className="mb-4 inline-flex max-w-full flex-wrap rounded-xl border border-line bg-card p-1 shadow-card">
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -45,7 +45,10 @@ export function TasksPage() {
             onClick={() => setFilter(f.value)}
             className={cn(
               "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition",
-              filter === f.value ? "bg-kampus-blue text-white" : "text-kampus-navy hover:bg-kampus-blue-soft",
+              filter === f.value
+                ? // Alto contraste: o filtro ativo com as cores de seleção do sistema (o fundo azul desaparecia).
+                  "bg-kampus-blue text-white forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:forced-color-adjust-none"
+                : "text-kampus-navy hover:bg-kampus-blue-soft",
             )}
           >
             {f.label}

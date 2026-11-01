@@ -23,6 +23,8 @@ export function buttonClasses({ variant = "primary", size = "md", className }: {
   return cn(
     "inline-flex shrink-0 items-center justify-center font-semibold whitespace-nowrap transition select-none",
     "disabled:pointer-events-none disabled:opacity-55",
+    // Alto contraste (Windows): o fundo desaparece e, sem borda, o botão parecia texto solto.
+    "forced-colors:border forced-colors:border-[ButtonText] forced-colors:disabled:border-[GrayText]",
     variants[variant],
     sizes[size],
     className,

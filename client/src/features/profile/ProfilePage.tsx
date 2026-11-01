@@ -26,7 +26,7 @@ function ProfileSummary({ user }: { user: PublicUser }) {
       <div aria-hidden className="h-16 bg-kampus-gradient" />
       <CardBody className="-mt-12 flex flex-col items-center text-center">
         <Avatar firstName={user.firstName} lastName={user.lastName} size="xl" className="ring-4 ring-card" />
-        <h2 className="mt-3 text-xl font-semibold break-words">{fullName(user)}</h2>
+        <h2 className="clip-marks mt-3 max-w-full text-xl font-semibold break-words">{fullName(user)}</h2>
         <p className="mt-0.5 text-sm break-all text-muted">{user.email}</p>
         <Badge tone="sky" className="mt-3">
           {badge}
@@ -74,7 +74,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
       <CardHeader icon={<UserRound aria-hidden />} title="Your details" description="This is how staff see you." />
       <CardBody>
         <form noValidate onSubmit={submit} className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="First name"
               name="firstName"
@@ -94,7 +94,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
           </div>
           <div>
             <p className="text-sm font-medium text-kampus-navy">Email</p>
-            <p className="mt-1 text-[15px] break-all text-text">{user.email}</p>
+            <p className="mt-1 text-[0.9375rem] break-all text-text">{user.email}</p>
             {user.role === "student" && <p className="mt-1 text-xs text-subtle">Ask staff to change your email.</p>}
           </div>
           <div>
@@ -247,7 +247,7 @@ export function ProfilePage() {
   return (
     <>
       <PageHeader title="Your profile" description="Your details, password and session." />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="flex flex-col gap-6">
           <ProfileSummary user={user} />
           {user.role === "student" && <TourRow user={user} />}

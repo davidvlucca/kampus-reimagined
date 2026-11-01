@@ -12,10 +12,10 @@ export function ProgressBar({ value, max = 100, label, className, tone = "blue" 
       aria-valuemax={safeMax}
       aria-valuenow={Math.min(value, safeMax)}
       aria-valuetext={`${pct}%`}
-      className={cn("h-2.5 w-full overflow-hidden rounded-full", tone === "blue" ? "bg-kampus-blue-soft" : "bg-white/20", className)}
+      className={cn("h-2.5 w-full overflow-hidden rounded-full forced-colors:border forced-colors:border-[CanvasText]", tone === "blue" ? "bg-kampus-blue-soft" : "bg-white/20", className)}
     >
       <div
-        className={cn("h-full rounded-full transition-[width] duration-500", tone === "blue" ? "bg-kampus-gradient" : "bg-kampus-sky")}
+        className={cn("h-full rounded-full transition-[width] duration-500 forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none", tone === "blue" ? "bg-kampus-gradient" : "bg-kampus-sky")}
         style={{ width: `${pct}%` }}
       />
     </div>

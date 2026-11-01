@@ -2,6 +2,7 @@ import * as ToastPrimitive from "@radix-ui/react-toast";
 import { CheckCircle2, Info, X, XCircle } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn.ts";
+import { closeTopDialog } from "./dialogFocus.ts";
 import { ToastContext, type ToastFn, type ToastTone } from "./toastContext.ts";
 
 interface ToastItem {
@@ -38,15 +39,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             type={t.tone === "error" ? "foreground" : "background"}
             onOpenChange={(open) => !open && remove(t.id)}
+            // Com um dialog aberto, o Esc fecha o dialog (o toast fica até ao próximo Esc ou ao fim do tempo).
+            onEscapeKeyDown={(event) => closeTopDialog() && event.preventDefault()}
             className={cn(
               "flex items-start gap-3 rounded-2xl border border-line bg-card p-4 shadow-pop data-[state=open]:animate-fade-up",
               "data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[state=closed]:opacity-0 transition",
             )}
           >
             <span className="mt-0.5">{icons[t.tone]}</span>
+            {/* wrap-anywhere: um nome comprido sem espaços (ex.: "Student added") saía da caixa. */}
             <div className="min-w-0 flex-1">
-              <ToastPrimitive.Title className="text-sm font-semibold text-kampus-navy">{t.title}</ToastPrimitive.Title>
-              {t.description && <ToastPrimitive.Description className="mt-0.5 text-sm text-muted">{t.description}</ToastPrimitive.Description>}
+              <ToastPrimitive.Title className="text-sm font-semibold wrap-anywhere text-kampus-navy">{t.title}</ToastPrimitive.Title>
+              {t.description && <ToastPrimitive.Description className="mt-0.5 text-sm wrap-anywhere text-muted">{t.description}</ToastPrimitive.Description>}
             </div>
             <ToastPrimitive.Close aria-label="Dismiss" className="-m-1 grid size-8 place-items-center rounded-lg text-subtle hover:bg-surface hover:text-kampus-navy">
               <X aria-hidden className="size-4" />

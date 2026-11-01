@@ -26,6 +26,17 @@ export function fullName(person: { firstName: string; lastName: string }): strin
   return `${person.firstName} ${person.lastName}`;
 }
 
+// Por grafemas: `"🎓 Ana"[0]` é metade de um emoji (um carácter partido no avatar).
+const segmenter = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+
+/** O primeiro carácter visível (emoji com modificadores, letra com acento combinado...). */
+export function firstGrapheme(value: string): string {
+  const text = value.trim();
+  if (!text) return "";
+  if (segmenter) return segmenter.segment(text)[Symbol.iterator]().next().value?.segment ?? "";
+  return Array.from(text)[0] ?? "";
+}
+
 export function initials(firstName: string, lastName: string): string {
-  return `${firstName.trim()[0] ?? ""}${lastName.trim()[0] ?? ""}`.toUpperCase();
+  return `${firstGrapheme(firstName)}${firstGrapheme(lastName)}`.toUpperCase();
 }

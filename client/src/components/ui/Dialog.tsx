@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn.ts";
 import { useSubmitLock } from "../../lib/submitLock.ts";
 import { Button } from "./Button.tsx";
+import { useDialogEscape, useReturnFocus } from "./dialogFocus.ts";
 
 const overlay = "fixed inset-0 z-40 bg-kampus-ink/45 backdrop-blur-[2px] data-[state=open]:animate-fade-up";
 // No telemóvel abre como folha em baixo; a partir de 640px fica centrado.
@@ -26,16 +27,18 @@ export interface DialogProps {
 }
 
 export function Dialog({ open, onOpenChange, title, description, children, footer, className }: DialogProps) {
+  const returnFocus = useReturnFocus(open);
+  useDialogEscape(open, () => onOpenChange(false));
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={overlay} />
-        <DialogPrimitive.Content className={cn(panel, className)}>
+        <DialogPrimitive.Content className={cn(panel, className)} onCloseAutoFocus={returnFocus}>
           <div className="flex items-start justify-between gap-4 border-b border-line px-6 pt-5 pb-4">
-            <div>
-              <DialogPrimitive.Title className="font-display text-lg font-semibold text-kampus-navy">{title}</DialogPrimitive.Title>
+            <div className="min-w-0">
+              <DialogPrimitive.Title className="font-display text-lg font-semibold break-words text-kampus-navy">{title}</DialogPrimitive.Title>
               {description ? (
-                <DialogPrimitive.Description className="mt-1 text-sm text-muted">{description}</DialogPrimitive.Description>
+                <DialogPrimitive.Description className="clip-marks mt-1 text-sm break-words text-muted">{description}</DialogPrimitive.Description>
               ) : (
                 <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
               )}
@@ -73,6 +76,8 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
   // O `busy` só desativa o botão no re-render seguinte: um duplo clique apagava duas vezes
   // (e o segundo dava "not found" logo a seguir ao "deleted").
   const lock = useSubmitLock();
+  const returnFocus = useReturnFocus(open);
+  useDialogEscape(open, () => !busy && onOpenChange(false));
   const confirm = () =>
     lock(async () => {
       setBusy(true);
@@ -87,10 +92,10 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
     <AlertDialogPrimitive.Root open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <AlertDialogPrimitive.Portal>
         <AlertDialogPrimitive.Overlay className={overlay} />
-        <AlertDialogPrimitive.Content className={cn(panel, "sm:max-w-md")}>
+        <AlertDialogPrimitive.Content className={cn(panel, "sm:max-w-md")} onCloseAutoFocus={returnFocus}>
           <div className="px-6 pt-6 pb-2">
-            <AlertDialogPrimitive.Title className="font-display text-lg font-semibold text-kampus-navy">{title}</AlertDialogPrimitive.Title>
-            <AlertDialogPrimitive.Description className="mt-2 text-sm text-muted">{description}</AlertDialogPrimitive.Description>
+            <AlertDialogPrimitive.Title className="clip-marks font-display text-lg font-semibold break-words text-kampus-navy">{title}</AlertDialogPrimitive.Title>
+            <AlertDialogPrimitive.Description className="clip-marks mt-2 text-sm break-words text-muted">{description}</AlertDialogPrimitive.Description>
           </div>
           <div className="flex flex-col-reverse gap-2 px-6 pt-4 pb-6 sm:flex-row sm:justify-end">
             <AlertDialogPrimitive.Cancel asChild>

@@ -63,6 +63,15 @@
   background-image: linear-gradient(160deg, var(--color-kampus-blue) 0%, var(--color-kampus-indigo) 100%);
 }
 
+/*
+  Texto do utilizador com marcas combinadas empilhadas ("zalgo"): sem isto as marcas
+  saíam da linha e tapavam as linhas de cima e de baixo.
+*/
+@utility clip-marks {
+  overflow: hidden;
+  overflow: clip;
+}
+
 /* Foco visível em fundos escuros (sidebar, Welcome, visita). */
 @utility focus-on-dark {
   &:focus-visible {
@@ -80,6 +89,8 @@
     color: var(--color-text);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* Uma palavra mais comprida do que a linha (texto do utilizador) parte em vez de sair do ecrã. */
+    overflow-wrap: break-word;
   }
   h1,
   h2,

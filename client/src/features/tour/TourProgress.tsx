@@ -20,9 +20,11 @@ export function TourProgress({ index, onGo, className }: { index: number; onGo: 
                 aria-hidden
                 className={cn(
                   "block h-1.5 w-full rounded-full transition-colors group-hover:bg-white",
-                  i < index && "bg-kampus-sky",
-                  i === index && "h-2.5 bg-white ring-2 ring-kampus-sky",
-                  i > index && "bg-white/35",
+                  // Alto contraste: os fundos desapareciam (e as paragens com eles); cores do sistema.
+                  "forced-colors:forced-color-adjust-none",
+                  i < index && "bg-kampus-sky forced-colors:bg-[CanvasText]",
+                  i === index && "h-2.5 bg-white ring-2 ring-kampus-sky forced-colors:bg-[Highlight] forced-colors:ring-[Highlight]",
+                  i > index && "bg-white/35 forced-colors:bg-[GrayText]",
                 )}
               />
             </button>

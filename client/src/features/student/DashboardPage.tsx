@@ -21,7 +21,7 @@ export function DashboardPage() {
     <>
       <PageHeader title={`Hi ${user.firstName}!`} description={today} />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-6">
           <WeekProgress tourDone={tourDone} />
           <UpcomingTasks />
@@ -171,16 +171,16 @@ function RecentNotes() {
             className="py-6"
           />
         ) : (
-          <ul className="grid gap-3 md:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
             {notes.data.slice(0, 3).map((note) => (
               <li key={note.id}>
                 <Link
                   to={`/app/notes/${note.id}`}
                   className="flex h-full flex-col gap-1 rounded-xl border border-line bg-surface p-4 transition hover:border-kampus-blue/40 hover:bg-kampus-blue-soft"
                 >
-                  <span className="font-semibold break-words text-kampus-navy">{note.title}</span>
+                  <span className="clip-marks font-semibold break-words text-kampus-navy">{note.title}</span>
                   <span className="text-xs text-muted">{formatDate(note.updatedAt)}</span>
-                  {note.body.trim() && <span className="line-clamp-2 text-sm text-muted">{excerpt(note.body)}</span>}
+                  {note.body.trim() && <span className="line-clamp-2 text-sm break-words text-muted">{excerpt(note.body)}</span>}
                 </Link>
               </li>
             ))}

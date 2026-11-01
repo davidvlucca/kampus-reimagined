@@ -42,8 +42,11 @@ function Sidebar({ role }: { role: Role }) {
             end={end}
             className={({ isActive }) =>
               cn(
-                "focus-on-dark flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition",
-                isActive ? "bg-white text-kampus-navy shadow-sm" : "text-white/85 hover:bg-white/10 hover:text-white",
+                "focus-on-dark flex min-h-11 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-medium transition",
+                isActive
+                  ? // Alto contraste: os fundos desaparecem, por isso o ativo usa as cores de seleção do sistema.
+                    "bg-white text-kampus-navy shadow-sm forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:forced-color-adjust-none"
+                  : "text-white/85 hover:bg-white/10 hover:text-white",
               )
             }
           >
@@ -71,11 +74,13 @@ function MobileTopBar({ role }: { role: Role }) {
   const user = useCurrentUser();
   const signOut = useSignOut(role);
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
+    // Altura mínima e não fixa, com quebra de linha: com o texto a 200% os botões passam para
+    // baixo do logótipo em vez de saírem do ecrã.
+    <header className="sticky top-0 z-30 flex min-h-16 flex-wrap items-center justify-between gap-x-2 border-b border-line bg-surface/90 px-4 py-2 backdrop-blur lg:hidden">
       <Link to={HOME[role]} aria-label="Kampus, go to home">
         <Logo />
       </Link>
-      <div className="flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1">
         <IconButton label="Log out" icon={<LogOut />} onClick={signOut} />
         {role === "student" && (
           // Nome pelo texto (e não aria-label): as iniciais visíveis não fazem parte do nome (WCAG 2.5.3).
@@ -102,14 +107,19 @@ function BottomNav({ role }: { role: Role }) {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    "flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition",
+                    "flex min-h-16 flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition",
                     isActive ? "text-kampus-blue" : "text-subtle hover:text-kampus-navy",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <span className={cn("grid h-7 w-12 place-items-center rounded-full transition", isActive && "bg-kampus-blue-soft")}>
+                    <span
+                      className={cn(
+                        "grid h-7 w-12 place-items-center rounded-full transition",
+                        isActive && "bg-kampus-blue-soft forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:forced-color-adjust-none",
+                      )}
+                    >
                       <Icon aria-hidden className="size-5" />
                     </span>
                     {label}

@@ -57,7 +57,7 @@ export function NotesPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <section aria-label="All notes" className={cn(noteId && "max-lg:hidden")}>
           <NoteList selectedId={noteId} onCreate={newNote} creating={create.isPending} />
         </section>
@@ -113,9 +113,9 @@ function NoteList({ selectedId, onCreate, creating }: { selectedId?: string; onC
                 selected ? "border-kampus-blue bg-kampus-blue-soft" : "border-line bg-card shadow-card hover:border-kampus-blue/40",
               )}
             >
-              <span className="font-semibold break-words text-kampus-navy">{note.title}</span>
+              <span className="clip-marks font-semibold break-words text-kampus-navy">{note.title}</span>
               <span className="text-xs text-muted">Edited {formatDate(note.updatedAt)}</span>
-              {note.body.trim() && <span className="line-clamp-2 text-sm text-muted">{excerpt(note.body)}</span>}
+              {note.body.trim() && <span className="line-clamp-2 text-sm break-words text-muted">{excerpt(note.body)}</span>}
             </Link>
           </li>
         );
