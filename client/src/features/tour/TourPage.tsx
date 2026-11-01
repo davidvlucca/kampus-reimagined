@@ -341,8 +341,9 @@ export function TourPage() {
     >
       <h1 className="sr-only">Virtual tour of {CAMPUS_NAME}</h1>
 
-      {/* Topo: logótipo, contador, progresso, saltar e sair */}
-      <header ref={headerRef} className="relative z-20 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
+      {/* Topo: logótipo, contador, progresso, saltar e sair. No portátil fica por cima do 3D: as partes
+          vazias (e o degradê) deixam passar o clique para as salas que estão por baixo. */}
+      <header ref={headerRef} className="pointer-events-none relative z-20 flex *:pointer-events-auto flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
         <span className="lg:hidden">
           <Logo onDark showName={false} />
         </span>
@@ -450,6 +451,8 @@ export function TourPage() {
           "relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 short:absolute short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8",
           // No 3D deitado o diálogo fica à direita e a sala à esquerda (por baixo dele não se via nada).
           is3D ? "short:right-0 short:w-[58%]" : "short:inset-x-0",
+          // À volta dos cartões (e por cima do guia, que é só imagem) o clique chega às salas do 3D.
+          is3D && "pointer-events-none",
         )}
       >
         <div className="relative mx-auto w-full max-w-6xl">
@@ -457,7 +460,7 @@ export function TourPage() {
             <section
               ref={cardRef}
               aria-labelledby={mapTitleId}
-              className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:mx-auto lg:max-w-xl lg:backdrop-blur"
+              className="pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:mx-auto lg:max-w-xl lg:backdrop-blur"
             >
               <h2 id={mapTitleId} ref={mapHeadingRef} tabIndex={-1} className="font-display text-lg font-semibold text-white outline-none short:text-base">
                 Campus map
@@ -480,7 +483,7 @@ export function TourPage() {
             ref={cardRef}
             tabIndex={-1}
             aria-label="Guide"
-            className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
+            className="pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
           >
             <div className="flex items-center gap-3">
               <GuidePortrait

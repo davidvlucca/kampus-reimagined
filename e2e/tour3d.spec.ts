@@ -161,3 +161,38 @@ test.describe("com reduced motion", () => {
     await expect(page.locator("canvas")).toBeVisible();
   });
 });
+
+test.describe("num portátil (ecrã largo e baixo)", () => {
+  test.use({ viewport: { width: 1512, height: 760 } });
+
+  test("numa sala de baixo, as salas de cima (debaixo do topo) recebem o clique", async ({ page }) => {
+    await openTour3D(page);
+    await page.getByRole("button", { name: "Go to stop 6: Lounge" }).click();
+    await expect(page.getByText("STOP 6/7")).toBeVisible();
+    // Espera o voo da câmara acabar (as etiquetas seguem a câmara, mesmo escondidas).
+    const label = page.locator("[data-lit-room] span", { hasText: "Web Dev" });
+    let last = "";
+    await expect(async () => {
+      const prev = last;
+      last = JSON.stringify(await label.boundingBox());
+      expect(last).toBe(prev);
+    }).toPass({ intervals: [400], timeout: 10_000 });
+    // A Web Dev fica na faixa de cima, por baixo do topo. Procura, descendo, o primeiro ponto onde o
+    // rato a "apanha" (o cursor vira mãozinha): tem de haver um, e o clique tem de chegar ao canvas.
+    const box = (await label.boundingBox())!;
+    const x = box.x + box.width / 2;
+    let y = 0;
+    for (let cand = 4; cand < 300 && !y; cand += 6) {
+      await page.mouse.move(x, cand);
+      const hit = await page.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.tagName === "CANVAS" && document.body.style.cursor === "pointer",
+        { x, y: cand },
+      );
+      if (hit) y = cand;
+    }
+    expect(y).toBeGreaterThan(0);
+    await page.mouse.click(x, y);
+    await expect(page.getByText("STOP 2/7")).toBeVisible();
+    await expect(root(page)).toHaveAttribute("data-tour-view", "room");
+  });
+});
