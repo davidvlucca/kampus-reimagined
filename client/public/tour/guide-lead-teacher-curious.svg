@@ -25,7 +25,7 @@
   <ellipse cx="246" cy="278" rx="8" ry="9" fill="#6E2A27"/>
   <!-- sobrancelhas -->
   <path d="M186 178 Q204 168 222 176" stroke="#5A3826" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <path transform="translate(0 -12) rotate(-8 276 182)" d="M258 176 Q276 168 294 178" stroke="#5A3826" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path transform="translate(0 -18) rotate(-14 276 182)" d="M258 176 Q276 168 294 178" stroke="#5A3826" stroke-width="7" fill="none" stroke-linecap="round"/>
   <!-- óculos -->
   <g fill="none" stroke="#001C55" stroke-width="6">
     <circle cx="204" cy="208" r="26"/>

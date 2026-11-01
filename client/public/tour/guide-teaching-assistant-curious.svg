@@ -30,7 +30,7 @@
   </g>
   <!-- sobrancelhas -->
   <path d="M188 186 Q204 178 220 186" stroke="#2B1D16" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <path transform="translate(0 -12) rotate(-8 276 182)" d="M260 186 Q276 178 292 186" stroke="#2B1D16" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path transform="translate(0 -18) rotate(-14 276 182)" d="M260 186 Q276 178 292 186" stroke="#2B1D16" stroke-width="6" fill="none" stroke-linecap="round"/>
   <!-- olhos -->
   <ellipse cx="206" cy="214" rx="8" ry="10" fill="#1E1B2E"/>
   <ellipse cx="274" cy="214" rx="8" ry="10" fill="#1E1B2E"/>

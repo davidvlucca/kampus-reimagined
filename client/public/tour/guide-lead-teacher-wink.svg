@@ -37,7 +37,7 @@
   <circle cx="276" cy="208" r="26" fill="#A6E1FA" opacity="0.18"/>
   <!-- olhos -->
   <path d="M194 210 Q204 200 214 210" stroke="#1E293B" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <path d="M266 207 Q276 214 286 207" stroke="#1E293B" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M264 209 L288 209" stroke="#1E293B" stroke-width="7" fill="none" stroke-linecap="round"/>
   <!-- nariz -->
   <path d="M238 222 Q234 244 248 244" stroke="#C9967A" stroke-width="5" fill="none" stroke-linecap="round"/>
   <!-- bochechas -->

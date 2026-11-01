@@ -41,7 +41,7 @@ const FACES: Record<GuideId, Face> = {
     mouthY: 278,
     mouthColor: "#6E2A27",
     rightEye: /<path d="M266 210 Q276 200 286 210"[^>]*\/>/,
-    closedEye: `<path d="M266 207 Q276 214 286 207" stroke="#1E293B" stroke-width="6" fill="none" stroke-linecap="round"/>`,
+    closedEye: `<path d="M264 209 L288 209" stroke="#1E293B" stroke-width="7" fill="none" stroke-linecap="round"/>`,
     rightBrow: /<path d="M258 176 Q276 168 294 178"[^>]*\/>/,
   },
   "teaching-assistant": {
@@ -86,7 +86,7 @@ function variant(base: string, face: Face, mood: Exclude<GuideFace, "smile">, id
     case "curious": {
       const brow = base.match(face.rightBrow)?.[0];
       if (!brow) throw new Error(`Not found: ${id} right brow`);
-      const raised = brow.replace("<path ", '<path transform="translate(0 -12) rotate(-8 276 182)" ');
+      const raised = brow.replace("<path ", '<path transform="translate(0 -18) rotate(-14 276 182)" ');
       const svg = replaceOnce(base, face.rightBrow, raised, `${id} right brow`);
       return replaceOnce(svg, face.mouth, `<ellipse cx="246" cy="${y}" rx="8" ry="9" fill="${c}"/>`, `${id} mouth`);
     }

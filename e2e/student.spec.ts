@@ -15,11 +15,12 @@ test("um clique no Welcome abre a demo de aluno e a visita, que se faz até ao f
   await expect(page.getByText("STOP 1/7")).toBeVisible();
   await expectAccessible(page);
 
-  // Perguntas ao guia: a tecla 1 faz a primeira e a resposta substitui a fala.
-  await page.keyboard.press("1");
+  // Perguntas ao guia: a resposta substitui a fala da paragem.
+  const guide = page.getByRole("region", { name: "Guide" });
+  await page.getByRole("button", { name: "What time do classes start?" }).click();
   await expect(page.getByRole("button", { name: "What time do classes start?" })).toHaveAttribute("aria-pressed", "true");
-  // Duas cópias visíveis: a fala e o texto para leitores de ecrã.
-  await expect(page.getByText(/Classes run from 9:00 to 18:00/).filter({ visible: true }).first()).toBeVisible();
+  await expect(guide.locator("p:not(.sr-only):not(.invisible)").filter({ hasText: "Classes run from 9:00 to 18:00" })).toBeVisible();
+  await expect(guide.locator("p:not(.sr-only):not(.invisible)").filter({ hasText: "Let's walk around together" })).toHaveCount(0);
   await expectAccessible(page);
 
   // Teclado: → avança uma paragem.
@@ -91,3 +92,22 @@ for (const [path, heading] of [
     await expectAccessible(page);
   });
 }
+
+test.describe("visita com animações", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("perguntar pelo teclado não perde o foco enquanto a resposta se escreve", async ({ page }) => {
+    await loginAs(page, "student");
+    await page.goto("/app/tour");
+    const question = page.getByRole("button", { name: "Where do I get my student card?" });
+    await expect(question).toBeVisible({ timeout: 15_000 });
+    await question.focus();
+    await page.keyboard.press("Enter");
+    await expect(question).toHaveAttribute("aria-pressed", "true");
+    // A meio da escrita da resposta o botão continua visível e com o foco.
+    await expect(question).toBeFocused();
+    await expect(question).toBeVisible();
+    await expect(page.getByText(/At reception, on your first morning/).filter({ visible: true }).first()).toBeVisible();
+    await expect(question).toBeFocused();
+  });
+});

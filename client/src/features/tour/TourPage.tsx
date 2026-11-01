@@ -1,4 +1,4 @@
-import { CAMPUS_NAME, GUIDES, TOUR_STOPS } from "@kampus/shared";
+import { CAMPUS_NAME, GUIDES, guideImage, TOUR_STOPS } from "@kampus/shared";
 import { Check, ChevronLeft, ChevronRight, Square, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router";
@@ -53,6 +53,9 @@ export function TourPage() {
 
   const { shown, done, finish } = useTypewriter(line, `${index}:${question ?? ""}`, reducedMotion);
   const mouthOpen = useMouthFlap(!done && !reducedMotion);
+  // As perguntas aparecem quando a fala da paragem acaba e ficam visíveis daí em diante
+  // (esconder o botão que tem o foco fazia o teclado perder o sítio).
+  const showQuestions = done || question !== null || stop.questions.some((q) => asked.has(q.id));
 
   // Nome do guia a partir dos contactos; enquanto carrega ou se falhar, só o cargo.
   const guideContact = contacts.data?.find((c) => c.title === guide.title);
@@ -125,27 +128,23 @@ export function TourPage() {
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
         goTo(index - 1);
-      } else if (event.key === "Enter" && !isInteractive(event.target)) {
+      } else if (event.key === "Enter" && !event.repeat && !isInteractive(event.target)) {
+        // Sem repetição: manter o Enter carregado saltava paragens.
         event.preventDefault();
         if (done) next();
         else finish();
-      } else if (/^[1-9]$/.test(event.key)) {
-        // 1, 2…: as perguntas ao guia, como as escolhas de um visual novel.
-        const q = stop.questions[Number(event.key) - 1];
-        if (!q) return;
-        event.preventDefault();
-        ask(q.id);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ask, done, exit, finish, goTo, index, next, stop.questions]);
+  }, [done, exit, finish, goTo, index, next]);
 
-  // Pré-carrega o cenário da paragem seguinte.
+  // Pré-carrega o cenário e as caras do guia da paragem seguinte.
   useEffect(() => {
     const upcoming = TOUR_STOPS[index + 1];
     if (!upcoming) return;
     preloadScene(upcoming.scene);
+    for (const face of ["smile", "wink", "curious", "talk"] as const) preloadScene(guideImage(upcoming.guide, face));
   }, [index]);
 
   function toggleAudio() {
@@ -239,18 +238,18 @@ export function TourPage() {
             <p aria-live="polite" className="sr-only">
               {answer ? `${guideLabel} answers: ${answer.answer}` : `Stop ${index + 1} of ${TOTAL}: ${stop.name}. ${stop.text}`}
             </p>
-            <p aria-hidden className={cn("mt-2 hidden text-xs text-white/75 lg:block", done && stop.questions.length === 0 && "invisible")}>
-              {done ? `Press ${stop.questions.map((_, i) => i + 1).join(" or ")} to ask, → for the next stop` : "Press Enter or click the text to show it all"}
+            <p aria-hidden className={cn("mt-2 hidden text-xs text-white/75 lg:block", done && "invisible")}>
+              Press Enter or click the text to show it all
             </p>
 
             {/* Perguntas ao guia: aparecem quando a fala acaba (o espaço fica reservado para nada saltar) */}
             {stop.questions.length > 0 && (
-              <div className={cn("mt-4 short:mt-2", !done && "invisible")}>
+              <div className={cn("mt-4 short:mt-2", !showQuestions && "invisible")}>
                 <p id={askId} className="text-xs font-semibold tracking-wide text-white/80 uppercase short:sr-only">
                   Ask {guideName}
                 </p>
                 <div role="group" aria-labelledby={askId} className="mt-2 flex flex-wrap gap-2 short:mt-0">
-                  {stop.questions.map((q, i) => (
+                  {stop.questions.map((q) => (
                     <button
                       key={q.id}
                       type="button"
@@ -261,9 +260,6 @@ export function TourPage() {
                         question === q.id ? "bg-white text-kampus-navy ring-white" : "bg-white/10 text-white ring-white/25 hover:bg-white/20",
                       )}
                     >
-                      <span aria-hidden className={cn("hidden font-pixel text-lg leading-none lg:inline", question === q.id ? "text-kampus-blue" : "text-kampus-sky")}>
-                        {i + 1}
-                      </span>
                       {q.label}
                       {asked.has(q.id) && question !== q.id && (
                         <>

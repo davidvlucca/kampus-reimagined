@@ -204,7 +204,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
               />
             </div>
 
-            <Button type="submit" size="lg" loading={login.isPending} className="mt-2 w-full">
+            <Button type="submit" size="lg" loading={login.isPending} disabled={demo.isPending} className="mt-2 w-full">
               Log in
             </Button>
           </form>
@@ -221,7 +221,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
               <dt className="text-subtle">Password</dt>
               <dd className="font-medium text-text">{DEMO_PASSWORD}</dd>
             </dl>
-            <Button variant="secondary" size="sm" className="mt-4" loading={demo.isPending} onClick={() => demo.start(portal, (user) => targetAfterLogin(user, portal, redirect?.from))}>
+            <Button variant="secondary" size="sm" className="mt-4" loading={demo.isPending} disabled={login.isPending} onClick={() => demo.start(portal, (user) => targetAfterLogin(user, portal, redirect?.from))}>
               Log in with demo account
             </Button>
           </aside>
