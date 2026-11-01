@@ -21,7 +21,18 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    { name: "desktop", testIgnore: /tour3d/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    { name: "mobile", testIgnore: /tour3d/, use: { ...devices["Pixel 7"] } },
+    {
+      // A visita 3D: WebGL no CPU com o SwiftShader (o CI não tem GPU), com animações.
+      name: "tour-3d",
+      testMatch: /tour3d/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        reducedMotion: "no-preference",
+        launchOptions: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] },
+      },
+    },
   ],
 });

@@ -127,9 +127,15 @@ export function TourPage() {
     [index, stopSpeech, view, markVisited],
   );
 
-  /** Se o foco está no cartão que vai desaparecer (diálogo ou painel do mapa), segue para o novo. */
+  /**
+   * Se o foco está no que vai desaparecer (o cartão do diálogo ou do mapa, ou o botão
+   * "Back to map" por cima do 3D), segue para o cartão novo.
+   */
   const keepFocus = useCallback(() => {
-    if (cardRef.current?.contains(document.activeElement)) focusAfterViewChange.current = true;
+    const active = document.activeElement;
+    if (cardRef.current?.contains(active) || (active instanceof HTMLElement && active.dataset.backToMap !== undefined)) {
+      focusAfterViewChange.current = true;
+    }
   }, []);
 
   /** 3D: entra na sala de uma paragem (a câmara voa até lá e o diálogo abre). */
@@ -384,6 +390,7 @@ export function TourPage() {
             size="sm"
             icon={<MapIcon aria-hidden className="size-4" />}
             onClick={backToMap}
+            data-back-to-map=""
             style={{ top: insets.top + 12 }}
             className="absolute left-4 z-10 shadow-pop lg:left-10"
           >
