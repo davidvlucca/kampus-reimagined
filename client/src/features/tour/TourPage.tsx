@@ -478,7 +478,7 @@ export function TourPage() {
       {/* Guia e caixa de diálogo */}
       <main
         className={cn(
-          "relative z-10 flex flex-none flex-col px-4 pt-4 short:absolute short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8",
+          "relative z-10 flex flex-none flex-col px-4 pt-4 short:absolute short:top-12 short:bottom-0 short:justify-end short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8",
           // No 3D deitado o diálogo fica à direita e a sala à esquerda (por baixo dele não se via nada).
           is3D ? "short:right-0 short:w-[58%]" : "short:inset-x-0",
           // À volta dos cartões (e por cima do guia, que é só imagem) o clique chega às salas do 3D.
@@ -488,12 +488,13 @@ export function TourPage() {
           "big:[zoom:1.25] huge:[zoom:1.5]",
         )}
       >
-        <div className="relative mx-auto w-full max-w-6xl">
+        {/* Deitado e com muito pouca altura (ou zoom a 400%), o cartão não passa para cima do topo: rola por dentro */}
+        <div className="relative mx-auto w-full max-w-6xl short:flex short:min-h-0 short:flex-col">
           {!inRoom ? (
             <section
               ref={cardRef}
               aria-labelledby={mapTitleId}
-              className="pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:mx-auto lg:max-w-xl lg:backdrop-blur"
+              className="pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:min-h-0 short:overflow-y-auto short:p-3.5 lg:mx-auto lg:max-w-xl lg:backdrop-blur"
             >
               <h2 id={mapTitleId} ref={mapHeadingRef} tabIndex={-1} className="font-display text-lg font-semibold text-white outline-none short:text-base">
                 Campus map
@@ -516,7 +517,7 @@ export function TourPage() {
             ref={cardRef}
             tabIndex={-1}
             aria-label="Guide"
-            className="pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
+            className="pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:min-h-0 short:overflow-y-auto short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
           >
             <div className="flex items-center gap-3">
               <GuidePortrait
