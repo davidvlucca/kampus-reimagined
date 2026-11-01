@@ -87,6 +87,10 @@ export function TourPage() {
   const mapHeadingRef = useRef<HTMLHeadingElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const focusAfterViewChange = useRef(false);
+  // Ao mudar de paragem, o botão com o foco pode desaparecer (as perguntas são outras) ou ficar
+  // desativado (o Back na primeira): o foco não pode cair no <body>.
+  const focusAfterStopChange = useRef(false);
+  const nextRef = useRef<HTMLButtonElement>(null);
 
   // `prev` fica por baixo enquanto o cenário novo aparece (fade).
   const [{ index, prev }, setScenes] = useState<{ index: number; prev: number | null }>({ index: 0, prev: null });
@@ -122,6 +126,7 @@ export function TourPage() {
     (next: number) => {
       const target = Math.max(0, Math.min(TOTAL - 1, next));
       if (target === index) return;
+      if (cardRef.current?.contains(document.activeElement)) focusAfterStopChange.current = true;
       stopSpeech();
       // Sai da ilustração: a câmara vai à vista geral e mergulha na sala nova.
       setArrived(null);
@@ -262,6 +267,14 @@ export function TourPage() {
     }, 1200);
     return () => window.clearTimeout(id);
   }, [is3D, mapReady, view, visited, index, keepFocus, markVisited]);
+
+  useEffect(() => {
+    if (!focusAfterStopChange.current) return;
+    focusAfterStopChange.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected && !(active as HTMLButtonElement).disabled) return;
+    (index === 0 ? nextRef.current : cardRef.current)?.focus({ preventScroll: true });
+  }, [index]);
 
   // Depois de mudar de vista, o foco passa para o cartão novo (se estava no que desapareceu).
   useEffect(() => {
@@ -605,6 +618,7 @@ export function TourPage() {
                 <span className="max-[359px]:sr-only">{speech.speaking ? "Stop audio" : "Play audio"}</span>
               </Button>
               <Button
+                ref={nextRef}
                 variant="light"
                 onClick={next}
                 loading={isLast && completeTour.isPending}

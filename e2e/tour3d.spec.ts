@@ -253,3 +253,38 @@ for (const viewport of [
     });
   });
 }
+
+test("o foco não cai no <body>: Back até à primeira paragem, ou uma pergunta quando a paragem muda", async ({ page }) => {
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await page.getByRole("button", { name: "Back", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("STOP 1/7")).toBeVisible();
+  // O Back ficou desativado: o foco passa para o Next.
+  await expect(page.getByRole("button", { name: "Next" })).toBeFocused();
+
+  // As perguntas aparecem quando a fala acaba (Enter mostra-a toda).
+  await page.getByRole("region", { name: "Guide" }).click();
+  const question = page.getByRole("group", { name: /Ask/ }).getByRole("button").first();
+  await question.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Guide" })).toBeFocused();
+});
+
+test("as etiquetas do mapa seguem a câmara depois de rodar o ecrã com ela parada", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Back to map" }).click();
+  const label = page.locator("[data-lit-room] span", { hasText: "Web Dev" });
+  const onScreen = async () => {
+    const box = await label.boundingBox();
+    const size = page.viewportSize()!;
+    return Boolean(box && box.x >= 0 && box.y >= 0 && box.x + box.width <= size.width && box.y + box.height <= size.height);
+  };
+  await expect.poll(onScreen, FLIGHT).toBe(true);
+  await page.waitForTimeout(2500);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect.poll(onScreen, FLIGHT).toBe(true);
+});

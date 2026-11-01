@@ -13,6 +13,9 @@ export type LabelRefs = RefObject<(HTMLSpanElement | null)[]>;
 
 export function LabelProjector({ labels }: { labels: LabelRefs }) {
   useFrame(({ camera, size }) => {
+    // A câmara pode ter mudado neste frame (ex.: ao redimensionar com ela parada) e o renderer só
+    // atualiza as matrizes depois: sem isto as etiquetas ficavam na posição antiga, fora do ecrã.
+    camera.updateMatrixWorld();
     anchors.forEach((anchor, i) => {
       const el = labels.current[i];
       if (!el) return;
