@@ -1,9 +1,10 @@
-import { createNoteSchema, updateNoteSchema, type Note } from "@kampus/shared";
+import { createNoteSchema, LIMITS, limitMessage, updateNoteSchema, type Note } from "@kampus/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { notes, type NoteRow } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
+import { atLimit } from "../lib/limits.ts";
 import { isUuid } from "../lib/users.ts";
 import { validate } from "../lib/validate.ts";
 
@@ -16,6 +17,7 @@ const toNote = (n: NoteRow): Note => ({
 });
 
 const NOT_FOUND = { error: "Note not found." };
+const TOO_MANY = { error: limitMessage(LIMITS.notesPerStudent, "notes") };
 
 export const noteRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("student"))
@@ -40,6 +42,7 @@ export const noteRoutes = new Hono<AppEnv>()
   })
   .post("/", validate("json", createNoteSchema), async (c) => {
     const { title, body } = c.req.valid("json");
+    if (await atLimit(c.var.db, notes, eq(notes.userId, c.var.user.id), LIMITS.notesPerStudent)) return c.json(TOO_MANY, 409);
     const [row] = await c.var.db.insert(notes).values({ userId: c.var.user.id, title, body }).returning();
     return c.json({ note: toNote(row!) }, 201);
   })

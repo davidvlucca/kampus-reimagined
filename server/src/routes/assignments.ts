@@ -1,6 +1,8 @@
 import {
   assignmentQuerySchema,
   createAssignmentSchema,
+  LIMITS,
+  limitMessage,
   updateAssignmentSchema,
   type Assignment,
   type AssignmentDetail,
@@ -12,6 +14,7 @@ import type { Db } from "../db/client.ts";
 import { assignmentCompletions, assignments, cohorts, users } from "../db/schema.ts";
 import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
+import { atLimit } from "../lib/limits.ts";
 import { iso, toCohort } from "../lib/serialize.ts";
 import { isUuid } from "../lib/users.ts";
 import { validate } from "../lib/validate.ts";
@@ -19,6 +22,7 @@ import { cohortExists } from "./staff.ts";
 
 // Mesma mensagem que o aluno recebe: para quem usa a app, é tudo "uma tarefa".
 const NOT_FOUND = { error: "Task not found." };
+const TOO_MANY = { error: limitMessage(LIMITS.assignments, "cohort tasks") };
 const UNKNOWN_COHORT = { error: "Please check the highlighted fields.", fields: { cohortId: "Choose a cohort" } };
 
 const isStudent = eq(users.role, "student");
@@ -117,6 +121,7 @@ export const assignmentRoutes = new Hono<AppEnv>()
   .post("/", validate("json", createAssignmentSchema), async (c) => {
     const input = c.req.valid("json");
     const db = c.var.db;
+    if (await atLimit(db, assignments, undefined, LIMITS.assignments)) return c.json(TOO_MANY, 409);
     if (!(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
     const [row] = await db
       .insert(assignments)
