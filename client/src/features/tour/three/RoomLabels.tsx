@@ -1,13 +1,11 @@
-import { TOUR_STOPS } from "@kampus/shared";
 import { useFrame } from "@react-three/fiber";
 import type { RefObject } from "react";
 import { Vector3 } from "three";
-import { ROOMS, stopOfRoom, WALL_H, type RoomId } from "./layout.ts";
+import { ROOMS, WALL_H, type RoomId } from "./layout.ts";
 
 // As etiquetas das salas são DOM normal por cima do canvas (texto nítido, sem fontes 3D).
 // Dentro do canvas, `LabelProjector` só calcula onde cada uma fica no ecrã a cada frame.
 
-const NAMES = ROOMS.map((r) => TOUR_STOPS[stopOfRoom(r.id)]?.name ?? r.id);
 const anchors = ROOMS.map((r) => new Vector3(r.x, WALL_H + 0.4, r.z + 1.1));
 const v = new Vector3();
 
@@ -44,7 +42,7 @@ export function RoomLabels({ labels, show, highlight }: { labels: LabelRefs; sho
             (highlight === room.id ? "bg-white text-kampus-navy" : "bg-kampus-navy/85 text-white")
           }
         >
-          {NAMES[i]}
+          {room.label}
         </span>
       ))}
     </div>

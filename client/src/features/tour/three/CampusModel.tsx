@@ -1,5 +1,5 @@
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Group } from "three";
 import { CORRIDOR_D, DOOR_W, PLAN, ROOM_D, ROOM_W, ROOMS, stopOfRoom, WALL_H, WALL_T, type Room, type RoomId } from "./layout.ts";
 import { BOX, COLORS, CYLINDER, mat, PLANE, SHADOW } from "./materials.ts";
@@ -106,27 +106,20 @@ function NextPin({ animate }: { animate: boolean }) {
 function RoomBlock({
   room,
   highlighted,
+  hover,
   animatePin,
   onSelect,
+  onHover,
   children,
 }: {
   room: Room;
   highlighted: boolean;
+  hover: boolean;
   animatePin: boolean;
   onSelect: (id: RoomId) => void;
+  onHover: (id: RoomId, inside: boolean) => void;
   children?: ReactNode;
 }) {
-  const [hover, setHover] = useState(false);
-  const invalidate = useThree((s) => s.invalidate);
-
-  useEffect(() => {
-    document.body.style.cursor = hover ? "pointer" : "";
-    invalidate();
-    return () => {
-      document.body.style.cursor = "";
-    };
-  }, [hover, invalidate]);
-
   const click = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     onSelect(room.id);
@@ -140,9 +133,9 @@ function RoomBlock({
       onClick={click}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHover(true);
+        onHover(room.id, true);
       }}
-      onPointerOut={() => setHover(false)}
+      onPointerOut={() => onHover(room.id, false)}
     >
       <Block p={[0, 0.04, 0]} s={[ROOM_W, 0.08, ROOM_D]} color={floor} />
       {highlighted && <Block p={[0, 0.005, 0]} s={[ROOM_W + 0.5, 0.01, ROOM_D + 0.5]} color={COLORS.sky} />}
@@ -164,6 +157,19 @@ export function CampusModel({
   furniture?: Partial<Record<RoomId, ReactNode>>;
 }) {
   const halfW = PLAN.width / 2;
+  // Um só estado de hover para a planta toda: com um por sala, passar direto de uma sala para
+  // outra corria as limpezas fora de ordem e o cursor ficava sem a mãozinha.
+  const [hovered, setHovered] = useState<RoomId | null>(null);
+  const invalidate = useThree((s) => s.invalidate);
+  // Ao sair, só limpa se ainda for esta a sala com hover (a seguinte pode já ter entrado).
+  const onHover = useCallback((id: RoomId, inside: boolean) => setHovered((cur) => (inside ? id : cur === id ? null : cur)), []);
+
+  useEffect(() => {
+    document.body.style.cursor = hovered ? "pointer" : "";
+    invalidate();
+  }, [hovered, invalidate]);
+  useEffect(() => () => void (document.body.style.cursor = ""), []);
+
   return (
     <group>
       {/* Base da maqueta e corredor */}
@@ -182,8 +188,10 @@ export function CampusModel({
             <RoomBlock
               room={room}
               highlighted={highlight === room.id}
+              hover={hovered === room.id}
               animatePin={animate}
               onSelect={() => onSelectStop(index)}
+              onHover={onHover}
             >
               {furniture?.[room.id]}
             </RoomBlock>

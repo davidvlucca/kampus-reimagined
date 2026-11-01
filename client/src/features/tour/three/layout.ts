@@ -17,6 +17,8 @@ export interface Room {
   /** Lado do corredor onde fica a porta interior. */
   corridorSide: "north" | "south";
   floor: string;
+  /** Etiqueta curta no mapa (as longas sobrepunham-se no telemóvel deitado). */
+  label: string;
 }
 
 export const ROOM_W = 6;
@@ -30,12 +32,12 @@ const COL = ROOM_W + WALL_T;
 const ROW = CORRIDOR_D / 2 + ROOM_D / 2;
 
 export const ROOMS: readonly Room[] = [
-  { id: "web-dev", x: -COL, z: -ROW, corridorSide: "south", floor: "#DCE8F5" },
-  { id: "ux-ui", x: 0, z: -ROW, corridorSide: "south", floor: "#E8F0FA" },
-  { id: "data", x: COL, z: -ROW, corridorSide: "south", floor: "#DCE8F5" },
-  { id: "entrance", x: -COL, z: ROW, corridorSide: "north", floor: "#F1F5FB" },
-  { id: "lounge", x: 0, z: ROW, corridorSide: "north", floor: "#E8F0FA" },
-  { id: "kitchen", x: COL, z: ROW, corridorSide: "north", floor: "#EEF3F9" },
+  { id: "web-dev", x: -COL, z: -ROW, corridorSide: "south", floor: "#DCE8F5", label: "Web Dev" },
+  { id: "ux-ui", x: 0, z: -ROW, corridorSide: "south", floor: "#E8F0FA", label: "UX/UI" },
+  { id: "data", x: COL, z: -ROW, corridorSide: "south", floor: "#DCE8F5", label: "Data" },
+  { id: "entrance", x: -COL, z: ROW, corridorSide: "north", floor: "#F1F5FB", label: "Entrance" },
+  { id: "lounge", x: 0, z: ROW, corridorSide: "north", floor: "#E8F0FA", label: "Lounge" },
+  { id: "kitchen", x: COL, z: ROW, corridorSide: "north", floor: "#EEF3F9", label: "Kitchen" },
 ];
 
 /** Caixa de toda a planta (salas e corredor), para enquadrar a vista geral. */
