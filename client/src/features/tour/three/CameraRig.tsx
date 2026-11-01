@@ -124,6 +124,11 @@ export function CameraRig({
       flight.current = null;
       applyPose(camera, goal, width, height);
       settled.current(room);
+    } else if (from === room && !flight.current) {
+      // Parada e com o mesmo destino (o ecrã mudou de tamanho): acerta já, sem voo, senão o
+      // primeiro frame saía esticado com a projeção antiga.
+      current.current = goal;
+      applyPose(camera, goal, width, height);
     } else if (from === room && flight.current) {
       // Mesmo destino com outra medida (o cartão do diálogo cresce enquanto a fala se escreve):
       // corrige o fim do voo sem o recomeçar nem saltar a passagem pelo mapa.

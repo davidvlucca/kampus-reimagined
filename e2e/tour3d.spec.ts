@@ -9,6 +9,8 @@ test.beforeEach(async ({ request }) => {
 });
 
 const root = (page: Page) => page.locator("[data-tour-mode]");
+// Os voos da câmara contam frames: no SwiftShader de um CI lento podem passar dos 5 s por omissão.
+const FLIGHT = { timeout: 20_000 };
 
 /** O axe mede as cores a meio de um fade (a ilustração a sair por cima das etiquetas): espera que acabem. */
 async function settled(page: Page) {
@@ -44,7 +46,7 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   // Dentro de uma sala acende a própria sala, não a seguinte.
   await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "ux-ui");
   // A câmara mergulha na sala e a ilustração do 2D aparece por cima: "entrou-se".
-  await expect(root(page)).toHaveAttribute("data-tour-interior", "ux-ui");
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "ux-ui", FLIGHT);
   await expect(page.getByRole("img", { name: TOUR_STOPS[2]!.sceneAlt })).toBeVisible();
   await settled(page);
   await expectAccessible(page);
@@ -53,7 +55,7 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   await expect(page.getByText("STOP 4/7")).toBeVisible();
   await expect(root(page)).toHaveAttribute("data-next-room", "kitchen");
 
-  await expect(root(page)).toHaveAttribute("data-tour-interior", "data");
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "data", FLIGHT);
 
   await page.getByRole("button", { name: "Back to map" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
@@ -176,9 +178,33 @@ test.describe("com reduced motion", () => {
   });
 });
 
+test("no mapa, clicar numa sala no 3D entra nela", async ({ page }) => {
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Back to map" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+  // Espera o voo para a vista geral acabar (as etiquetas seguem a câmara).
+  const label = page.locator("[data-lit-room] span", { hasText: "UX/UI" });
+  let last = "";
+  await expect(async () => {
+    const prev = last;
+    last = JSON.stringify(await label.boundingBox());
+    expect(last).toBe(prev);
+  }).toPass({ intervals: [400], timeout: 15_000 });
+  const box = (await label.boundingBox())!;
+  // A etiqueta não recebe cliques: o clique cai no chão da sala, que está por baixo dela.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => page.evaluate(() => document.body.style.cursor)).toBe("pointer");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.getByText("STOP 3/7")).toBeVisible();
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "ux-ui", FLIGHT);
+  // Dentro da sala, a ilustração tapa o 3D: o cursor da sala não fica preso.
+  await page.mouse.move(box.x + box.width / 2 + 5, box.y + box.height / 2 + 5);
+  await expect.poll(() => page.evaluate(() => document.body.style.cursor)).toBe("");
+});
+
 test("o Next numa sala sai para o mapa e volta a entrar na seguinte; dentro, a ilustração tapa o 3D", async ({ page }) => {
   await openTour3D(page);
-  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance");
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
   // Dentro da sala o clique cai na ilustração, não nas salas do 3D.
   const center = await page.evaluate(() => document.elementFromPoint(innerWidth / 2, innerHeight * 0.3)?.tagName);
   expect(center).toBe("IMG");
@@ -194,9 +220,36 @@ test("o Next numa sala sai para o mapa e volta a entrar na seguinte; dentro, a i
   });
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("STOP 2/7")).toBeVisible();
-  await expect(root(page)).toHaveAttribute("data-tour-interior", "web-dev");
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "web-dev", FLIGHT);
   const log = await page.evaluate(() => (window as unknown as { interiorLog: [string, number][] }).interiorLog);
   expect(log.map(([room]) => room)).toEqual(["", "web-dev"]);
   // Sobe ao mapa (0,9 s) e mergulha (1,2 s): não é uma troca direta.
   expect(log[1]![1] - log[0]![1]).toBeGreaterThan(1500);
 });
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 320, height: 568 },
+  { width: 844, height: 390 },
+]) {
+  test.describe(`no telemóvel, ${viewport.width}×${viewport.height}`, () => {
+    test.use({ viewport });
+
+    test("entra, segue e volta ao mapa sem scroll lateral, com os botões dentro do ecrã", async ({ page }) => {
+      await openTour3D(page);
+      await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
+      const inView = async (name: string | RegExp) => {
+        const box = (await page.getByRole("button", { name }).boundingBox())!;
+        expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+        expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+      };
+      await inView("Next");
+      await page.getByRole("button", { name: "Next" }).click();
+      await expect(root(page)).toHaveAttribute("data-tour-interior", "web-dev", FLIGHT);
+      await page.getByRole("button", { name: "Back to map" }).click();
+      await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+      await inView(/Continue to/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    });
+  });
+}
