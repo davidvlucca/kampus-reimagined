@@ -199,6 +199,7 @@ function OpenAssignments() {
         action={
           <Link to="/staff/assignments" className={linkClass + " mt-2 shrink-0"}>
             See all
+            <span className="sr-only"> cohort tasks</span>
           </Link>
         }
       />
@@ -210,7 +211,13 @@ function OpenAssignments() {
         ) : open.length === 0 ? (
           <EmptyState
             icon={<ClipboardList aria-hidden />}
-            title={assignments.data.length === 0 ? "No cohort tasks yet" : "Every cohort task is done"}
+            title={
+              assignments.data.length === 0
+                ? "No cohort tasks yet"
+                : assignments.data.every((a) => a.students > 0)
+                  ? "Every cohort task is done"
+                  : "No open cohort tasks"
+            }
             description={assignments.data.length === 0 ? "Give a whole cohort a task and track who has done it." : undefined}
             action={
               <Link to="/staff/assignments?new=1" className={buttonClasses({ variant: "secondary", size: "sm" })}>

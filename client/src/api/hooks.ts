@@ -289,6 +289,8 @@ export function useAssignments(cohortId?: string) {
     queryFn: async () =>
       (await api<{ assignments: Assignment[] }>(`/staff/assignments${id ? `?cohortId=${encodeURIComponent(id)}` : ""}`)).assignments,
     placeholderData: (previous) => previous,
+    // O progresso muda quando os alunos marcam tarefas: volta a pedir ao regressar à janela.
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -298,6 +300,7 @@ export function useAssignment(id: string, enabled = true) {
     queryKey: keys.assignment(id),
     queryFn: async () => (await api<{ assignment: AssignmentDetail }>(`/staff/assignments/${id}`)).assignment,
     enabled: enabled && Boolean(id),
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -42,3 +42,16 @@ test("/staff/profile passa no axe", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Your profile" })).toBeVisible();
   await expectAccessible(page);
 });
+
+test("o login demo volta à página privada que a pessoa abriu", async ({ page }) => {
+  await page.goto("/staff/students");
+  await expect(page).toHaveURL(/\/login\/staff$/);
+  await page.getByRole("button", { name: "Log in with demo account" }).click();
+  await expect(page).toHaveURL(/\/staff\/students$/);
+});
+
+test("com sessão, a página de login segue para a área da pessoa", async ({ page }) => {
+  await loginAs(page, "staff");
+  await page.goto("/login/staff");
+  await expect(page).toHaveURL(/\/staff$/);
+});

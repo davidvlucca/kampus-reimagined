@@ -215,7 +215,9 @@ function AssignmentCard({
             icon={<ChevronDown aria-hidden className={cn("size-4 transition", showWho && "rotate-180")} />}
             onClick={() => setShowWho((v) => !v)}
           >
-            {showWho ? "Hide who" : "See who"}
+            {/* Rótulo fixo: o estado vem do aria-expanded; o título distingue os cartões. */}
+            See who
+            <span className="sr-only"> has done "{a.title}"</span>
           </Button>
           <div id={listId} hidden={!showWho}>
             {showWho && <StudentProgress assignment={a} />}
