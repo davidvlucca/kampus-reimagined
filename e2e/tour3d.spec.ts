@@ -1,3 +1,4 @@
+import { TOUR_STOPS } from "../shared/src/tour.ts";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible, loginAs, resetDemo } from "./helpers.ts";
 
@@ -8,6 +9,11 @@ test.beforeEach(async ({ request }) => {
 });
 
 const root = (page: Page) => page.locator("[data-tour-mode]");
+
+/** O axe mede as cores a meio de um fade (a ilustração a sair por cima das etiquetas): espera que acabem. */
+async function settled(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+}
 
 async function openTour3D(page: Page) {
   await loginAs(page, "student");
@@ -28,6 +34,7 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   await expect(root(page)).toHaveAttribute("data-next-room", "web-dev");
   // No mapa acende a sala seguinte.
   await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "web-dev");
+  await settled(page);
   await expectAccessible(page);
 
   await page.getByRole("button", { name: "Go to stop 3: UX/UI room" }).click();
@@ -36,14 +43,21 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   await expect(root(page)).toHaveAttribute("data-next-room", "data");
   // Dentro de uma sala acende a própria sala, não a seguinte.
   await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "ux-ui");
+  // A câmara mergulha na sala e a ilustração do 2D aparece por cima: "entrou-se".
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "ux-ui");
+  await expect(page.getByRole("img", { name: TOUR_STOPS[2]!.sceneAlt })).toBeVisible();
+  await settled(page);
   await expectAccessible(page);
 
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("STOP 4/7")).toBeVisible();
   await expect(root(page)).toHaveAttribute("data-next-room", "kitchen");
 
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "data");
+
   await page.getByRole("button", { name: "Back to map" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "");
   await expect(page.getByRole("button", { name: "Continue to Kitchen" })).toBeVisible();
 });
 
@@ -162,37 +176,27 @@ test.describe("com reduced motion", () => {
   });
 });
 
-test.describe("num portátil (ecrã largo e baixo)", () => {
-  test.use({ viewport: { width: 1512, height: 760 } });
+test("o Next numa sala sai para o mapa e volta a entrar na seguinte; dentro, a ilustração tapa o 3D", async ({ page }) => {
+  await openTour3D(page);
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance");
+  // Dentro da sala o clique cai na ilustração, não nas salas do 3D.
+  const center = await page.evaluate(() => document.elementFromPoint(innerWidth / 2, innerHeight * 0.3)?.tagName);
+  expect(center).toBe("IMG");
 
-  test("numa sala de baixo, as salas de cima (debaixo do topo) recebem o clique", async ({ page }) => {
-    await openTour3D(page);
-    await page.getByRole("button", { name: "Go to stop 6: Lounge" }).click();
-    await expect(page.getByText("STOP 6/7")).toBeVisible();
-    // Espera o voo da câmara acabar (as etiquetas seguem a câmara, mesmo escondidas).
-    const label = page.locator("[data-lit-room] span", { hasText: "Web Dev" });
-    let last = "";
-    await expect(async () => {
-      const prev = last;
-      last = JSON.stringify(await label.boundingBox());
-      expect(last).toBe(prev);
-    }).toPass({ intervals: [400], timeout: 10_000 });
-    // A Web Dev fica na faixa de cima, por baixo do topo. Procura, descendo, o primeiro ponto onde o
-    // rato a "apanha" (o cursor vira mãozinha): tem de haver um, e o clique tem de chegar ao canvas.
-    const box = (await label.boundingBox())!;
-    const x = box.x + box.width / 2;
-    let y = 0;
-    for (let cand = 4; cand < 300 && !y; cand += 6) {
-      await page.mouse.move(x, cand);
-      const hit = await page.evaluate(
-        ({ x, y }) => document.elementFromPoint(x, y)?.tagName === "CANVAS" && document.body.style.cursor === "pointer",
-        { x, y: cand },
-      );
-      if (hit) y = cand;
-    }
-    expect(y).toBeGreaterThan(0);
-    await page.mouse.click(x, y);
-    await expect(page.getByText("STOP 2/7")).toBeVisible();
-    await expect(root(page)).toHaveAttribute("data-tour-view", "room");
+  // Regista as mudanças da sala "entrada", com o tempo de cada uma.
+  await page.evaluate(() => {
+    const el = document.querySelector("[data-tour-mode]")!;
+    const log: [string, number][] = [];
+    (window as unknown as { interiorLog: typeof log }).interiorLog = log;
+    new MutationObserver(() => log.push([el.getAttribute("data-tour-interior") ?? "", performance.now()])).observe(el, {
+      attributeFilter: ["data-tour-interior"],
+    });
   });
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "web-dev");
+  const log = await page.evaluate(() => (window as unknown as { interiorLog: [string, number][] }).interiorLog);
+  expect(log.map(([room]) => room)).toEqual(["", "web-dev"]);
+  // Sobe ao mapa (0,9 s) e mergulha (1,2 s): não é uma troca direta.
+  expect(log[1]![1] - log[0]![1]).toBeGreaterThan(1500);
 });

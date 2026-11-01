@@ -18,7 +18,7 @@ import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 import { useMouthFlap } from "./useMouthFlap.ts";
 import type { Insets } from "./three/CameraRig.tsx";
 import { Tour3DErrorBoundary } from "./three/ErrorBoundary.tsx";
-import { highlightRoom } from "./three/layout.ts";
+import { highlightRoom, roomOfStop, type RoomId } from "./three/layout.ts";
 import { canUseWebGL } from "./three/webgl.ts";
 
 // O three.js só é descarregado quando a planta 3D vai mesmo aparecer.
@@ -78,6 +78,8 @@ export function TourPage() {
   const [mapReady, setMapReady] = useState(false);
   const [visited, setVisited] = useState<ReadonlySet<number>>(() => new Set());
   const inRoom = !is3D || view === "room";
+  // A sala onde a câmara parou. Quando é a da paragem, a ilustração do 2D aparece por cima: "entrou-se".
+  const [arrived, setArrived] = useState<RoomId | null>(null);
   const [insets, setInsets] = useState<Insets>(NO_INSETS);
   const sceneRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -121,6 +123,8 @@ export function TourPage() {
       const target = Math.max(0, Math.min(TOTAL - 1, next));
       if (target === index) return;
       stopSpeech();
+      // Sai da ilustração: a câmara vai à vista geral e mergulha na sala nova.
+      setArrived(null);
       setQuestion(null);
       setScenes({ index: target, prev: index });
       if (view === "room") markVisited(target);
@@ -168,6 +172,7 @@ export function TourPage() {
   const backToMap = useCallback(() => {
     keepFocus();
     stopSpeech();
+    setArrived(null);
     setView("map");
   }, [keepFocus, stopSpeech]);
 
@@ -312,6 +317,7 @@ export function TourPage() {
     introDone.current = true;
     markVisited(index);
     setMapReady(false);
+    setArrived(null);
     setView("room");
   }
 
@@ -330,12 +336,19 @@ export function TourPage() {
   }
 
   const prevStop = prev !== null ? TOUR_STOPS[prev] : undefined;
+  // 3D: a ilustração da sala por cima do canvas, com fade a entrar e a sair. A última mostrada
+  // fica montada para o fade de saída (ao mudar de paragem, a nova só entra quando a câmara chega).
+  const interior = is3D && view === "room" && arrived !== null && arrived === roomOfStop(index);
+  const [lastInterior, setLastInterior] = useState<number | null>(null);
+  if (interior && lastInterior !== index) setLastInterior(index);
+  const interiorStop = lastInterior !== null ? TOUR_STOPS[lastInterior] : undefined;
   const darkButton = "focus-on-dark ring-1 ring-white/25 grow lg:grow-0";
 
   return (
     <div
       data-tour-mode={is3D ? "3d" : "2d"}
       data-tour-view={is3D ? view : undefined}
+      data-tour-interior={is3D ? (interior ? (arrived ?? "") : "") : undefined}
       data-next-room={is3D ? (highlightRoom(nextIndex) ?? "") : undefined}
       className="relative flex min-h-dvh flex-col overflow-x-hidden bg-kampus-ink text-white short:h-dvh short:overflow-hidden lg:h-dvh lg:overflow-hidden"
     >
@@ -403,12 +416,26 @@ export function TourPage() {
                 insets={insets}
                 instant={reducedMotion}
                 onSelectStop={selectFromMap}
+                onArrive={setArrived}
                 onLost={onLost}
                 onReady={onMapReady}
               />
             </Suspense>
           </Tour3DErrorBoundary>
         ) : null}
+        {is3D && (
+          // Dentro da sala: a ilustração tapa o 3D (e os cliques nele) até se sair para o mapa.
+          <div
+            aria-hidden={!interior}
+            className={cn(
+              "absolute inset-0 transition-opacity duration-500 ease-out motion-reduce:transition-none",
+              interior ? "opacity-100" : "pointer-events-none opacity-0",
+            )}
+          >
+            {interiorStop && <SceneImage key={lastInterior} scene={interiorStop.scene} alt={interiorStop.sceneAlt} />}
+            <div aria-hidden className="pointer-events-none absolute inset-0 hidden bg-linear-to-t from-kampus-ink/70 via-transparent to-transparent short:block lg:block" />
+          </div>
+        )}
         {is3D && inRoom && (
           // Por cima do 3D, como nas apps de mapas (fora do canvas, que é só decoração).
           <Button

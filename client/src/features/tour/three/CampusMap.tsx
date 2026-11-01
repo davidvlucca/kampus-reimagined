@@ -2,7 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { memo, useEffect, useRef } from "react";
 import { CameraRig, type Insets } from "./CameraRig.tsx";
 import { CampusModel } from "./CampusModel.tsx";
-import { highlightRoom, roomOfStop } from "./layout.ts";
+import { highlightRoom, roomOfStop, type RoomId } from "./layout.ts";
 import { COLORS, disposeShared } from "./materials.ts";
 import { LabelProjector, RoomLabels } from "./RoomLabels.tsx";
 import { FURNITURE } from "./rooms/index.tsx";
@@ -18,6 +18,8 @@ export interface CampusMapProps {
   /** Sem voos nem pulso (reduced motion com o 3D escolhido à mão). */
   instant: boolean;
   onSelectStop: (index: number) => void;
+  /** A câmara parou: dentro de uma sala (a ilustração dela pode aparecer) ou na vista geral (null). */
+  onArrive: (room: RoomId | null) => void;
   /** O contexto WebGL perdeu-se: a visita segue em 2D. */
   onLost: () => void;
   /** O primeiro frame já foi desenhado. */
@@ -29,7 +31,7 @@ export interface CampusMapProps {
  * se faz aqui também se faz com os botões das paragens. Carregada à parte (React.lazy),
  * para o three.js só ser descarregado quando o 3D vai mesmo ser usado.
  */
-function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLost, onReady }: CampusMapProps) {
+function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onArrive, onLost, onReady }: CampusMapProps) {
   const cameraRoom = view === "room" ? roomOfStop(index) : null;
   // No mapa acende a sala seguinte (é aí que se escolhe para onde ir). Dentro de uma sala acende
   // a própria sala, sem pino: acender a seguinte parecia que o clique tinha ido parar a outra sala.
@@ -76,7 +78,7 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLo
         <hemisphereLight args={["#FFFFFF", "#7FA6D6", 2.2]} />
         <directionalLight position={[6, 14, 8]} intensity={1.4} />
         <CampusModel highlight={highlight} focus={cameraRoom} pin={view === "map"} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
-        <CameraRig room={cameraRoom} insets={insets} instant={instant} />
+        <CameraRig room={cameraRoom} insets={insets} instant={instant} onSettled={onArrive} />
         <LabelProjector labels={labels} />
       </Canvas>
       <RoomLabels labels={labels} show={view === "map"} highlight={highlight} />
