@@ -31,6 +31,6 @@ describe("reposição diária da demo (Vercel Cron)", () => {
     const app = appWith(SECRET);
     const res = await app.request("/api/cron/reset-demo", { headers: { authorization: `Bearer ${SECRET}` } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ ok: true, staff: 5, students: 20, cohorts: 3 });
+    expect(await res.json()).toMatchObject({ ok: true, staff: 5, students: 20, cohorts: 3, assignments: 9 });
   });
 });

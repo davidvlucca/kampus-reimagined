@@ -76,7 +76,14 @@ function byListOrder(a: Task, b: Task): number {
     if (b.dueDate === null) return -1;
     return a.dueDate < b.dueDate ? -1 : 1;
   }
-  return b.createdAt.localeCompare(a.createdAt);
+  // O id só desempata, para a ordem ser sempre a mesma.
+  return b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id);
+}
+
+/** Violação de chave estrangeira do Postgres (o Drizzle embrulha o erro do driver em `cause`). */
+function isForeignKeyViolation(error: unknown): boolean {
+  const code = (e: unknown) => (typeof e === "object" && e !== null && "code" in e ? e.code : undefined);
+  return code(error) === "23503" || (typeof error === "object" && error !== null && "cause" in error && code(error.cause) === "23503");
 }
 
 // As tarefas pessoais filtram sempre por user_id = utilizador da sessão; as da turma, pela
@@ -126,14 +133,22 @@ export const taskRoutes = new Hono<AppEnv>()
     if (!cohortTask) return c.json(NOT_FOUND, 404);
     if (input.title !== undefined || input.dueDate !== undefined) return c.json(COHORT_TASK, 403);
     if (input.done === true) {
-      await db.insert(assignmentCompletions).values({ assignmentId: id, userId: user.id }).onConflictDoNothing();
+      try {
+        await db.insert(assignmentCompletions).values({ assignmentId: id, userId: user.id }).onConflictDoNothing();
+      } catch (error) {
+        // O staff apagou a tarefa entre a verificação e o insert.
+        if (isForeignKeyViolation(error)) return c.json(NOT_FOUND, 404);
+        throw error;
+      }
     } else if (input.done === false) {
       await db
         .delete(assignmentCompletions)
         .where(and(eq(assignmentCompletions.assignmentId, id), eq(assignmentCompletions.userId, user.id)));
     }
     const [updated] = await cohortTasks(db, user, { id });
-    return c.json({ task: updated! });
+    // Idem, mas depois do insert: a tarefa já não existe.
+    if (!updated) return c.json(NOT_FOUND, 404);
+    return c.json({ task: updated });
   })
   .delete("/:id", async (c) => {
     const id = c.req.param("id");

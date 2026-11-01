@@ -215,7 +215,7 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
   await db.insert(assignmentCompletions).values(completionValues);
   await db.insert(notes).values(noteValues);
 
-  return { staff: STAFF.length, students: studentRows.length, cohorts: cohortRows.length };
+  return { staff: STAFF.length, students: studentRows.length, cohorts: cohortRows.length, assignments: assignmentRows.length };
 }
 
 export async function resetDatabase(db: Db) {

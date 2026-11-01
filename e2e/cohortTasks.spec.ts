@@ -37,8 +37,11 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   await expect(student.getByText(/From Marta Lopes/).first()).toBeVisible();
   await expect(student.getByRole("button", { name: `Edit "${TITLE}"` })).toHaveCount(0);
   await expect(student.getByRole("button", { name: `Delete "${TITLE}"` })).toHaveCount(0);
+  // Espera pela resposta da API (a caixa muda logo, de forma otimista).
+  const saved = student.waitForResponse((r) => r.url().includes("/api/tasks/") && r.request().method() === "PATCH");
   await task.click();
   await expect(task).toBeChecked();
+  expect((await saved).ok()).toBe(true);
   await expectAccessible(student);
 
   // A API recusa editar a tarefa da turma.
@@ -50,14 +53,15 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   await staff.reload();
   const updated = staff.getByRole("article").or(staff.locator("li")).filter({ hasText: TITLE }).first();
   await expect(updated).toContainText("1 of 8 done");
-  await updated.getByRole("button", { name: "See who" }).click();
+  await updated.getByRole("button", { name: `See who has done "${TITLE}"` }).click();
   await expect(updated.getByRole("listitem").filter({ hasText: "Diana Costa" })).toContainText("Done");
   await expectAccessible(staff);
 
   // Apagar tira-a da lista do aluno.
   await staff.getByRole("button", { name: `Delete "${TITLE}"` }).click();
   await staff.getByRole("alertdialog").getByRole("button", { name: /delete/i }).click();
-  await expect(staff.getByText(TITLE)).toHaveCount(0);
+  // O título do cartão (não o toast, que também tem o título).
+  await expect(staff.getByRole("heading", { name: TITLE })).toHaveCount(0);
   await student.reload();
   await expect(student.getByRole("checkbox", { name: new RegExp(TITLE) })).toHaveCount(0);
 

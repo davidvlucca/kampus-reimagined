@@ -13,8 +13,10 @@ const app = createApp({
     ttlDays: Number(process.env.SESSION_TTL_DAYS ?? 7),
     secureCookies: process.env.NODE_ENV === "production",
   },
-  // Igual à Vercel: com CRON_SECRET, GET /api/cron/reset-demo repõe a demo (os testes E2E usam-no).
-  cronSecret: process.env.CRON_SECRET || undefined,
+  // Com CRON_SECRET, GET /api/cron/reset-demo repõe a demo (os testes E2E usam-no). Só com
+  // PGlite: um .env tirado da Vercel (DATABASE_URL de produção + CRON_SECRET) não pode pôr
+  // a API local a apagar a base de produção.
+  cronSecret: handle.kind === "pglite" ? process.env.CRON_SECRET || undefined : undefined,
 });
 
 // API_PORT ganha a PORT: em dev, ferramentas que arrancam o Vite também definem PORT.
