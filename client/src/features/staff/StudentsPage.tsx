@@ -195,7 +195,8 @@ export function StudentsPage() {
         title={deleting ? `Delete ${fullName(deleting)}?` : "Delete student?"}
         description={
           deleting
-            ? `This deletes their account, ${plural(deleting.taskCount, "task")} and ${plural(deleting.noteCount, "note")}. This can't be undone.`
+            ? // As tarefas da turma ficam (são da turma); só saem as do próprio aluno.
+              `This deletes their account, their own tasks and ${plural(deleting.noteCount, "note")}. This can't be undone.`
             : ""
         }
         confirmLabel="Delete student"

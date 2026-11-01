@@ -1,22 +1,30 @@
-import type { Task } from "@kampus/shared";
+import type { StaffRef, Task } from "@kampus/shared";
 import { CalendarX, Pencil, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors } from "../../api/client.ts";
 import { useDeleteTask, useUpdateTask } from "../../api/hooks.ts";
 import { Button, Checkbox, ConfirmDialog, Dialog, IconButton, Input, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
-import { formatDate } from "../../lib/format.ts";
+import { formatDate, fullName } from "../../lib/format.ts";
 import { DeadlineBadge } from "./DeadlineBadge.tsx";
+
+/** "From Marta Lopes · Program Manager"; "From staff" se a pessoa já não existir. */
+function assignedByText(staff: StaffRef | null): string {
+  if (!staff) return "From staff";
+  return staff.title ? `From ${fullName(staff)} · ${staff.title}` : `From ${fullName(staff)}`;
+}
 
 /**
  * Uma tarefa. O estado da caixa vem de `task.done` (em 2023 vinha sempre "To do").
  * `actions` mostra editar e apagar (página de tarefas); sem elas fica compacta (dashboard).
+ * As tarefas da turma (`source: "cohort"`) mostram quem as deu e nunca têm editar nem apagar.
  */
 export function TaskItem({ task, actions = false }: { task: Task; actions?: boolean }) {
   const toast = useToast();
   const update = useUpdateTask();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const isCohort = task.source === "cohort";
 
   const toggle = (done: boolean) =>
     update.mutate(
@@ -34,18 +42,22 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
         onChange={(e) => toggle(e.target.checked)}
         className="min-w-0 flex-1"
         label={
-          <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-            <span className={cn("min-w-0 break-words", task.done ? "text-subtle line-through" : "text-text")}>{task.title}</span>
-            {(task.done || task.dueDate) && (
-              <span className="flex flex-wrap items-center gap-2">
-                <DeadlineBadge task={task} />
-                {task.dueDate && !task.done && <span className="text-xs text-subtle">{formatDate(task.dueDate, { short: true })}</span>}
-              </span>
-            )}
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <span className={cn("min-w-0 break-words", task.done ? "text-subtle line-through" : "text-text")}>{task.title}</span>
+              {(task.done || task.dueDate) && (
+                <span className="flex flex-wrap items-center gap-2">
+                  <DeadlineBadge task={task} />
+                  {task.dueDate && !task.done && <span className="text-xs text-subtle">{formatDate(task.dueDate, { short: true })}</span>}
+                </span>
+              )}
+            </span>
+            {isCohort && <span className="text-xs text-muted">{assignedByText(task.assignedBy)}</span>}
           </span>
         }
       />
-      {actions && (
+      {/* As tarefas da turma são do staff: o aluno só as marca como feitas. */}
+      {actions && !isCohort && (
         <div className="flex shrink-0 items-center">
           <IconButton label={`Edit "${task.title}"`} icon={<Pencil aria-hidden />} onClick={() => setEditing(true)} />
           <IconButton label={`Delete "${task.title}"`} variant="danger" icon={<Trash2 aria-hidden />} onClick={() => setDeleting(true)} />

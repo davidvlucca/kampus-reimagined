@@ -1,8 +1,11 @@
 // Todos os pedidos à API passam por estes hooks. Os ecrãs não chamam fetch diretamente.
 import type {
+  Assignment,
+  AssignmentDetail,
   ChangePasswordInput,
   Cohort,
   Contact,
+  CreateAssignmentInput,
   CreateNoteInput,
   CreateStudentInput,
   CreateTaskInput,
@@ -13,6 +16,7 @@ import type {
   StudentRow,
   Task,
   TaskFilter,
+  UpdateAssignmentInput,
   UpdateNoteInput,
   UpdateProfileInput,
   UpdateStudentInput,
@@ -32,6 +36,9 @@ export const keys = {
   overview: ["staff", "overview"] as const,
   students: ["staff", "students"] as const,
   studentsBy: (q: string, cohortId: string) => ["staff", "students", q, cohortId] as const,
+  assignments: ["staff", "assignments"] as const,
+  assignmentsBy: (cohortId: string) => ["staff", "assignments", "list", cohortId] as const,
+  assignment: (id: string) => ["staff", "assignments", "detail", id] as const,
 };
 
 // ---------- Sessão ----------
@@ -270,5 +277,57 @@ export function useDeleteStudent() {
   return useMutation({
     mutationFn: (id: string) => api<undefined>(`/staff/students/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["staff"] }),
+  });
+}
+
+// ---------- Staff: tarefas da turma ----------
+
+export function useAssignments(cohortId?: string) {
+  const id = cohortId ?? "";
+  return useQuery({
+    queryKey: keys.assignmentsBy(id),
+    queryFn: async () =>
+      (await api<{ assignments: Assignment[] }>(`/staff/assignments${id ? `?cohortId=${encodeURIComponent(id)}` : ""}`)).assignments,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Detalhe com o progresso por aluno; só pede quando `enabled` (ex.: ao abrir "See who"). */
+export function useAssignment(id: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.assignment(id),
+    queryFn: async () => (await api<{ assignment: AssignmentDetail }>(`/staff/assignments/${id}`)).assignment,
+    enabled: enabled && Boolean(id),
+  });
+}
+
+// Mudar tarefas da turma muda as contagens de tarefas dos alunos (lista e overview): invalida o staff todo.
+export function useCreateAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateAssignmentInput) =>
+      (await api<{ assignment: Assignment }>("/staff/assignments", { method: "POST", body: input })).assignment,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff"] }),
+  });
+}
+
+export function useUpdateAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: UpdateAssignmentInput & { id: string }) =>
+      (await api<{ assignment: Assignment }>(`/staff/assignments/${id}`, { method: "PATCH", body: input })).assignment,
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.assignments }),
+  });
+}
+
+export function useDeleteAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<undefined>(`/staff/assignments/${id}`, { method: "DELETE" }),
+    // Tira o detalhe da cache antes de invalidar, para não voltar a pedir uma tarefa apagada (404).
+    onSuccess: (_data, id) => {
+      qc.removeQueries({ queryKey: keys.assignment(id) });
+      return qc.invalidateQueries({ queryKey: ["staff"] });
+    },
   });
 }

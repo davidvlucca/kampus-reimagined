@@ -15,6 +15,7 @@ import { TasksPage } from "./features/student/TasksPage.tsx";
 const lazyTour = async () => ({ Component: (await import("./features/tour/TourPage.tsx")).TourPage });
 const lazyStaffDashboard = async () => ({ Component: (await import("./features/staff/StaffDashboardPage.tsx")).StaffDashboardPage });
 const lazyStudents = async () => ({ Component: (await import("./features/staff/StudentsPage.tsx")).StudentsPage });
+const lazyAssignments = async () => ({ Component: (await import("./features/staff/AssignmentsPage.tsx")).AssignmentsPage });
 
 export const router = createBrowserRouter([
   // Público
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, lazy: lazyStaffDashboard },
           { path: "students", lazy: lazyStudents },
+          { path: "assignments", lazy: lazyAssignments },
           { path: "profile", element: <ProfilePage /> },
         ],
       },

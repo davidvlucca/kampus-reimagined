@@ -16,10 +16,11 @@ const KNOWN = [
   "/app/profile",
   "/staff",
   "/staff/students",
+  "/staff/assignments",
   "/staff/profile",
 ];
 
-const UNKNOWN = ["/nope", "/app/nope", "/login", "/login/admin", "/staff/students/123", "/app/notes/1/extra", "/wp-admin"];
+const UNKNOWN = ["/nope", "/app/nope", "/login", "/login/admin", "/staff/students/123", "/staff/assignments/123", "/app/notes/1/extra", "/wp-admin"];
 
 describe("rotas da Vercel", () => {
   it.each(KNOWN)("%s é uma rota da app (200)", (path) => expect(isKnownSpaPath(path)).toBe(true));

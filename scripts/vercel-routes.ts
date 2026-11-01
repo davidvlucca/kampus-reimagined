@@ -19,7 +19,7 @@ export const SPA_ROUTES = [
   "^/login/(student|staff)/?$",
   "^/app(/(tasks|notes|tour|contacts|profile))?/?$",
   "^/app/notes/[^/]+/?$",
-  "^/staff(/(students|profile))?/?$",
+  "^/staff(/(students|assignments|profile))?/?$",
 ];
 
 export function isKnownSpaPath(path: string): boolean {

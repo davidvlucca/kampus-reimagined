@@ -1,5 +1,5 @@
 import type { Role } from "@kampus/shared";
-import { Contact, LayoutDashboard, Map, NotebookPen, SquareCheckBig, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ClipboardList, Contact, LayoutDashboard, Map, NotebookPen, SquareCheckBig, UserRound, Users, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   to: string;
@@ -22,6 +22,7 @@ export const NAV: Record<Role, NavItem[]> = {
   staff: [
     { to: "/staff", label: "Dashboard", icon: LayoutDashboard, end: true },
     { to: "/staff/students", label: "Students", icon: Users },
+    { to: "/staff/assignments", label: "Cohort tasks", icon: ClipboardList },
     { to: "/staff/profile", label: "Profile", icon: UserRound },
   ],
 };

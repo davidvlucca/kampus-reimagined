@@ -1,9 +1,9 @@
-import type { ActivityItem, ActivityKind, StaffOverview } from "@kampus/shared";
-import { GraduationCap, LogIn, Map as MapIcon, MapPinned, Sparkles, UserPlus, Users } from "lucide-react";
+import type { ActivityItem, ActivityKind, Assignment, StaffOverview } from "@kampus/shared";
+import { ClipboardList, GraduationCap, LogIn, Map as MapIcon, MapPinned, Sparkles, UserPlus, Users } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client.ts";
-import { useCurrentUser, useStaffOverview } from "../../api/hooks.ts";
+import { useAssignments, useCurrentUser, useStaffOverview } from "../../api/hooks.ts";
 import {
   Avatar,
   Badge,
@@ -17,10 +17,14 @@ import {
   PageHeader,
   ProgressBar,
   Skeleton,
+  SkeletonList,
 } from "../../components/ui/index.ts";
 import { fullName, timeAgo } from "../../lib/format.ts";
+import { AssignmentDeadline, AssignmentProgress } from "./AssignmentProgress.tsx";
 
 const PENDING_PREVIEW = 6;
+const ASSIGNMENTS_PREVIEW = 3;
+const linkClass = "inline-flex items-center gap-1 text-sm font-semibold text-kampus-blue hover:underline";
 
 export function StaffDashboardPage() {
   const user = useCurrentUser();
@@ -113,6 +117,8 @@ function Overview({ data }: { data: StaffOverview }) {
         )}
       </section>
 
+      <OpenAssignments />
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <PendingTour pending={data.pendingTour} />
         <RecentActivity items={data.recentActivity} />
@@ -161,6 +167,73 @@ function PendingTour({ pending }: { pending: StaffOverview["pendingTour"] }) {
               </Button>
             )}
           </>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+/** Em aberto = ainda há alunos por a fazer. Os prazos mais próximos primeiro; sem prazo no fim. */
+function nextOpen(assignments: Assignment[]): Assignment[] {
+  return assignments
+    .filter((a) => a.done < a.students)
+    .sort((a, b) => {
+      if (a.dueDate === b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate < b.dueDate ? -1 : 1;
+    })
+    .slice(0, ASSIGNMENTS_PREVIEW);
+}
+
+function OpenAssignments() {
+  const assignments = useAssignments();
+  const open = assignments.data ? nextOpen(assignments.data) : [];
+
+  return (
+    <Card>
+      <CardHeader
+        icon={<ClipboardList aria-hidden />}
+        title="Cohort tasks"
+        description="Open tasks with the nearest due date."
+        action={
+          <Link to="/staff/assignments" className={linkClass + " mt-2 shrink-0"}>
+            See all
+          </Link>
+        }
+      />
+      <CardBody>
+        {assignments.isPending ? (
+          <SkeletonList rows={3} label="Loading cohort tasks" />
+        ) : assignments.isError ? (
+          <ErrorState message={errorMessage(assignments.error)} onRetry={() => assignments.refetch()} className="py-6" />
+        ) : open.length === 0 ? (
+          <EmptyState
+            icon={<ClipboardList aria-hidden />}
+            title={assignments.data.length === 0 ? "No cohort tasks yet" : "Every cohort task is done"}
+            description={assignments.data.length === 0 ? "Give a whole cohort a task and track who has done it." : undefined}
+            action={
+              <Link to="/staff/assignments?new=1" className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                New task
+              </Link>
+            }
+            className="py-6"
+          />
+        ) : (
+          <ul className="flex flex-col divide-y divide-line">
+            {open.map((a) => (
+              <li key={a.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:gap-6">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium break-words text-text">{a.title}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <Badge tone="sky">{a.cohort.name}</Badge>
+                    <AssignmentDeadline assignment={a} />
+                  </div>
+                </div>
+                <AssignmentProgress assignment={a} className="sm:w-56 sm:shrink-0" />
+              </li>
+            ))}
+          </ul>
         )}
       </CardBody>
     </Card>
