@@ -1,5 +1,5 @@
 import { CAMPUS_NAME, GUIDES, TOUR_STOPS } from "@kampus/shared";
-import { ChevronLeft, ChevronRight, Square, Volume2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Square, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router";
 import { errorMessage } from "../../api/client.ts";
@@ -7,6 +7,7 @@ import { useCompleteTour, useContacts, useCurrentUser, useSkipTour } from "../..
 import { Button, IconButton, Logo, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { fullName } from "../../lib/format.ts";
+import { GuidePortrait } from "./GuidePortrait.tsx";
 import { preloadScene } from "./scene.ts";
 import { SceneImage } from "./SceneImage.tsx";
 import { TourProgress } from "./TourProgress.tsx";
@@ -14,6 +15,7 @@ import { useReducedMotion } from "./useReducedMotion.ts";
 import { useSpeech } from "./useSpeech.ts";
 import { useTypewriter } from "./useTypewriter.ts";
 import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
+import { useMouthFlap } from "./useMouthFlap.ts";
 
 const TOTAL = TOUR_STOPS.length;
 
@@ -34,17 +36,28 @@ export function TourPage() {
   const reducedMotion = useReducedMotion();
   const speech = useSpeech();
   const audioHintId = useId();
+  const askId = useId();
 
   // `prev` fica por baixo enquanto o cenário novo aparece (fade).
   const [{ index, prev }, setScenes] = useState<{ index: number; prev: number | null }>({ index: 0, prev: null });
   const stop = TOUR_STOPS[index]!;
   const guide = GUIDES[stop.guide];
   const isLast = index === TOTAL - 1;
-  const { shown, done, finish } = useTypewriter(stop.text, index, reducedMotion);
+
+  // A pergunta feita nesta paragem (a fala passa a ser a resposta) e as já feitas na visita.
+  const [question, setQuestion] = useState<string | null>(null);
+  const [asked, setAsked] = useState<ReadonlySet<string>>(() => new Set());
+  const answer = question ? stop.questions.find((q) => q.id === question) : undefined;
+  const line = answer?.answer ?? stop.text;
+  const mood = answer?.mood ?? stop.mood;
+
+  const { shown, done, finish } = useTypewriter(line, `${index}:${question ?? ""}`, reducedMotion);
+  const mouthOpen = useMouthFlap(!done && !reducedMotion);
 
   // Nome do guia a partir dos contactos; enquanto carrega ou se falhar, só o cargo.
   const guideContact = contacts.data?.find((c) => c.title === guide.title);
   const guideLabel = guideContact ? `${fullName(guideContact)} · ${guide.title}` : guide.title;
+  const guideName = guideContact?.firstName ?? `the ${guide.title}`;
 
   const canSkip = !user.tourCompletedAt && !user.tourSkippedAt;
   const busy = completeTour.isPending || skipTour.isPending;
@@ -55,6 +68,7 @@ export function TourPage() {
       const target = Math.max(0, Math.min(TOTAL - 1, next));
       if (target === index) return;
       stopSpeech();
+      setQuestion(null);
       setScenes({ index: target, prev: index });
     },
     [index, stopSpeech],
@@ -83,6 +97,16 @@ export function TourPage() {
     });
   }
 
+  /** Faz uma pergunta; a mesma outra vez volta à fala da paragem. */
+  const ask = useCallback(
+    (id: string) => {
+      stopSpeech();
+      setQuestion((current) => (current === id ? null : id));
+      setAsked((prevAsked) => new Set(prevAsked).add(id));
+    },
+    [stopSpeech],
+  );
+
   const next = useCallback(() => (isLast ? complete() : goTo(index + 1)), [isLast, complete, goTo, index]);
 
   // Teclado: ← → mudam de paragem, Enter mostra o texto todo ou avança, Esc sai.
@@ -105,11 +129,17 @@ export function TourPage() {
         event.preventDefault();
         if (done) next();
         else finish();
+      } else if (/^[1-9]$/.test(event.key)) {
+        // 1, 2…: as perguntas ao guia, como as escolhas de um visual novel.
+        const q = stop.questions[Number(event.key) - 1];
+        if (!q) return;
+        event.preventDefault();
+        ask(q.id);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, exit, finish, goTo, index, next]);
+  }, [ask, done, exit, finish, goTo, index, next, stop.questions]);
 
   // Pré-carrega o cenário da paragem seguinte.
   useEffect(() => {
@@ -121,7 +151,7 @@ export function TourPage() {
   function toggleAudio() {
     if (!speech.supported) return;
     if (speech.speaking) speech.stop();
-    else speech.speak(stop.text);
+    else speech.speak(line);
   }
 
   const prevStop = prev !== null ? TOUR_STOPS[prev] : undefined;
@@ -173,42 +203,79 @@ export function TourPage() {
       {/* Guia e caixa de diálogo */}
       <main className="relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 short:absolute short:inset-x-0 short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8">
         <div className="relative mx-auto w-full max-w-6xl">
-          <img
-            src={guide.image}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute -bottom-8 left-0 hidden h-[min(58dvh,520px)] w-auto lg:block"
+          <GuidePortrait
+            guide={stop.guide}
+            face={mouthOpen ? "talk" : mood}
+            className="absolute -bottom-8 left-0 hidden h-[min(58dvh,520px)] lg:grid"
+            imgClassName="h-full w-auto"
           />
           <section
             aria-label="Guide"
             className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
           >
             <div className="flex items-center gap-3">
-              <img
-                src={guide.image}
-                alt=""
-                aria-hidden
-                className="size-14 shrink-0 rounded-full bg-kampus-sky-soft object-cover object-top ring-2 ring-kampus-sky short:size-9 lg:hidden"
+              <GuidePortrait
+                guide={stop.guide}
+                face={mouthOpen ? "talk" : mood}
+                className="size-14 shrink-0 overflow-hidden rounded-full bg-kampus-sky-soft ring-2 ring-kampus-sky short:size-9 lg:hidden"
+                imgClassName="size-full object-cover object-top"
               />
               <p className="rounded-lg bg-kampus-sky px-3 py-1 text-sm font-semibold text-kampus-ink">{guideLabel}</p>
             </div>
 
             {/* Clicar no texto mostra-o todo (no teclado: Enter) */}
             <div onClick={finish} className={cn("mt-4 grid text-base leading-relaxed short:mt-2 short:text-sm lg:text-lg", !done && "cursor-pointer")}>
-              {/* A versão invisível reserva o espaço do texto completo para nada saltar */}
-              <p aria-hidden className="invisible [grid-area:1/1]">
-                {stop.text}
-              </p>
+              {/* As versões invisíveis reservam o espaço da fala mais longa da paragem (com as
+                  respostas), para a caixa não mudar de altura ao fazer uma pergunta */}
+              {[stop.text, ...stop.questions.map((q) => q.answer)].map((text, i) => (
+                <p key={i} aria-hidden className="invisible [grid-area:1/1]">
+                  {text}
+                </p>
+              ))}
               <p aria-hidden className="[grid-area:1/1]">
                 {shown}
               </p>
             </div>
             <p aria-live="polite" className="sr-only">
-              Stop {index + 1} of {TOTAL}: {stop.name}. {stop.text}
+              {answer ? `${guideLabel} answers: ${answer.answer}` : `Stop ${index + 1} of ${TOTAL}: ${stop.name}. ${stop.text}`}
             </p>
-            <p aria-hidden className={cn("mt-2 hidden text-xs text-white/75 lg:block", done && "invisible")}>
-              Press Enter or click the text to show it all
+            <p aria-hidden className={cn("mt-2 hidden text-xs text-white/75 lg:block", done && stop.questions.length === 0 && "invisible")}>
+              {done ? `Press ${stop.questions.map((_, i) => i + 1).join(" or ")} to ask, → for the next stop` : "Press Enter or click the text to show it all"}
             </p>
+
+            {/* Perguntas ao guia: aparecem quando a fala acaba (o espaço fica reservado para nada saltar) */}
+            {stop.questions.length > 0 && (
+              <div className={cn("mt-4 short:mt-2", !done && "invisible")}>
+                <p id={askId} className="text-xs font-semibold tracking-wide text-white/80 uppercase short:sr-only">
+                  Ask {guideName}
+                </p>
+                <div role="group" aria-labelledby={askId} className="mt-2 flex flex-wrap gap-2 short:mt-0">
+                  {stop.questions.map((q, i) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      aria-pressed={question === q.id}
+                      onClick={() => ask(q.id)}
+                      className={cn(
+                        "focus-on-dark inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm font-medium ring-1 transition short:min-h-9 short:text-xs",
+                        question === q.id ? "bg-white text-kampus-navy ring-white" : "bg-white/10 text-white ring-white/25 hover:bg-white/20",
+                      )}
+                    >
+                      <span aria-hidden className={cn("hidden font-pixel text-lg leading-none lg:inline", question === q.id ? "text-kampus-blue" : "text-kampus-sky")}>
+                        {i + 1}
+                      </span>
+                      {q.label}
+                      {asked.has(q.id) && question !== q.id && (
+                        <>
+                          <Check aria-hidden className="size-4 shrink-0 text-kampus-sky" />
+                          <span className="sr-only">(asked)</span>
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {!speech.supported && (
               <p id={audioHintId} className="mt-2 text-xs text-white/75">

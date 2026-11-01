@@ -3,10 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 const CHAR_MS = 28;
 
 /**
- * Efeito de máquina de escrever. `key` identifica o texto (a paragem): ao mudar,
+ * Efeito de máquina de escrever. `key` identifica o texto (a paragem ou a resposta): ao mudar,
  * recomeça do zero. Com `instant` (reduced motion) o texto aparece logo inteiro.
  */
-export function useTypewriter(text: string, key: number, instant: boolean) {
+export function useTypewriter(text: string, key: string | number, instant: boolean) {
   const [progress, setProgress] = useState({ key, chars: 0 });
   const chars = instant ? text.length : progress.key === key ? Math.min(progress.chars, text.length) : 0;
   const done = chars >= text.length;
