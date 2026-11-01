@@ -1,0 +1,66 @@
+import { expect, test } from "@playwright/test";
+import { expectAccessible, loginAs, resetDemo } from "./helpers.ts";
+
+const TITLE = "Bring your laptop charger on Monday";
+
+test.beforeEach(async ({ request }) => {
+  await resetDemo(request);
+});
+
+test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê o progresso", async ({ browser }) => {
+  // Staff: cria a tarefa para Web Dev.
+  // Dois contextos (duas sessões) ao mesmo tempo: o staff e o aluno.
+  const staff = await (await browser.newContext()).newPage();
+  await loginAs(staff, "staff");
+  await staff.goto("/staff/assignments");
+  await expect(staff.getByRole("heading", { level: 1, name: "Cohort tasks" })).toBeVisible();
+  await expectAccessible(staff);
+
+  await staff.getByRole("button", { name: "New task" }).first().click();
+  const dialog = staff.getByRole("dialog", { name: "New cohort task" });
+  await expect(dialog.getByLabel("Cohort").locator("option")).toHaveCount(4);
+  await dialog.getByLabel("Cohort").selectOption({ label: "Web Dev Oct 2026" });
+  await dialog.getByLabel("Title").fill(TITLE);
+  await expectAccessible(staff);
+  await dialog.getByRole("button", { name: "Add task" }).click();
+  await expect(dialog).toBeHidden();
+
+  const card = staff.getByRole("article").or(staff.locator("li")).filter({ hasText: TITLE }).first();
+  await expect(card).toContainText("0 of 8 done");
+
+  // Aluno (Web Dev): vê a tarefa com o autor, sem editar nem apagar, e marca-a.
+  const student = await (await browser.newContext()).newPage();
+  await loginAs(student, "student");
+  await student.goto("/app/tasks");
+  const task = student.getByRole("checkbox", { name: new RegExp(TITLE) });
+  await expect(task).toBeVisible();
+  await expect(student.getByText(/From Marta Lopes/).first()).toBeVisible();
+  await expect(student.getByRole("button", { name: `Edit "${TITLE}"` })).toHaveCount(0);
+  await expect(student.getByRole("button", { name: `Delete "${TITLE}"` })).toHaveCount(0);
+  await task.click();
+  await expect(task).toBeChecked();
+  await expectAccessible(student);
+
+  // A API recusa editar a tarefa da turma.
+  const list = (await (await student.request.get("/api/tasks")).json()) as { tasks: { id: string; title: string }[] };
+  const id = list.tasks.find((t) => t.title === TITLE)!.id;
+  expect((await student.request.patch(`/api/tasks/${id}`, { data: { title: "Hacked" } })).status()).toBe(403);
+
+  // Staff: o progresso mudou e a Diana aparece como feita.
+  await staff.reload();
+  const updated = staff.getByRole("article").or(staff.locator("li")).filter({ hasText: TITLE }).first();
+  await expect(updated).toContainText("1 of 8 done");
+  await updated.getByRole("button", { name: "See who" }).click();
+  await expect(updated.getByRole("listitem").filter({ hasText: "Diana Costa" })).toContainText("Done");
+  await expectAccessible(staff);
+
+  // Apagar tira-a da lista do aluno.
+  await staff.getByRole("button", { name: `Delete "${TITLE}"` }).click();
+  await staff.getByRole("alertdialog").getByRole("button", { name: /delete/i }).click();
+  await expect(staff.getByText(TITLE)).toHaveCount(0);
+  await student.reload();
+  await expect(student.getByRole("checkbox", { name: new RegExp(TITLE) })).toHaveCount(0);
+
+  await staff.context().close();
+  await student.context().close();
+});
