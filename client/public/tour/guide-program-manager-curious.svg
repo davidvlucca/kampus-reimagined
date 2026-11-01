@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <!-- Program Manager: coque alto, blazer azul-marinho, brincos (expressão: curious) -->
+  <!-- coque -->
+  <circle cx="240" cy="78" r="46" fill="#1E1B2E"/>
+  <!-- tronco -->
+  <path d="M50 480 C54 400 120 362 240 362 C360 362 426 400 430 480 Z" fill="#0A2472"/>
+  <path d="M190 362 L240 470 L290 362 Z" fill="#A6E1FA"/>
+  <path d="M176 366 L240 480 L206 480 L150 380 Z" fill="#001C55"/>
+  <path d="M304 366 L240 480 L274 480 L330 380 Z" fill="#001C55"/>
+  <!-- crachá -->
+  <rect x="318" y="410" width="54" height="36" rx="6" fill="#F8FAFC"/>
+  <rect x="326" y="418" width="16" height="16" rx="3" fill="#0E6BA8"/>
+  <rect x="348" y="420" width="18" height="5" rx="2" fill="#94A3B8"/>
+  <rect x="348" y="429" width="14" height="5" rx="2" fill="#CBD5E1"/>
+  <!-- pescoço -->
+  <path d="M206 290 H274 V360 C274 380 206 380 206 360 Z" fill="#8F5B3E"/>
+  <path d="M206 330 C230 346 250 346 274 330 V300 H206 Z" fill="#000000" opacity="0.12"/>
+  <!-- orelhas -->
+  <ellipse cx="152" cy="222" rx="16" ry="22" fill="#9C6447"/>
+  <ellipse cx="328" cy="222" rx="16" ry="22" fill="#9C6447"/>
+  <circle cx="150" cy="252" r="7" fill="#FACC6B"/>
+  <circle cx="330" cy="252" r="7" fill="#FACC6B"/>
+  <!-- cabeça -->
+  <ellipse cx="240" cy="210" rx="88" ry="102" fill="#A86B4C"/>
+  <!-- cabelo puxado -->
+  <path d="M150 210 C146 140 186 106 240 106 C294 106 334 140 330 210 C316 168 290 146 240 144 C190 146 164 168 150 210 Z" fill="#1E1B2E"/>
+  <path d="M200 120 C220 112 260 112 280 120" stroke="#3B3754" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- sobrancelhas -->
+  <path d="M188 190 Q205 180 222 188" stroke="#1E1B2E" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path transform="translate(0 -12) rotate(-8 276 182)" d="M258 188 Q275 180 292 190" stroke="#1E1B2E" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- olhos -->
+  <ellipse cx="206" cy="214" rx="8" ry="10" fill="#1E1B2E"/>
+  <ellipse cx="274" cy="214" rx="8" ry="10" fill="#1E1B2E"/>
+  <circle cx="209" cy="210" r="3" fill="#FFFFFF"/>
+  <circle cx="277" cy="210" r="3" fill="#FFFFFF"/>
+  <!-- nariz e boca -->
+  <path d="M236 228 Q240 248 248 244" stroke="#7A4A33" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="246" cy="272" rx="8" ry="9" fill="#6B2626"/>
+  <!-- bochechas -->
+  <ellipse cx="184" cy="248" rx="16" ry="10" fill="#F28C6B" opacity="0.35"/>
+  <ellipse cx="296" cy="248" rx="16" ry="10" fill="#F28C6B" opacity="0.35"/>
+</svg>
