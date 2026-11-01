@@ -23,18 +23,25 @@ async function studentFlow(page: Page) {
   await pause(page, 1800);
   await loginWithDemo(page, "student");
 
-  // Primeiro login: a visita abre sozinha.
+  // Primeiro login: a visita abre sozinha, na planta 3D, e voa até à Entrance.
   await page.waitForURL("**/app/tour");
-  await pause(page, 3500);
+  await page.locator('[data-tour-view="room"]').waitFor({ timeout: 20_000 });
+  await pause(page, 1500);
   await page.keyboard.press("Enter");
-  await pause(page, 1200);
+  await pause(page, 1000);
   // Uma pergunta ao guia: a resposta escreve-se e a Marta muda de expressão.
   await page.getByRole("button", { name: "Where do I get my student card?" }).click();
-  await pause(page, 4000);
-  await page.keyboard.press("ArrowRight");
+  await pause(page, 3500);
+  // Next: a câmara voa para a Web Dev.
+  await page.getByRole("button", { name: "Next" }).click();
   await pause(page, 3000);
-  await page.keyboard.press("ArrowRight");
+  // De volta à planta: a sala seguinte está acesa. Depois, direto para a Kitchen.
+  await page.getByRole("button", { name: "Back to map" }).click();
   await pause(page, 2500);
+  await page.getByRole("button", { name: "Go to stop 5: Kitchen" }).click();
+  await pause(page, 3000);
+  await page.keyboard.press("Escape");
+  await pause(page, 1000);
   await page.keyboard.press("Escape");
 
   await page.waitForURL("**/app");
@@ -103,7 +110,8 @@ async function staffFlow(page: Page) {
 
 mkdirSync(OUT, { recursive: true });
 const stack = await startStack("video", { api: 3102, web: 4175 });
-const browser = await chromium.launch();
+// SwiftShader: WebGL no CPU, para a visita 3D aparecer no Chromium headless.
+const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const tmpDir = `${OUT}/.raw`;
 try {
   const context = await browser.newContext({
