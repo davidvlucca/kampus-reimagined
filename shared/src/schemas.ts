@@ -8,8 +8,32 @@ export type Role = (typeof ROLES)[number];
 export const PORTALS = ROLES;
 export type Portal = Role;
 
-const email = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email"));
-const name = z.string().trim().min(1, "Required").max(60, "Max 60 characters");
+// O Postgres não guarda o carácter NUL num texto (dava erro 500): recusa-se logo aqui.
+const noNul = (v: string) => !v.includes("\u0000");
+const NUL_MESSAGE = "Contains an invalid character";
+// Caracteres que não se veem (zero-width, word joiner, BOM): um título só com eles ficava em branco.
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
+// Caracteres de controlo, incluindo \n e \r: um título ou um nome é uma linha só.
+// eslint-disable-next-line no-control-regex -- é mesmo para apanhar caracteres de controlo
+const CONTROL = /[\u0000-\u001F\u007F]/;
+
+/**
+ * Texto obrigatório de uma linha (títulos, nomes). Uma quebra de linha é recusada,
+ * não convertida: os campos do client são de uma linha, por isso só chega por API.
+ */
+const singleLine = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1, "Required")
+    .refine(noNul, NUL_MESSAGE)
+    .refine((v) => !CONTROL.test(v), "Use a single line of text")
+    .refine((v) => v.replace(INVISIBLE, "").trim().length > 0, "Required")
+    .max(max, `Max ${max} characters`);
+
+// 254 é o máximo de um endereço (RFC 5321); um email enorme rebentava o índice único (500).
+const email = z.string().trim().toLowerCase().max(254, "Max 254 characters").pipe(z.email("Enter a valid email"));
+const name = singleLine(60);
 export const passwordRule = z
   .string()
   .min(8, "At least 8 characters")
@@ -69,13 +93,18 @@ export interface Cohort {
   name: string;
 }
 
+/** O mesmo teste de UUID que a API faz aos ids (ex.: o ?cohort= do URL no client). */
+export const isUuid = (value: string) => z.uuid().safeParse(value).success;
+
 // ---------- Tarefas ----------
 
 export const TASK_FILTERS = ["all", "open", "done"] as const;
 export type TaskFilter = (typeof TASK_FILTERS)[number];
 
+const taskTitle = singleLine(120);
+
 export const createTaskSchema = z.object({
-  title: z.string().trim().min(1, "Required").max(120, "Max 120 characters"),
+  title: taskTitle,
   dueDate: isoDate.nullable().optional(),
 });
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
@@ -117,8 +146,6 @@ export interface Task {
 export const COHORT_TASK_MESSAGE = "This task was set by staff for your cohort, so you can only mark it as done.";
 
 // ---------- Tarefas da turma (staff) ----------
-
-const taskTitle = z.string().trim().min(1, "Required").max(120, "Max 120 characters");
 
 export const assignmentQuerySchema = z.object({ cohortId: z.uuid().optional() });
 
@@ -164,8 +191,9 @@ export interface AssignmentDetail extends Assignment {
 // ---------- Notas ----------
 
 export const createNoteSchema = z.object({
-  title: z.string().trim().min(1, "Required").max(120, "Max 120 characters"),
-  body: z.string().max(10_000, "Max 10 000 characters"),
+  title: singleLine(120),
+  // O corpo pode ter várias linhas e ficar vazio; só o NUL é recusado.
+  body: z.string().max(10_000, "Max 10 000 characters").refine(noNul, NUL_MESSAGE),
 });
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 
@@ -196,7 +224,7 @@ export interface Contact {
 // ---------- Staff: gestão de alunos ----------
 
 export const studentQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
+  q: z.string().trim().max(100).refine(noNul, NUL_MESSAGE).optional(),
   cohortId: z.uuid().optional(),
 });
 
@@ -250,6 +278,18 @@ export interface StaffOverview {
   pendingTour: { id: string; firstName: string; lastName: string; cohort: Cohort | null }[];
   recentActivity: ActivityItem[];
 }
+
+// ---------- Limites ----------
+
+/**
+ * Máximos de linhas: a demo é pública e um visitante podia encher a base (e a lista de notas
+ * passar o limite de tamanho de uma resposta da Vercel). `students` conta todos os alunos,
+ * os da demo incluídos; `assignments` são as tarefas da turma de todas as turmas.
+ */
+export const LIMITS = { tasksPerStudent: 200, notesPerStudent: 100, students: 300, assignments: 100 } as const;
+
+/** A mensagem do 409 quando se chega a um limite (ex.: "200 tasks"). */
+export const limitMessage = (max: number, things: string) => `You've reached the limit of ${max} ${things}. Delete some to add more.`;
 
 // ---------- Erros ----------
 
