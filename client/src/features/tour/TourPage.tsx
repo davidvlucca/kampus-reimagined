@@ -222,6 +222,8 @@ export function TourPage() {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === "Escape") {
         event.preventDefault();
+        // Manter o Esc carregado ia da sala ao mapa e logo a seguir para fora da visita.
+        if (event.repeat) return;
         if (is3D && view === "room") backToMap();
         else exit();
         return;
@@ -252,7 +254,8 @@ export function TourPage() {
     if (!is3D || !mapReady || introDone.current) return;
     const id = window.setTimeout(() => {
       introDone.current = true;
-      if (view !== "map" || visited.size > 0) return;
+      // Se a pessoa já mudou de paragem no mapa (setas, botões), não entra sozinha noutra sala.
+      if (view !== "map" || visited.size > 0 || index !== 0) return;
       keepFocus();
       markVisited(index);
       setView("room");
@@ -356,7 +359,7 @@ export function TourPage() {
 
       {/* Topo: logótipo, contador, progresso, saltar e sair. No portátil fica por cima do 3D: as partes
           vazias (e o degradê) deixam passar o clique para as salas que estão por baixo. */}
-      <header ref={headerRef} className="pointer-events-none relative z-20 flex *:pointer-events-auto flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
+      <header ref={headerRef} className="pointer-events-none relative z-20 flex *:pointer-events-auto flex-wrap items-center gap-x-3 max-[359px]:gap-x-2 big:[zoom:1.25] huge:[zoom:1.5] gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
         <span className="lg:hidden">
           <Logo onDark showName={false} />
         </span>
@@ -364,7 +367,7 @@ export function TourPage() {
           <Logo onDark />
         </span>
         <p className="flex min-w-0 flex-1 items-baseline gap-2 lg:flex-none">
-          <span className="font-pixel text-2xl leading-none tracking-wide whitespace-nowrap text-kampus-sky">
+          <span className="shrink-0 font-pixel text-2xl leading-none tracking-wide whitespace-nowrap text-kampus-sky max-[359px]:text-xl">
             STOP {index + 1}/{TOTAL}
           </span>
           <span className="truncate text-sm font-medium text-white/90">{stop.name}</span>
@@ -399,8 +402,8 @@ export function TourPage() {
       <div
         ref={sceneRef}
         className={cn(
-          "relative shrink-0 overflow-hidden bg-kampus-ink short:absolute short:inset-0 short:h-auto lg:absolute lg:inset-0 lg:h-auto",
-          is3D && !inRoom ? "h-[60dvh]" : "h-[45dvh]",
+          // No telemóvel e no tablet ao alto o cenário fica com o espaço que o diálogo deixa (sem vazios).
+          "relative min-h-[24dvh] flex-1 overflow-hidden bg-kampus-ink short:absolute short:inset-0 short:h-auto lg:absolute lg:inset-0 lg:h-auto",
         )}
       >
         {is3D ? (
@@ -445,7 +448,7 @@ export function TourPage() {
             onClick={backToMap}
             data-back-to-map=""
             style={{ top: insets.top + 12 }}
-            className="absolute left-4 z-10 shadow-pop lg:left-10"
+            className="absolute left-4 z-10 shadow-pop lg:left-10 big:[zoom:1.25] huge:[zoom:1.5]"
           >
             Back to map
           </Button>
@@ -475,11 +478,14 @@ export function TourPage() {
       {/* Guia e caixa de diálogo */}
       <main
         className={cn(
-          "relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 short:absolute short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8",
+          "relative z-10 flex flex-none flex-col px-4 pt-4 short:absolute short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8",
           // No 3D deitado o diálogo fica à direita e a sala à esquerda (por baixo dele não se via nada).
           is3D ? "short:right-0 short:w-[58%]" : "short:inset-x-0",
           // À volta dos cartões (e por cima do guia, que é só imagem) o clique chega às salas do 3D.
           is3D && "pointer-events-none",
+          // Espaço para a fila de botões fixa em baixo (só existe dentro de uma sala).
+          inRoom ? "pb-[calc(5.25rem+env(safe-area-inset-bottom))]" : "pb-4",
+          "big:[zoom:1.25] huge:[zoom:1.5]",
         )}
       >
         <div className="relative mx-auto w-full max-w-6xl">
@@ -516,14 +522,14 @@ export function TourPage() {
               <GuidePortrait
                 guide={stop.guide}
                 face={mouthOpen ? "talk" : mood}
-                className="size-14 shrink-0 overflow-hidden rounded-full bg-kampus-sky-soft ring-2 ring-kampus-sky short:size-9 lg:hidden"
+                className="size-14 shrink-0 overflow-hidden rounded-full bg-kampus-sky-soft ring-2 ring-kampus-sky short:size-9 md:size-20 lg:hidden"
                 imgClassName="size-full object-cover object-top"
               />
               <p className="rounded-lg bg-kampus-sky px-3 py-1 text-sm font-semibold text-kampus-ink">{guideLabel}</p>
             </div>
 
             {/* Clicar no texto mostra-o todo (no teclado: Enter) */}
-            <div onClick={finish} className={cn("mt-4 grid text-base leading-relaxed short:mt-2 short:text-sm lg:text-lg", !done && "cursor-pointer")}>
+            <div onClick={finish} className={cn("mt-4 grid text-base leading-relaxed short:mt-2 short:text-sm md:text-lg", !done && "cursor-pointer")}>
               {/* As versões invisíveis reservam o espaço da fala mais longa da paragem (com as
                   respostas), para a caixa não mudar de altura ao fazer uma pergunta */}
               {[stop.text, ...stop.questions.map((q) => q.answer)].map((text, i) => (
@@ -594,7 +600,8 @@ export function TourPage() {
                 title={speech.supported ? undefined : "Audio isn't supported in this browser"}
                 className={cn(darkButton, !speech.supported && "cursor-not-allowed opacity-55")}
               >
-                {speech.speaking ? "Stop audio" : "Play audio"}
+                {/* Num ecrã de 320 px só o ícone, para os botões caberem numa fila (o nome fica para leitores de ecrã) */}
+                <span className="max-[359px]:sr-only">{speech.speaking ? "Stop audio" : "Play audio"}</span>
               </Button>
               <Button
                 variant="light"

@@ -2,6 +2,9 @@
 
 /* Telemóvel deitado: pouca altura. A visita passa ao layout de cenário em fundo, como no desktop. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 540px) and (max-width: 1023px));
+/* Ecrãs grandes: a visita aumenta o topo e o diálogo (senão ficavam do tamanho de um portátil). */
+@custom-variant big (@media (min-width: 1800px) and (min-height: 950px));
+@custom-variant huge (@media (min-width: 2400px) and (min-height: 1300px));
 
 /*
   Tokens da identidade Kampus. Os cinco azuis são os de 2023 (tailwind.config.js do
