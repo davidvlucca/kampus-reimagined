@@ -6,7 +6,7 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
-import { NOINDEX, NOINDEX_META, vercelRoutes } from "./vercel-routes.ts";
+import { MISSING_ASSET, NOINDEX, NOINDEX_META, vercelRoutes } from "./vercel-routes.ts";
 
 const OUT = ".vercel/output";
 const FUNC = `${OUT}/functions/api.func`;
@@ -18,6 +18,7 @@ mkdirSync(FUNC, { recursive: true });
 const client = spawnSync("npm", ["run", "build", "-w", "client"], { stdio: "inherit" });
 if (client.status !== 0) process.exit(client.status ?? 1);
 cpSync("client/dist", `${OUT}/static`, { recursive: true });
+writeFileSync(`${OUT}/static${MISSING_ASSET.path}`, MISSING_ASSET.body);
 if (NOINDEX) {
   const indexHtml = `${OUT}/static/index.html`;
   writeFileSync(indexHtml, readFileSync(indexHtml, "utf8").replace("<head>", `<head>\n    ${NOINDEX_META}`));

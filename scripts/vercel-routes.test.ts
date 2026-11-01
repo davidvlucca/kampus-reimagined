@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isKnownSpaPath, NOINDEX, vercelRoutes } from "./vercel-routes.ts";
+import { isKnownSpaPath, MISSING_ASSET, NOINDEX, vercelRoutes } from "./vercel-routes.ts";
 
 // Um caminho de exemplo por cada rota de client/src/router.tsx.
 const KNOWN = [
@@ -32,6 +32,19 @@ describe("rotas da Vercel", () => {
     const api = routes.findIndex((r) => "dest" in r && r.dest === "/api");
     const filesystem = routes.findIndex((r) => "handle" in r);
     expect(api).toBeLessThan(filesystem);
+  });
+
+  it("um /assets/* que não existe dá 404 em texto, não o index.html (e vem depois do filesystem)", () => {
+    const routes = vercelRoutes();
+    const filesystem = routes.findIndex((r) => "handle" in r);
+    const missing = routes.findIndex((r) => "dest" in r && r.dest === MISSING_ASSET.path);
+    expect(missing).toBeGreaterThan(filesystem);
+    expect(routes[missing]).toMatchObject({ src: "^/assets/(.*)$", status: 404 });
+    expect(new RegExp(routes[missing]!.src!).test("/assets/TourPage-abc123.js")).toBe(true);
+    // Nenhuma rota anterior manda um /assets/* para o index.html.
+    const spaBefore = routes.slice(filesystem, missing).some((r) => "dest" in r && r.dest === "/index.html");
+    expect(spaBefore).toBe(false);
+    expect(MISSING_ASSET.path.startsWith("/assets/")).toBe(false);
   });
 
   it("com NOINDEX ligado, a primeira rota põe X-Robots-Tag em tudo", () => {
