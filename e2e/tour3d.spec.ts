@@ -26,12 +26,16 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
   await expect(page.getByRole("heading", { name: "Campus map" })).toBeVisible();
   await expect(root(page)).toHaveAttribute("data-next-room", "web-dev");
+  // No mapa acende a sala seguinte.
+  await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "web-dev");
   await expectAccessible(page);
 
   await page.getByRole("button", { name: "Go to stop 3: UX/UI room" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "room");
   await expect(page.getByRole("region", { name: "Guide" })).toContainText("UX/UI room");
   await expect(root(page)).toHaveAttribute("data-next-room", "data");
+  // Dentro de uma sala acende a própria sala, não a seguinte.
+  await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "ux-ui");
   await expectAccessible(page);
 
   await page.getByRole("button", { name: "Next" }).click();
@@ -111,6 +115,19 @@ test("trocar 3D → 2D → 3D: sem aviso e o botão continua lá", async ({ page
   await expect(page.locator("canvas")).toBeVisible();
   // Entra logo na sala da paragem atual.
   await expect(root(page)).toHaveAttribute("data-tour-view", "room");
+});
+
+test("sair com Skip tour a partir de uma sala, depois de trocar 3D → 2D → 3D, não mostra o aviso do 2D", async ({ page }) => {
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Switch to 2D tour" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
+  await page.getByRole("button", { name: "Switch to 3D tour" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-view", "room");
+  await page.getByRole("button", { name: "Skip tour" }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByText("You can take the tour anytime from the menu.").first()).toBeVisible();
+  await page.waitForTimeout(900);
+  await expect(page.getByText("Showing the 2D tour")).toHaveCount(0);
 });
 
 test("com 2D guardado, o 3D não é descarregado", async ({ page }) => {

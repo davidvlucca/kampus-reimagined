@@ -106,6 +106,7 @@ function NextPin({ animate }: { animate: boolean }) {
 function RoomBlock({
   room,
   highlighted,
+  pin,
   hover,
   animatePin,
   onSelect,
@@ -114,6 +115,7 @@ function RoomBlock({
 }: {
   room: Room;
   highlighted: boolean;
+  pin: boolean;
   hover: boolean;
   animatePin: boolean;
   onSelect: (id: RoomId) => void;
@@ -140,18 +142,21 @@ function RoomBlock({
       <Block p={[0, 0.04, 0]} s={[ROOM_W, 0.08, ROOM_D]} color={floor} />
       {highlighted && <Block p={[0, 0.005, 0]} s={[ROOM_W + 0.5, 0.01, ROOM_D + 0.5]} color={COLORS.sky} />}
       {children}
-      {highlighted && <NextPin animate={animatePin} />}
+      {highlighted && pin && <NextPin animate={animatePin} />}
     </group>
   );
 }
 
 export function CampusModel({
   highlight,
+  pin,
   animate,
   onSelectStop,
   furniture,
 }: {
   highlight: RoomId | null;
+  /** Pino por cima da sala acesa (só no mapa, onde marca a seguinte). */
+  pin: boolean;
   animate: boolean;
   onSelectStop: (index: number) => void;
   furniture?: Partial<Record<RoomId, ReactNode>>;
@@ -188,6 +193,7 @@ export function CampusModel({
             <RoomBlock
               room={room}
               highlighted={highlight === room.id}
+              pin={pin}
               hover={hovered === room.id}
               animatePin={animate}
               onSelect={() => onSelectStop(index)}

@@ -31,7 +31,9 @@ export interface CampusMapProps {
  */
 function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLost, onReady }: CampusMapProps) {
   const cameraRoom = view === "room" ? roomOfStop(index) : null;
-  const highlight = highlightRoom(nextIndex);
+  // No mapa acende a sala seguinte (é aí que se escolhe para onde ir). Dentro de uma sala acende
+  // a própria sala, sem pino: acender a seguinte parecia que o clique tinha ido parar a outra sala.
+  const highlight = view === "room" ? cameraRoom : highlightRoom(nextIndex);
   const labels = useRef<(HTMLSpanElement | null)[]>([]);
   // Ao desmontar, o R3F força a perda do contexto (meio segundo depois). Isso não é uma
   // falha: sem esta guarda aparecia o aviso "Showing the 2D tour" ao sair da visita.
@@ -51,7 +53,7 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLo
     };
   }, []);
   return (
-    <div aria-hidden="true" className="absolute inset-0">
+    <div aria-hidden="true" className="absolute inset-0" data-lit-room={highlight ?? ""}>
       <Canvas
         // Sem tone mapping: as cores do Kampus aparecem como são (o ACES escurecia os brancos).
         flat
@@ -61,7 +63,9 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLo
         gl={{ antialias: true, powerPreference: "low-power" }}
         onCreated={({ gl }) => {
           gl.domElement.addEventListener("webglcontextlost", (event) => {
-            if (!alive.current) return;
+            // Um canvas que já saiu da página está a ser desmontado (sair da visita, trocar para 2D):
+            // não é uma falha, mesmo que o browser dispare a perda antes da limpeza do React.
+            if (!alive.current || !gl.domElement.isConnected) return;
             event.preventDefault();
             onLostRef.current();
           });
@@ -71,7 +75,7 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLo
         <color attach="background" args={[COLORS.ink]} />
         <hemisphereLight args={["#FFFFFF", "#7FA6D6", 2.2]} />
         <directionalLight position={[6, 14, 8]} intensity={1.4} />
-        <CampusModel highlight={highlight} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
+        <CampusModel highlight={highlight} pin={view === "map"} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
         <CameraRig room={cameraRoom} insets={insets} instant={instant} />
         <LabelProjector labels={labels} />
       </Canvas>
