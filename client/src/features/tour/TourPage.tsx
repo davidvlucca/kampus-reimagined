@@ -1,6 +1,6 @@
 import { CAMPUS_NAME, GUIDES, guideImage, TOUR_STOPS } from "@kampus/shared";
-import { Check, ChevronLeft, ChevronRight, Square, Volume2, X } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Map as MapIcon, Square, Volume2, X } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { errorMessage } from "../../api/client.ts";
 import { useCompleteTour, useContacts, useCurrentUser, useSkipTour } from "../../api/hooks.ts";
@@ -16,6 +16,35 @@ import { useSpeech } from "./useSpeech.ts";
 import { useTypewriter } from "./useTypewriter.ts";
 import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 import { useMouthFlap } from "./useMouthFlap.ts";
+import type { Insets } from "./three/CameraRig.tsx";
+import { Tour3DErrorBoundary } from "./three/ErrorBoundary.tsx";
+import { highlightRoom } from "./three/layout.ts";
+import { canUseWebGL } from "./three/webgl.ts";
+
+// O three.js só é descarregado quando a planta 3D vai mesmo aparecer.
+const CampusMap = lazy(() => import("./three/CampusMap.tsx"));
+
+type TourMode = "2d" | "3d";
+const MODE_KEY = "kampus.tourMode";
+
+function readModePref(): TourMode | null {
+  try {
+    const v = localStorage.getItem(MODE_KEY);
+    return v === "2d" || v === "3d" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveModePref(mode: TourMode) {
+  try {
+    localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    // Sem armazenamento (modo privado): a escolha vale só para esta visita.
+  }
+}
+
+const NO_INSETS: Insets = { top: 0, bottom: 0, left: 0, right: 0 };
 
 const TOTAL = TOUR_STOPS.length;
 
@@ -37,6 +66,25 @@ export function TourPage() {
   const speech = useSpeech();
   const audioHintId = useId();
   const askId = useId();
+  const mapTitleId = useId();
+
+  // 3D por omissão; 2D com reduced motion, sem WebGL, se o WebGL falhar ou se a pessoa escolher.
+  const [lost, setLost] = useState(false);
+  const [modePref, setModePref] = useState<TourMode | null>(readModePref);
+  const webgl = canUseWebGL() && !lost;
+  const is3D = webgl && (modePref ? modePref === "3d" : !reducedMotion);
+  // No 3D: vista geral ("map") ou dentro da sala da paragem ("room"). No 2D é sempre "room".
+  const [view, setView] = useState<"map" | "room">("map");
+  const [mapReady, setMapReady] = useState(false);
+  const [visited, setVisited] = useState<ReadonlySet<number>>(() => new Set());
+  const inRoom = !is3D || view === "room";
+  const [insets, setInsets] = useState<Insets>(NO_INSETS);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const mapHeadingRef = useRef<HTMLHeadingElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const focusAfterViewChange = useRef(false);
 
   // `prev` fica por baixo enquanto o cenário novo aparece (fade).
   const [{ index, prev }, setScenes] = useState<{ index: number; prev: number | null }>({ index: 0, prev: null });
@@ -66,6 +114,7 @@ export function TourPage() {
   const busy = completeTour.isPending || skipTour.isPending;
 
   const { stop: stopSpeech } = speech;
+  const markVisited = useCallback((i: number) => setVisited((v) => (v.has(i) ? v : new Set(v).add(i))), []);
   const goTo = useCallback(
     (next: number) => {
       const target = Math.max(0, Math.min(TOTAL - 1, next));
@@ -73,9 +122,37 @@ export function TourPage() {
       stopSpeech();
       setQuestion(null);
       setScenes({ index: target, prev: index });
+      if (view === "room") markVisited(target);
     },
-    [index, stopSpeech],
+    [index, stopSpeech, view, markVisited],
   );
+
+  /** Se o foco está no cartão que vai desaparecer (diálogo ou painel do mapa), segue para o novo. */
+  const keepFocus = useCallback(() => {
+    if (cardRef.current?.contains(document.activeElement)) focusAfterViewChange.current = true;
+  }, []);
+
+  /** 3D: entra na sala de uma paragem (a câmara voa até lá e o diálogo abre). */
+  const enterRoom = useCallback(
+    (i: number, { focusDialog = false } = {}) => {
+      keepFocus();
+      if (focusDialog) focusAfterViewChange.current = true;
+      goTo(i);
+      markVisited(i);
+      setView("room");
+    },
+    [goTo, keepFocus, markVisited],
+  );
+
+  const backToMap = useCallback(() => {
+    keepFocus();
+    stopSpeech();
+    setView("map");
+  }, [keepFocus, stopSpeech]);
+
+  // Na vista geral, a sala seguinte é a da paragem atual se ainda não se entrou nela.
+  const mapNext = visited.has(index) ? Math.min(index + 1, TOTAL - 1) : index;
+  const nextIndex = view === "map" ? mapNext : index + 1 < TOTAL ? index + 1 : null;
 
   const exit = useCallback(() => navigate("/app"), [navigate]);
 
@@ -112,13 +189,15 @@ export function TourPage() {
 
   const next = useCallback(() => (isLast ? complete() : goTo(index + 1)), [isLast, complete, goTo, index]);
 
-  // Teclado: ← → mudam de paragem, Enter mostra o texto todo ou avança, Esc sai.
+  // Teclado: ← → mudam de paragem, Enter mostra o texto todo ou avança, Esc sai (no 3D,
+  // dentro de uma sala, Esc volta primeiro ao mapa). Sair não marca a visita como saltada.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        exit();
+        if (is3D && view === "room") backToMap();
+        else exit();
         return;
       }
       if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
@@ -131,13 +210,79 @@ export function TourPage() {
       } else if (event.key === "Enter" && !event.repeat && !isInteractive(event.target)) {
         // Sem repetição: manter o Enter carregado saltava paragens.
         event.preventDefault();
-        if (done) next();
+        if (!inRoom) enterRoom(mapNext);
+        else if (done) next();
         else finish();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, exit, finish, goTo, index, next]);
+  }, [backToMap, done, enterRoom, exit, finish, goTo, inRoom, index, is3D, mapNext, next, view]);
+
+  // 3D: começa na vista geral e, ao fim de um momento (contado a partir do primeiro frame,
+  // não do clique: num telemóvel lento o 3D demora a carregar), voa para a Entrance.
+  useEffect(() => {
+    if (!is3D || !mapReady) return;
+    const id = window.setTimeout(() => {
+      // Só se a pessoa ainda não escolheu nenhuma sala.
+      setVisited((s) => (s.size > 0 ? s : new Set([0])));
+      setView((v) => (v === "map" ? "room" : v));
+    }, 1200);
+    return () => window.clearTimeout(id);
+  }, [is3D, mapReady]);
+
+  // Depois de mudar de vista, o foco passa para o cartão novo (se estava no que desapareceu).
+  useEffect(() => {
+    if (!focusAfterViewChange.current) return;
+    focusAfterViewChange.current = false;
+    (view === "map" ? mapHeadingRef.current : cardRef.current)?.focus({ preventScroll: true });
+  }, [view]);
+
+  // A faixa do canvas que fica livre (o topo e o diálogo tapam partes dele no desktop e deitado).
+  useEffect(() => {
+    if (!is3D) return;
+    const measure = () => {
+      const scene = sceneRef.current?.getBoundingClientRect();
+      if (!scene) return;
+      const overlaps = (r: DOMRect | undefined): r is DOMRect =>
+        Boolean(r && r.height > 0 && r.top < scene.bottom && r.bottom > scene.top && r.left < scene.right && r.right > scene.left);
+      const clampY = (v: number) => Math.round(Math.max(0, Math.min(scene.height, v)));
+      const clampX = (v: number) => Math.round(Math.max(0, Math.min(scene.width, v)));
+      const header = headerRef.current?.getBoundingClientRect();
+      const card = cardRef.current?.getBoundingClientRect();
+      const controls = controlsRef.current?.getBoundingClientRect();
+      const next: Insets = { top: overlaps(header) ? clampY(header.bottom - scene.top) : 0, bottom: 0, left: 0, right: 0 };
+      if (overlaps(controls)) next.bottom = clampY(scene.bottom - controls.top);
+      if (overlaps(card)) {
+        // A sala vai para o maior espaço livre: por cima do cartão ou à esquerda dele.
+        const above = (card.top - scene.top - next.top) * scene.width;
+        const beside = (card.left - scene.left) * (scene.height - next.top - next.bottom);
+        if (beside > above) next.right = clampX(scene.right - card.left + 12);
+        else next.bottom = Math.max(next.bottom, clampY(scene.bottom - card.top + 12));
+      }
+      setInsets((cur) => (cur.top === next.top && cur.bottom === next.bottom && cur.left === next.left && cur.right === next.right ? cur : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const el of [sceneRef.current, headerRef.current, cardRef.current, controlsRef.current]) if (el) observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [is3D, view]);
+
+  const onLost = useCallback(() => {
+    setLost(true);
+    toast({ title: "Showing the 2D tour", description: "3D isn't available on this device right now.", tone: "info" });
+  }, [toast]);
+
+  function switchMode() {
+    const mode: TourMode = is3D ? "2d" : "3d";
+    saveModePref(mode);
+    setModePref(mode);
+    setView("room");
+  }
 
   // Pré-carrega o cenário e as caras do guia da paragem seguinte.
   useEffect(() => {
@@ -157,11 +302,16 @@ export function TourPage() {
   const darkButton = "focus-on-dark ring-1 ring-white/25 grow lg:grow-0";
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-x-hidden bg-kampus-ink text-white short:h-dvh short:overflow-hidden lg:h-dvh lg:overflow-hidden">
+    <div
+      data-tour-mode={is3D ? "3d" : "2d"}
+      data-tour-view={is3D ? view : undefined}
+      data-next-room={is3D ? (highlightRoom(nextIndex) ?? "") : undefined}
+      className="relative flex min-h-dvh flex-col overflow-x-hidden bg-kampus-ink text-white short:h-dvh short:overflow-hidden lg:h-dvh lg:overflow-hidden"
+    >
       <h1 className="sr-only">Virtual tour of {CAMPUS_NAME}</h1>
 
       {/* Topo: logótipo, contador, progresso, saltar e sair */}
-      <header className="relative z-20 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
+      <header ref={headerRef} className="relative z-20 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-1 short:absolute short:inset-x-0 short:top-0 short:flex-nowrap short:bg-linear-to-b short:from-kampus-ink/90 short:to-transparent short:pb-6 lg:absolute lg:inset-x-0 lg:top-0 lg:flex-nowrap lg:gap-6 lg:bg-linear-to-b lg:from-kampus-ink/85 lg:via-kampus-ink/50 lg:to-transparent lg:px-10 lg:pt-5 lg:pb-12">
         <span className="lg:hidden">
           <Logo onDark showName={false} />
         </span>
@@ -174,34 +324,120 @@ export function TourPage() {
           </span>
           <span className="truncate text-sm font-medium text-white/90">{stop.name}</span>
         </p>
-        <TourProgress index={index} onGo={goTo} className="order-last w-full short:order-none short:w-auto short:flex-1 lg:order-none lg:w-auto lg:max-w-xl lg:flex-1" />
+        <TourProgress index={index} onGo={is3D ? (i) => enterRoom(i) : goTo} className="order-last w-full short:order-none short:w-auto short:flex-1 lg:order-none lg:w-auto lg:max-w-xl lg:flex-1" />
+        {webgl && (
+          <button
+            type="button"
+            onClick={switchMode}
+            className="rounded-md px-1 text-sm text-white/85 underline underline-offset-4 hover:text-white focus-on-dark lg:ml-auto"
+          >
+            {/* No telemóvel só "2D"/"3D" à vista; o nome completo fica para leitores de ecrã. */}
+            <span className="sr-only lg:not-sr-only">Switch to </span>
+            {is3D ? "2D" : "3D"}
+            <span className="sr-only"> tour</span>
+          </button>
+        )}
         {canSkip && (
           <button
             type="button"
             onClick={skip}
             disabled={busy}
-            className="rounded-md px-1 text-sm text-white/85 underline underline-offset-4 hover:text-white focus-on-dark disabled:opacity-55 lg:ml-auto"
+            className={cn("rounded-md px-1 text-sm text-white/85 underline underline-offset-4 hover:text-white focus-on-dark disabled:opacity-55", !webgl && "lg:ml-auto")}
           >
             Skip tour
           </button>
         )}
-        <IconButton label="Exit tour" icon={<X aria-hidden />} variant="onDark" onClick={exit} className={cn(!canSkip && "lg:ml-auto")} />
+        <IconButton label="Exit tour" icon={<X aria-hidden />} variant="onDark" onClick={exit} className={cn(!canSkip && !webgl && "lg:ml-auto")} />
       </header>
 
       {/* Cenário */}
-      <div className="relative h-[45dvh] shrink-0 overflow-hidden bg-kampus-ink short:absolute short:inset-0 short:h-auto lg:absolute lg:inset-0 lg:h-auto">
-        {prevStop && (
-          <div aria-hidden>
-            <SceneImage key={`prev-${prev}`} scene={prevStop.scene} alt="" fade={false} />
-          </div>
+      <div
+        ref={sceneRef}
+        className={cn(
+          "relative shrink-0 overflow-hidden bg-kampus-ink short:absolute short:inset-0 short:h-auto lg:absolute lg:inset-0 lg:h-auto",
+          is3D && !inRoom ? "h-[60dvh]" : "h-[45dvh]",
         )}
-        <SceneImage key={index} scene={stop.scene} alt={stop.sceneAlt} />
-        <div aria-hidden className="pointer-events-none absolute inset-0 hidden bg-linear-to-t from-kampus-ink/70 via-transparent to-transparent short:block lg:block" />
+      >
+        {is3D ? (
+          <Tour3DErrorBoundary onError={onLost}>
+            {!mapReady && (
+              <p className="absolute inset-0 grid place-items-center text-sm text-white/75 motion-safe:animate-pulse">Loading the campus…</p>
+            )}
+            <Suspense fallback={null}>
+              <CampusMap
+                index={index}
+                view={view}
+                nextIndex={nextIndex}
+                insets={insets}
+                instant={reducedMotion}
+                onSelectStop={(i) => enterRoom(i, { focusDialog: true })}
+                onLost={onLost}
+                onReady={() => setMapReady(true)}
+              />
+            </Suspense>
+          </Tour3DErrorBoundary>
+        ) : null}
+        {is3D && inRoom && (
+          // Por cima do 3D, como nas apps de mapas (fora do canvas, que é só decoração).
+          <Button
+            variant="light"
+            size="sm"
+            icon={<MapIcon aria-hidden className="size-4" />}
+            onClick={backToMap}
+            style={{ top: insets.top + 12 }}
+            className="absolute left-4 z-10 shadow-pop lg:left-10"
+          >
+            Back to map
+          </Button>
+        )}
+        {!is3D && (
+          <>
+            {prevStop && (
+              <div aria-hidden>
+                <SceneImage key={`prev-${prev}`} scene={prevStop.scene} alt="" fade={false} />
+              </div>
+            )}
+            <SceneImage key={index} scene={stop.scene} alt={stop.sceneAlt} />
+            <div aria-hidden className="pointer-events-none absolute inset-0 hidden bg-linear-to-t from-kampus-ink/70 via-transparent to-transparent short:block lg:block" />
+          </>
+        )}
       </div>
 
+      {/* Anúncios para leitores de ecrã: a sala ou o mapa, e a fala */}
+      <p aria-live="polite" className="sr-only">
+        {!inRoom
+          ? `Campus map. Next: ${TOUR_STOPS[mapNext]!.name}.`
+          : answer
+            ? `${guideLabel} answers: ${answer.answer}`
+            : `Stop ${index + 1} of ${TOTAL}: ${stop.name}. ${stop.text}`}
+      </p>
+
       {/* Guia e caixa de diálogo */}
-      <main className="relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 short:absolute short:inset-x-0 short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8">
+      <main
+        className={cn(
+          "relative z-10 flex flex-1 flex-col px-4 pt-4 pb-40 short:absolute short:bottom-0 short:flex-none short:pt-0 short:pb-[4.75rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:px-10 lg:pt-0 lg:pb-8",
+          // No 3D deitado o diálogo fica à direita e a sala à esquerda (por baixo dele não se via nada).
+          is3D ? "short:right-0 short:w-[58%]" : "short:inset-x-0",
+        )}
+      >
         <div className="relative mx-auto w-full max-w-6xl">
+          {!inRoom ? (
+            <section
+              ref={cardRef}
+              aria-labelledby={mapTitleId}
+              className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:mx-auto lg:max-w-xl lg:backdrop-blur"
+            >
+              <h2 id={mapTitleId} ref={mapHeadingRef} tabIndex={-1} className="font-display text-lg font-semibold text-white outline-none short:text-base">
+                Campus map
+              </h2>
+              <p className="mt-1 text-sm text-white/85">Choose a room on the map, or carry on with the tour.</p>
+              <Button variant="light" onClick={() => enterRoom(mapNext)} className="mt-4 w-full sm:w-auto short:mt-2">
+                {visited.size === 0 ? "Start at the Entrance" : `Continue to ${TOUR_STOPS[mapNext]!.name}`}
+                <ChevronRight aria-hidden className="size-4" />
+              </Button>
+            </section>
+          ) : (
+          <>
           <GuidePortrait
             guide={stop.guide}
             face={mouthOpen ? "talk" : mood}
@@ -209,6 +445,8 @@ export function TourPage() {
             imgClassName="h-full w-auto"
           />
           <section
+            ref={cardRef}
+            tabIndex={-1}
             aria-label="Guide"
             className="relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15 short:p-3.5 lg:ml-72 lg:backdrop-blur lg:p-7"
           >
@@ -235,9 +473,6 @@ export function TourPage() {
                 {shown}
               </p>
             </div>
-            <p aria-live="polite" className="sr-only">
-              {answer ? `${guideLabel} answers: ${answer.answer}` : `Stop ${index + 1} of ${TOTAL}: ${stop.name}. ${stop.text}`}
-            </p>
             <p aria-hidden className={cn("mt-2 hidden text-xs text-white/75 lg:block", done && "invisible")}>
               Press Enter or click the text to show it all
             </p>
@@ -280,7 +515,7 @@ export function TourPage() {
             )}
 
             {/* Controlos: fila fixa em baixo no telemóvel, dentro da caixa no desktop */}
-            <div className="fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t border-white/10 bg-kampus-ink px-4 pt-3 short:flex-nowrap short:bg-kampus-ink/95 short:pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0">
+            <div ref={controlsRef} className="fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t border-white/10 bg-kampus-ink px-4 pt-3 short:flex-nowrap short:bg-kampus-ink/95 short:pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0">
               <Button
                 icon={<ChevronLeft aria-hidden className="size-4" />}
                 onClick={() => goTo(index - 1)}
@@ -311,6 +546,8 @@ export function TourPage() {
               </Button>
             </div>
           </section>
+          </>
+          )}
         </div>
       </main>
     </div>
