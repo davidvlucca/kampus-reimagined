@@ -20,6 +20,7 @@ import {
   useToast,
 } from "../../components/ui/index.ts";
 import { fullName, timeAgo } from "../../lib/format.ts";
+import { cohortFilter } from "./cohortFilter.ts";
 import { StudentFormDialog } from "./StudentFormDialog.tsx";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -28,7 +29,6 @@ export function StudentsPage() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
-  const cohortId = params.get("cohort") ?? "";
 
   // O texto da pesquisa vive no estado local e vai para o URL com debounce.
   const [search, setSearch] = useState(q);
@@ -49,6 +49,7 @@ export function StudentsPage() {
   }, [search, q, setParams]);
 
   const cohorts = useCohorts();
+  const cohortId = cohortFilter(params.get("cohort"), cohorts.data);
   const students = useStudents({ q, cohortId });
   const deleteStudent = useDeleteStudent();
 

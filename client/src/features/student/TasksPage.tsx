@@ -5,6 +5,7 @@ import { errorMessage, fieldErrors } from "../../api/client.ts";
 import { useCreateTask, useTasks } from "../../api/hooks.ts";
 import { Button, Card, CardBody, EmptyState, ErrorState, Input, PageHeader, SkeletonList, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 import { TaskItem } from "./TaskItem.tsx";
 
 const FILTERS: { value: TaskFilter; label: string }[] = [
@@ -82,6 +83,7 @@ function CreateTaskForm({ titleRef }: { titleRef: RefObject<HTMLInputElement | n
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -92,20 +94,19 @@ function CreateTaskForm({ titleRef }: { titleRef: RefObject<HTMLInputElement | n
       return;
     }
     setErrors({});
-    create.mutate(
-      { title: trimmed, dueDate: dueDate || null },
-      {
-        onSuccess: () => {
+    void lock(() =>
+      create.mutateAsync({ title: trimmed, dueDate: dueDate || null }).then(
+        () => {
           setTitle("");
           setDueDate("");
           toast({ title: "Task added", tone: "success" });
           titleRef.current?.focus();
         },
-        onError: (err) => {
+        (err: unknown) => {
           setErrors(fieldErrors(err));
           toast({ title: "Couldn't add the task", description: errorMessage(err), tone: "error" });
         },
-      },
+      ),
     );
   };
 

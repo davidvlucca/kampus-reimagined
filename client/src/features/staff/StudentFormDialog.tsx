@@ -1,9 +1,10 @@
 import { createStudentSchema, isProtectedDemoEmail, updateStudentSchema, type StudentRow, type UpdateStudentInput } from "@kampus/shared";
 import { useState, type FormEvent } from "react";
-import { errorMessage, fieldErrors } from "../../api/client.ts";
+import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useCohorts, useCreateStudent, useUpdateStudent } from "../../api/hooks.ts";
 import { Button, Dialog, Input, Select, useToast } from "../../components/ui/index.ts";
 import { fullName } from "../../lib/format.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 
 type FieldName = "firstName" | "lastName" | "email" | "cohortId" | "password";
 type Values = Record<FieldName, string>;
@@ -40,6 +41,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
   const updateStudent = useUpdateStudent();
   const [values, setValues] = useState<Values>(() => initialValues(student));
   const [errors, setErrors] = useState<Errors>({});
+  const lock = useSubmitLock();
 
   const set = (field: FieldName) => (value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -50,36 +52,41 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    try {
-      if (!isEdit) {
-        const parsed = createStudentSchema.safeParse(values);
-        if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
-        await createStudent.mutateAsync(parsed.data);
-        toast({ title: "Student added", description: `${fullName(parsed.data)} can now log in.`, tone: "success" });
-      } else {
-        // Só envia o que mudou; a password só se vier preenchida.
-        const changes: UpdateStudentInput = {};
-        const base = initialValues(student);
-        if (values.firstName !== base.firstName) changes.firstName = values.firstName;
-        if (values.lastName !== base.lastName) changes.lastName = values.lastName;
-        if (values.email !== base.email) changes.email = values.email;
-        if (values.cohortId !== base.cohortId) changes.cohortId = values.cohortId;
-        if (values.password) changes.password = values.password;
-        if (Object.keys(changes).length === 0) {
-          onOpenChange(false);
-          return;
+    // Um duplo clique não cria dois (ver useSubmitLock).
+    await lock(async () => {
+      try {
+        if (!isEdit) {
+          const parsed = createStudentSchema.safeParse(values);
+          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          await createStudent.mutateAsync(parsed.data);
+          toast({ title: "Student added", description: `${fullName(parsed.data)} can now log in.`, tone: "success" });
+        } else {
+          // Só envia o que mudou; a password só se vier preenchida.
+          const changes: UpdateStudentInput = {};
+          const base = initialValues(student);
+          if (values.firstName !== base.firstName) changes.firstName = values.firstName;
+          if (values.lastName !== base.lastName) changes.lastName = values.lastName;
+          if (values.email !== base.email) changes.email = values.email;
+          if (values.cohortId !== base.cohortId) changes.cohortId = values.cohortId;
+          if (values.password) changes.password = values.password;
+          if (Object.keys(changes).length === 0) {
+            onOpenChange(false);
+            return;
+          }
+          const parsed = updateStudentSchema.safeParse(changes);
+          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          await updateStudent.mutateAsync({ id: student.id, ...parsed.data });
+          toast({ title: "Changes saved", tone: "success" });
         }
-        const parsed = updateStudentSchema.safeParse(changes);
-        if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
-        await updateStudent.mutateAsync({ id: student.id, ...parsed.data });
-        toast({ title: "Changes saved", tone: "success" });
+        onOpenChange(false);
+      } catch (error) {
+        // Apagado entretanto (noutro separador ou por outra pessoa): fecha, a lista já se atualiza.
+        if (isEdit && isNotFound(error)) onOpenChange(false);
+        const fields = fieldErrors(error);
+        if (Object.keys(fields).length > 0) setErrors(fields);
+        toast({ title: isEdit ? "Couldn't save changes" : "Couldn't add student", description: errorMessage(error), tone: "error" });
       }
-      onOpenChange(false);
-    } catch (error) {
-      const fields = fieldErrors(error);
-      if (Object.keys(fields).length > 0) setErrors(fields);
-      toast({ title: isEdit ? "Couldn't save changes" : "Couldn't add student", description: errorMessage(error), tone: "error" });
-    }
+    });
   };
 
   return (

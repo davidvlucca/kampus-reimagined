@@ -23,7 +23,10 @@ import type {
   UpdateTaskInput,
 } from "@kampus/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiRequestError } from "./client.ts";
+import { api, ApiRequestError, isNotFound } from "./client.ts";
+
+// Um 404 numa mutation quer dizer que a linha já não existe (apagada noutro separador ou
+// por outra pessoa): cada hook volta a pedir a lista, para ela deixar de aparecer.
 
 export const keys = {
   me: ["me"] as const,
@@ -162,6 +165,7 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: (id: string) => api<undefined>(`/tasks/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.tasks }),
+    onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: keys.tasks }),
   });
 }
 
@@ -199,6 +203,8 @@ export function useUpdateNote() {
       qc.setQueryData(keys.note(note.id), note);
       return qc.invalidateQueries({ queryKey: keys.notes });
     },
+    // A nota e a lista: o editor passa a mostrar "Note not found".
+    onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: keys.notes }),
   });
 }
 
@@ -208,6 +214,12 @@ export function useDeleteNote() {
     mutationFn: (id: string) => api<undefined>(`/notes/${id}`, { method: "DELETE" }),
     // Só a lista: invalidar ["notes"] inteiro voltava a pedir a nota apagada (404 no ecrã).
     onSuccess: (_data, id) => {
+      qc.setQueryData<Note[]>(keys.notes, (list) => list?.filter((n) => n.id !== id));
+      return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
+    },
+    // Já tinha sido apagada: para a lista é o mesmo que apagar agora.
+    onError: (error, id) => {
+      if (!isNotFound(error)) return;
       qc.setQueryData<Note[]>(keys.notes, (list) => list?.filter((n) => n.id !== id));
       return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
     },
@@ -269,6 +281,7 @@ export function useUpdateStudent() {
     mutationFn: async ({ id, ...input }: UpdateStudentInput & { id: string }) =>
       (await api<{ student: StudentRow }>(`/staff/students/${id}`, { method: "PATCH", body: input })).student,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["staff"] }),
+    onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: ["staff"] }),
   });
 }
 
@@ -277,6 +290,7 @@ export function useDeleteStudent() {
   return useMutation({
     mutationFn: (id: string) => api<undefined>(`/staff/students/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["staff"] }),
+    onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: ["staff"] }),
   });
 }
 
@@ -320,6 +334,11 @@ export function useUpdateAssignment() {
     mutationFn: async ({ id, ...input }: UpdateAssignmentInput & { id: string }) =>
       (await api<{ assignment: Assignment }>(`/staff/assignments/${id}`, { method: "PATCH", body: input })).assignment,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.assignments }),
+    onError: (error, { id }) => {
+      if (!isNotFound(error)) return;
+      qc.removeQueries({ queryKey: keys.assignment(id) });
+      return qc.invalidateQueries({ queryKey: ["staff"] });
+    },
   });
 }
 
@@ -329,6 +348,11 @@ export function useDeleteAssignment() {
     mutationFn: (id: string) => api<undefined>(`/staff/assignments/${id}`, { method: "DELETE" }),
     // Tira o detalhe da cache antes de invalidar, para não voltar a pedir uma tarefa apagada (404).
     onSuccess: (_data, id) => {
+      qc.removeQueries({ queryKey: keys.assignment(id) });
+      return qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (error, id) => {
+      if (!isNotFound(error)) return;
       qc.removeQueries({ queryKey: keys.assignment(id) });
       return qc.invalidateQueries({ queryKey: ["staff"] });
     },

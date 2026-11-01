@@ -1,11 +1,12 @@
 import type { StaffRef, Task } from "@kampus/shared";
 import { CalendarX, Pencil, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { errorMessage, fieldErrors } from "../../api/client.ts";
+import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useDeleteTask, useUpdateTask } from "../../api/hooks.ts";
 import { Button, Checkbox, ConfirmDialog, Dialog, IconButton, Input, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { formatDate, fullName } from "../../lib/format.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 import { DeadlineBadge } from "./DeadlineBadge.tsx";
 
 /** "From Marta Lopes · Program Manager"; "From staff" se a pessoa já não existir. */
@@ -74,28 +75,32 @@ function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => void }) 
   const update = useUpdateTask();
   const [title, setTitle] = useState(task.title);
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");
-  const [error, setError] = useState<string | undefined>();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
   const formId = `edit-task-${task.id}`;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) {
-      setError("Required");
+      setErrors({ title: "Required" });
       return;
     }
-    update.mutate(
-      { id: task.id, title: trimmed, dueDate: dueDate || null },
-      {
-        onSuccess: () => {
+    setErrors({});
+    void lock(() =>
+      update.mutateAsync({ id: task.id, title: trimmed, dueDate: dueDate || null }).then(
+        () => {
           toast({ title: "Task updated", tone: "success" });
           onClose();
         },
-        onError: (err) => {
-          setError(fieldErrors(err).title);
+        (err: unknown) => {
           toast({ title: "Couldn't save the task", description: errorMessage(err), tone: "error" });
+          // Apagada noutro separador: não há nada para editar (a lista já se atualiza).
+          if (isNotFound(err)) return onClose();
+          // Como no formulário de criar: cada campo mostra o seu erro (o título e a data).
+          setErrors(fieldErrors(err));
         },
-      },
+      ),
     );
   };
 
@@ -116,9 +121,9 @@ function EditTaskDialog({ task, onClose }: { task: Task; onClose: () => void }) 
       }
     >
       <form id={formId} onSubmit={submit} className="flex flex-col gap-4" noValidate>
-        <Input label="Title" value={title} maxLength={120} error={error} onChange={(e) => setTitle(e.target.value)} required />
+        <Input label="Title" value={title} maxLength={120} error={errors.title} onChange={(e) => setTitle(e.target.value)} required />
         <div className="flex flex-col gap-2">
-          <Input label="Due date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} hint="Optional" />
+          <Input label="Due date" type="date" value={dueDate} error={errors.dueDate} onChange={(e) => setDueDate(e.target.value)} hint="Optional" />
           {dueDate && (
             <Button variant="ghost" size="sm" className="self-start" icon={<CalendarX aria-hidden className="size-4" />} onClick={() => setDueDate("")}>
               Remove due date

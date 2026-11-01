@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 import { Button } from "./Button.tsx";
 
 const overlay = "fixed inset-0 z-40 bg-kampus-ink/45 backdrop-blur-[2px] data-[state=open]:animate-fade-up";
@@ -69,15 +70,19 @@ export interface ConfirmDialogProps {
 /** Confirmação de uma ação irreversível (ex.: apagar). O foco começa no "Cancel". */
 export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = "Cancel", tone = "danger", onConfirm }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
-  const confirm = async () => {
-    setBusy(true);
-    try {
-      await onConfirm();
-      onOpenChange(false);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // O `busy` só desativa o botão no re-render seguinte: um duplo clique apagava duas vezes
+  // (e o segundo dava "not found" logo a seguir ao "deleted").
+  const lock = useSubmitLock();
+  const confirm = () =>
+    lock(async () => {
+      setBusy(true);
+      try {
+        await onConfirm();
+        onOpenChange(false);
+      } finally {
+        setBusy(false);
+      }
+    });
   return (
     <AlertDialogPrimitive.Root open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <AlertDialogPrimitive.Portal>

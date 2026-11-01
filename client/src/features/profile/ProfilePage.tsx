@@ -7,6 +7,7 @@ import { useChangePassword, useCurrentUser, useLogout, useUpdateProfile } from "
 import { loginPath } from "../../components/layout/paths.ts";
 import { Avatar, Badge, Button, buttonClasses, Card, CardBody, CardHeader, Input, PageHeader, useToast } from "../../components/ui/index.ts";
 import { formatDate, fullName } from "../../lib/format.ts";
+import { useSubmitLock } from "../../lib/submitLock.ts";
 
 /** Primeira mensagem de erro por campo, a partir dos issues do Zod. */
 function issuesByField(issues: readonly { path: readonly PropertyKey[]; message: string }[]): Record<string, string> {
@@ -41,6 +42,7 @@ function DetailsForm({ user }: { user: PublicUser }) {
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
 
   const dirty = firstName.trim() !== user.firstName || lastName.trim() !== user.lastName;
 
@@ -52,17 +54,19 @@ function DetailsForm({ user }: { user: PublicUser }) {
       return;
     }
     setErrors({});
-    update.mutate(parsed.data, {
-      onSuccess: ({ user: saved }) => {
-        setFirstName(saved.firstName);
-        setLastName(saved.lastName);
-        toast({ title: "Changes saved" });
-      },
-      onError: (error) => {
-        setErrors(fieldErrors(error));
-        toast({ title: "Couldn't save your changes", description: errorMessage(error), tone: "error" });
-      },
-    });
+    void lock(() =>
+      update.mutateAsync(parsed.data).then(
+        ({ user: saved }) => {
+          setFirstName(saved.firstName);
+          setLastName(saved.lastName);
+          toast({ title: "Changes saved" });
+        },
+        (error: unknown) => {
+          setErrors(fieldErrors(error));
+          toast({ title: "Couldn't save your changes", description: errorMessage(error), tone: "error" });
+        },
+      ),
+    );
   };
 
   return (
@@ -111,6 +115,7 @@ function PasswordForm({ email }: { email: string }) {
   const toast = useToast();
   const [values, setValues] = useState(emptyPasswords);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const lock = useSubmitLock();
 
   const set = (field: keyof typeof emptyPasswords) => (value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -128,19 +133,22 @@ function PasswordForm({ email }: { email: string }) {
       return;
     }
     setErrors({});
-    change.mutate(parsed.data, {
-      onSuccess: () => {
-        setValues(emptyPasswords);
-        toast({ title: "Password changed. You were logged out on other devices." });
-      },
-      onError: (error) => {
-        if (error instanceof ApiRequestError && error.status === 400) {
-          const fields = fieldErrors(error);
-          setErrors(Object.keys(fields).length > 0 ? fields : { currentPassword: errorMessage(error) });
-        }
-        toast({ title: "Couldn't change your password", description: errorMessage(error), tone: "error" });
-      },
-    });
+    // Um duplo clique mudava a password e logo a seguir dava "password atual errada".
+    void lock(() =>
+      change.mutateAsync(parsed.data).then(
+        () => {
+          setValues(emptyPasswords);
+          toast({ title: "Password changed. You were logged out on other devices." });
+        },
+        (error: unknown) => {
+          if (error instanceof ApiRequestError && error.status === 400) {
+            const fields = fieldErrors(error);
+            setErrors(Object.keys(fields).length > 0 ? fields : { currentPassword: errorMessage(error) });
+          }
+          toast({ title: "Couldn't change your password", description: errorMessage(error), tone: "error" });
+        },
+      ),
+    );
   };
 
   return (

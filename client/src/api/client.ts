@@ -43,3 +43,8 @@ export function errorMessage(error: unknown): string {
 export function fieldErrors(error: unknown): Record<string, string> {
   return error instanceof ApiRequestError ? (error.body.fields ?? {}) : {};
 }
+
+/** A API respondeu 404: o que se queria mudar já não existe (ex.: apagado noutro separador). */
+export function isNotFound(error: unknown): boolean {
+  return error instanceof ApiRequestError && error.status === 404;
+}

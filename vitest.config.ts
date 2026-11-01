@@ -15,6 +15,8 @@ export default defineConfig({
       { test: { name: "shared-tz-east", include: ["shared/src/**/*.test.ts"], env: { TZ: "Pacific/Auckland" } } },
       { test: { name: "server", include: ["server/test/**/*.test.ts"], testTimeout: 20_000, hookTimeout: 30_000 } },
       { test: { name: "scripts", include: ["scripts/**/*.test.ts"] } },
+      // Só lógica pura do client (sem DOM).
+      { test: { name: "client", include: ["client/src/**/*.test.ts"] } },
     ],
   },
 });
