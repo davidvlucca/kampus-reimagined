@@ -1,5 +1,6 @@
 import { Block, Cylinder, Shadow } from "../CampusModel.tsx";
-import { BOX, COLORS, mat } from "../materials.ts";
+import { useMat } from "../dim.ts";
+import { BOX, COLORS } from "../materials.ts";
 
 // Móveis da sala "ux-ui". Coordenadas locais: origem no centro da sala, chão em y = 0.08.
 // Estúdio de design: quadro branco com wireframes a norte, parede de post-its a oeste e uma
@@ -109,7 +110,7 @@ export function UxUiRoom() {
       />
       <mesh
         geometry={BOX}
-        material={mat(COLORS.navy)}
+        material={useMat(COLORS.navy)}
         position={[0.7, TABLE_TOP + 0.12, tz + 0.01]}
         rotation={[-0.3, 0, 0]}
         scale={[0.4, 0.24, 0.02]}

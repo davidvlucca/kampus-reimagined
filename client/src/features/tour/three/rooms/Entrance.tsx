@@ -1,5 +1,6 @@
 import { Block, Cylinder, Shadow } from "../CampusModel.tsx";
-import { COLORS, CYLINDER, mat } from "../materials.ts";
+import { useMat } from "../dim.ts";
+import { COLORS, CYLINDER } from "../materials.ts";
 
 // Móveis da sala "entrance". Coordenadas locais: origem no centro da sala, chão em y = 0.08.
 // O corredor do meio (|x| < 0.9) fica livre: é o caminho da porta da rua até à porta do corredor.
@@ -24,7 +25,7 @@ function Plant({ x, z }: { x: number; z: number }) {
 
 /** Roda de bicicleta: um cilindro fino deitado de lado (eixo ao longo de z). */
 function Wheel({ x, z }: { x: number; z: number }) {
-  return <mesh geometry={CYLINDER} material={mat(DARK)} position={[x, 0.22, z]} rotation={[Math.PI / 2, 0, 0]} scale={[0.44, 0.04, 0.44]} />;
+  return <mesh geometry={CYLINDER} material={useMat(DARK)} position={[x, 0.22, z]} rotation={[Math.PI / 2, 0, 0]} scale={[0.44, 0.04, 0.44]} />;
 }
 
 /** Bicicleta encostada à fachada, ao longo de x. Fica na base da maqueta (y = 0), fora da sala. */

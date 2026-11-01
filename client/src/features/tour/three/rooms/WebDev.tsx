@@ -1,5 +1,6 @@
 import { Block, Shadow } from "../CampusModel.tsx";
-import { BOX, COLORS, mat } from "../materials.ts";
+import { useMat } from "../dim.ts";
+import { BOX, COLORS } from "../materials.ts";
 
 // Móveis da sala "web-dev". Coordenadas locais: origem no centro da sala, chão em y = 0.08.
 // Sala de programação: ecrã grande com "código" na parede norte e duas filas de mesas com
@@ -14,7 +15,7 @@ function LaptopLid({ x, z }: { x: number; z: number }) {
   return (
     <mesh
       geometry={BOX}
-      material={mat(COLORS.navy)}
+      material={useMat(COLORS.navy)}
       position={[x, DESK_TOP + 0.12, z]}
       rotation={[-0.3, 0, 0]}
       scale={[0.36, 0.24, 0.02]}

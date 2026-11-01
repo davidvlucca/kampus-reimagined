@@ -75,7 +75,7 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLo
         <color attach="background" args={[COLORS.ink]} />
         <hemisphereLight args={["#FFFFFF", "#7FA6D6", 2.2]} />
         <directionalLight position={[6, 14, 8]} intensity={1.4} />
-        <CampusModel highlight={highlight} pin={view === "map"} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
+        <CampusModel highlight={highlight} focus={cameraRoom} pin={view === "map"} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
         <CameraRig room={cameraRoom} insets={insets} instant={instant} />
         <LabelProjector labels={labels} />
       </Canvas>

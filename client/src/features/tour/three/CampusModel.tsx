@@ -1,5 +1,6 @@
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Dim, useMat } from "./dim.ts";
 import type { Group } from "three";
 import { CORRIDOR_D, DOOR_W, PLAN, ROOM_D, ROOM_W, ROOMS, stopOfRoom, WALL_H, WALL_T, type Room, type RoomId } from "./layout.ts";
 import { BOX, COLORS, CYLINDER, mat, PLANE, SHADOW } from "./materials.ts";
@@ -8,11 +9,11 @@ const PULSE_S = 1.5;
 
 /** Uma caixa da paleta: posição do centro e tamanho, em metros. */
 export function Block({ p, s, color, rotY = 0 }: { p: [number, number, number]; s: [number, number, number]; color: string; rotY?: number }) {
-  return <mesh geometry={BOX} material={mat(color)} position={p} scale={s} rotation={[0, rotY, 0]} />;
+  return <mesh geometry={BOX} material={useMat(color)} position={p} scale={s} rotation={[0, rotY, 0]} />;
 }
 
 export function Cylinder({ p, r, h, color }: { p: [number, number, number]; r: number; h: number; color: string }) {
-  return <mesh geometry={CYLINDER} material={mat(color)} position={p} scale={[r * 2, h, r * 2]} />;
+  return <mesh geometry={CYLINDER} material={useMat(color)} position={p} scale={[r * 2, h, r * 2]} />;
 }
 
 /** Sombra falsa por baixo de uma peça: x, z do centro e tamanho (largura, fundo). */
@@ -46,7 +47,8 @@ function Wall({ x, z, length, alongX, door = false }: { x: number; z: number; le
   );
 }
 
-function RoomWalls({ room }: { room: Room }) {
+/** A parede este é partilhada com a sala ao lado: só se apaga se nenhuma das duas for a atual. */
+function RoomWalls({ room, eastDim }: { room: Room; eastDim: boolean }) {
   const north = room.z - ROOM_D / 2;
   const south = room.z + ROOM_D / 2;
   const west = room.x - ROOM_W / 2;
@@ -58,7 +60,9 @@ function RoomWalls({ room }: { room: Room }) {
       {/* A Entrance tem também a porta da rua, a sul. */}
       <Wall x={room.x} z={south} length={ROOM_W} alongX door={room.corridorSide === "south" || room.id === "entrance"} />
       {isWestColumn && <Wall x={west} z={room.z} length={ROOM_D} alongX={false} />}
-      <Wall x={east} z={room.z} length={ROOM_D} alongX={false} />
+      <Dim.Provider value={eastDim}>
+        <Wall x={east} z={room.z} length={ROOM_D} alongX={false} />
+      </Dim.Provider>
     </>
   );
 }
@@ -149,12 +153,15 @@ function RoomBlock({
 
 export function CampusModel({
   highlight,
+  focus,
   pin,
   animate,
   onSelectStop,
   furniture,
 }: {
   highlight: RoomId | null;
+  /** A sala onde se está (null na vista geral): o resto apaga-se. */
+  focus: RoomId | null;
   /** Pino por cima da sala acesa (só no mapa, onde marca a seguinte). */
   pin: boolean;
   animate: boolean;
@@ -175,21 +182,27 @@ export function CampusModel({
   }, [hovered, invalidate]);
   useEffect(() => () => void (document.body.style.cursor = ""), []);
 
+  // O rato por cima de uma sala apagada acende-a: mostra que também se pode ir para lá.
+  const dimmed = (r: RoomId) => focus !== null && focus !== r && hovered !== r;
+
   return (
     <group>
-      {/* Base da maqueta e corredor */}
-      <Block p={[0, -0.2, 0]} s={[PLAN.width + 1.2, 0.4, PLAN.depth + 1.2]} color={COLORS.base} />
-      <Block p={[0, 0.03, 0]} s={[PLAN.width, 0.06, CORRIDOR_D]} color={COLORS.corridor} />
-      <Wall x={-halfW} z={0} length={CORRIDOR_D} alongX={false} />
-      <Wall x={halfW} z={0} length={CORRIDOR_D} alongX={false} />
-      {/* Caminho da rua até à porta da Entrance */}
-      <Block p={[ROOMS.find((r) => r.id === "entrance")!.x, 0.02, PLAN.depth / 2 + 0.6]} s={[DOOR_W + 0.4, 0.04, 1.2]} color={COLORS.corridor} />
+      <Dim.Provider value={focus !== null}>
+        {/* Base da maqueta e corredor */}
+        <Block p={[0, -0.2, 0]} s={[PLAN.width + 1.2, 0.4, PLAN.depth + 1.2]} color={COLORS.base} />
+        <Block p={[0, 0.03, 0]} s={[PLAN.width, 0.06, CORRIDOR_D]} color={COLORS.corridor} />
+        <Wall x={-halfW} z={0} length={CORRIDOR_D} alongX={false} />
+        <Wall x={halfW} z={0} length={CORRIDOR_D} alongX={false} />
+        {/* Caminho da rua até à porta da Entrance */}
+        <Block p={[ROOMS.find((r) => r.id === "entrance")!.x, 0.02, PLAN.depth / 2 + 0.6]} s={[DOOR_W + 0.4, 0.04, 1.2]} color={COLORS.corridor} />
+      </Dim.Provider>
 
       {ROOMS.map((room) => {
         const index = stopOfRoom(room.id);
+        const east = ROOMS.find((o) => o.z === room.z && o.x > room.x && o.x - room.x < ROOM_W + 1);
         return (
-          <group key={room.id}>
-            <RoomWalls room={room} />
+          <Dim.Provider key={room.id} value={dimmed(room.id)}>
+            <RoomWalls room={room} eastDim={dimmed(room.id) && (!east || dimmed(east.id))} />
             <RoomBlock
               room={room}
               highlighted={highlight === room.id}
@@ -201,7 +214,7 @@ export function CampusModel({
             >
               {furniture?.[room.id]}
             </RoomBlock>
-          </group>
+          </Dim.Provider>
         );
       })}
     </group>

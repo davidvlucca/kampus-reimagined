@@ -1,4 +1,4 @@
-import { BoxGeometry, CylinderGeometry, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
+import { BoxGeometry, Color, CylinderGeometry, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
 
 // Paleta do Kampus. Um material por cor, partilhado por todas as peças (menos trabalho para a GPU).
 export const COLORS = {
@@ -16,12 +16,16 @@ export const COLORS = {
 
 const cache = new Map<string, MeshStandardMaterial>();
 
-/** Material fosco de uma cor, criado uma vez. */
-export function mat(color: string): MeshStandardMaterial {
-  let m = cache.get(color);
+/** Quanto uma peça "apagada" se aproxima do fundo (as salas vizinhas, quando se está numa sala). */
+const DIM = 0.6;
+
+/** Material fosco de uma cor, criado uma vez. Com `dim`, a mesma cor puxada para o fundo. */
+export function mat(color: string, dim = false): MeshStandardMaterial {
+  const key = dim ? `${color}|dim` : color;
+  let m = cache.get(key);
   if (!m) {
-    m = new MeshStandardMaterial({ color, roughness: 0.85, metalness: 0 });
-    cache.set(color, m);
+    m = new MeshStandardMaterial({ color: dim ? new Color(color).lerp(new Color(COLORS.ink), DIM) : color, roughness: 0.85, metalness: 0 });
+    cache.set(key, m);
   }
   return m;
 }

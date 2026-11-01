@@ -49,7 +49,7 @@ function poseFor(room: RoomId | null, width: number, height: number, insets: Ins
   const tanV = Math.tan((fov * DEG) / 2) * (bandH / height);
   const tanH = Math.tan((fov * DEG) / 2) * (bandW / height);
   const tall = along * Math.sin(elevation) + WALL_H * Math.cos(elevation);
-  const margin = room ? 1.3 : 1.14;
+  const margin = room ? 1.15 : 1.14;
   const distance = Math.max(across / 2 / tanH, tall / 2 / tanV) * margin + (along / 2) * Math.cos(elevation);
 
   return { tx: target.x, tz: target.z, azimuth, elevation, distance, shiftX, shiftY };

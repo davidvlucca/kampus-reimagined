@@ -1,5 +1,6 @@
 import { Block, Cylinder, Shadow } from "../CampusModel.tsx";
-import { BOX, COLORS, CYLINDER, mat } from "../materials.ts";
+import { useMat } from "../dim.ts";
+import { BOX, COLORS, CYLINDER } from "../materials.ts";
 
 // Móveis da sala "data". Coordenadas locais: origem no centro da sala, chão em y = 0.08.
 // Sala de dados: três ecrãs grandes na parede norte (barras, linha e donut) e, por baixo,
@@ -22,7 +23,7 @@ function Segment({ a, b }: { a: [number, number]; b: [number, number] }) {
   return (
     <mesh
       geometry={BOX}
-      material={mat(COLORS.sky)}
+      material={useMat(COLORS.sky)}
       position={[(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, FACE]}
       rotation={[0, 0, Math.atan2(dy, dx)]}
       scale={[Math.hypot(dx, dy) + 0.04, 0.045, 0.02]}
@@ -47,7 +48,7 @@ function Disc({
   return (
     <mesh
       geometry={CYLINDER}
-      material={mat(color)}
+      material={useMat(color)}
       position={[x, y, z]}
       rotation={[Math.PI / 2, 0, 0]}
       scale={[r * 2, 0.02, r * 2]}

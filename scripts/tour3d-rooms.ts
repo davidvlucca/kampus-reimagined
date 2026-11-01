@@ -1,5 +1,5 @@
 // Prints de trabalho das salas da visita 3D (não vão para o README).
-// Uso: node scripts/tour3d-rooms.ts [sala…]   ex.: node scripts/tour3d-rooms.ts web-dev kitchen
+// Uso: node scripts/tour3d-rooms.ts [sala…] [--size=LxA]   ex.: node scripts/tour3d-rooms.ts web-dev kitchen
 // Escreve test-results/rooms/<sala>-desktop.png e -mobile.png. Sem salas: todas.
 import { mkdirSync, rmSync } from "node:fs";
 import { chromium } from "@playwright/test";
@@ -9,6 +9,9 @@ import { startStack } from "./stack.ts";
 const OUT = "test-results/rooms";
 const ROOMS = ["entrance", "web-dev", "ux-ui", "data", "kitchen", "lounge"];
 const wanted = process.argv.slice(2).filter((a) => ROOMS.includes(a));
+// --size=1512x760 troca o tamanho do print de desktop (ex.: um portátil com o browser aberto).
+const size = process.argv.find((a) => a.startsWith("--size="))?.slice(7).split("x").map(Number);
+const desktop = size?.length === 2 && size.every((n) => n > 0) ? { width: size[0]!, height: size[1]! } : { width: 1440, height: 900 };
 const rooms = wanted.length ? wanted : ROOMS;
 
 // Portas e base próprias, para poder correr ao mesmo tempo que outro.
@@ -18,7 +21,7 @@ const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--ena
 mkdirSync(OUT, { recursive: true });
 try {
   for (const [name, viewport] of [
-    ["desktop", { width: 1440, height: 900 }],
+    ["desktop", desktop],
     ["mobile", { width: 390, height: 844 }],
   ] as const) {
     const context = await browser.newContext({ baseURL: stack.baseUrl, viewport, deviceScaleFactor: name === "mobile" ? 2 : 1 });
