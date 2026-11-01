@@ -28,8 +28,8 @@ async function studentFlow(page: Page) {
   await pause(page, 3500);
   await page.keyboard.press("Enter");
   await pause(page, 1200);
-  // Uma pergunta ao guia (tecla 1): a resposta escreve-se e a Marta muda de expressão.
-  await page.keyboard.press("1");
+  // Uma pergunta ao guia: a resposta escreve-se e a Marta muda de expressão.
+  await page.getByRole("button", { name: "Where do I get my student card?" }).click();
   await pause(page, 4000);
   await page.keyboard.press("ArrowRight");
   await pause(page, 3000);
