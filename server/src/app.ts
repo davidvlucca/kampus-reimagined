@@ -9,6 +9,7 @@ import type { Db } from "./db/client.ts";
 import type { SessionConfig } from "./auth/session.ts";
 import { resetDatabase, seedDatabase } from "./demo-data.ts";
 import type { AppEnv } from "./lib/env.ts";
+import { assignmentRoutes } from "./routes/assignments.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { meRoutes } from "./routes/me.ts";
 import { noteRoutes } from "./routes/notes.ts";
@@ -80,6 +81,8 @@ export function createApp(config: AppConfig) {
     .route("/contacts", contactRoutes)
     .route("/tour", tourRoutes)
     .route("/cohorts", cohortRoutes)
+    // Antes de /staff: assim o requireUser não corre duas vezes nestes pedidos.
+    .route("/staff/assignments", assignmentRoutes)
     .route("/staff", staffRoutes);
 
   return new Hono()

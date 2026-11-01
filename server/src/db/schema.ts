@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, date, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("role", ["staff", "student"]);
 
@@ -81,6 +81,40 @@ export const tasks = pgTable(
   (t) => [index("tasks_user_idx").on(t.userId)],
 );
 
+// Tarefas da turma: o staff cria uma vez por turma e cada aluno marca a sua conclusão.
+// Ficam numa tabela à parte (e não copiadas para `tasks` de cada aluno) para haver uma só
+// fonte: editar o título ou o prazo chega a todos, e quem entra depois na turma também a vê.
+export const assignments = pgTable(
+  "assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    cohortId: uuid("cohort_id")
+      .notNull()
+      .references(() => cohorts.id, { onDelete: "cascade" }),
+    // Se a pessoa do staff sair, a tarefa fica (sem autor).
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    dueDate: date("due_date", { mode: "string" }),
+    ...timestamps,
+  },
+  (t) => [index("assignments_cohort_idx").on(t.cohortId)],
+);
+
+// Uma linha por aluno que marcou a tarefa da turma como feita (desmarcar apaga a linha).
+export const assignmentCompletions = pgTable(
+  "assignment_completions",
+  {
+    assignmentId: uuid("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.assignmentId, t.userId] }), index("assignment_completions_user_idx").on(t.userId)],
+);
+
 export const notes = pgTable(
   "notes",
   {
@@ -99,3 +133,4 @@ export type UserRow = typeof users.$inferSelect;
 export type CohortRow = typeof cohorts.$inferSelect;
 export type TaskRow = typeof tasks.$inferSelect;
 export type NoteRow = typeof notes.$inferSelect;
+export type AssignmentRow = typeof assignments.$inferSelect;

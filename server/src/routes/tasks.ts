@@ -1,9 +1,11 @@
-import { createTaskSchema, TASK_FILTERS, updateTaskSchema, type Task } from "@kampus/shared";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { COHORT_TASK_MESSAGE, createTaskSchema, TASK_FILTERS, updateTaskSchema, type Task, type TaskFilter } from "@kampus/shared";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireRole, requireUser } from "../auth/middleware.ts";
-import { tasks, type TaskRow } from "../db/schema.ts";
+import type { Db } from "../db/client.ts";
+import { assignmentCompletions, assignments, tasks, type TaskRow, type UserRow } from "../db/schema.ts";
+import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { iso } from "../lib/serialize.ts";
 import { isUuid } from "../lib/users.ts";
@@ -17,24 +19,80 @@ const toTask = (t: TaskRow): Task => ({
   completedAt: iso(t.completedAt),
   createdAt: t.createdAt.toISOString(),
   updatedAt: t.updatedAt.toISOString(),
+  source: "personal",
+  assignedBy: null,
 });
 
 const NOT_FOUND = { error: "Task not found." };
+const COHORT_TASK = { error: COHORT_TASK_MESSAGE };
 
-// Todas as consultas filtram por user_id = utilizador da sessão. A tarefa de outro
-// aluno responde 404, como se não existisse.
+/**
+ * Tarefas da turma ATUAL do aluno, no formato de `Task`. "Feita" quer dizer que existe
+ * uma linha de conclusão deste aluno. Um aluno sem turma não tem nenhuma.
+ */
+async function cohortTasks(db: Db, user: UserRow, opts: { id?: string; status?: TaskFilter } = {}): Promise<Task[]> {
+  if (!user.cohortId) return [];
+  const rows = await db
+    .select({
+      id: assignments.id,
+      title: assignments.title,
+      dueDate: assignments.dueDate,
+      createdAt: assignments.createdAt,
+      updatedAt: assignments.updatedAt,
+      completedAt: assignmentCompletions.completedAt,
+      creator: creatorColumns,
+    })
+    .from(assignments)
+    .leftJoin(
+      assignmentCompletions,
+      and(eq(assignmentCompletions.assignmentId, assignments.id), eq(assignmentCompletions.userId, user.id)),
+    )
+    .leftJoin(creator, eq(creator.id, assignments.createdBy))
+    .where(
+      and(
+        eq(assignments.cohortId, user.cohortId),
+        opts.id ? eq(assignments.id, opts.id) : undefined,
+        opts.status === "done" ? isNotNull(assignmentCompletions.userId) : opts.status === "open" ? isNull(assignmentCompletions.userId) : undefined,
+      ),
+    );
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    dueDate: r.dueDate,
+    done: r.completedAt !== null,
+    completedAt: iso(r.completedAt),
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+    source: "cohort",
+    assignedBy: toStaffRef(r.creator),
+  }));
+}
+
+/** Pessoais e da turma numa só lista: por fazer primeiro, depois o prazo mais perto (sem prazo no fim), depois a mais recente. */
+function byListOrder(a: Task, b: Task): number {
+  if (a.done !== b.done) return a.done ? 1 : -1;
+  if (a.dueDate !== b.dueDate) {
+    if (a.dueDate === null) return 1;
+    if (b.dueDate === null) return -1;
+    return a.dueDate < b.dueDate ? -1 : 1;
+  }
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
+// As tarefas pessoais filtram sempre por user_id = utilizador da sessão; as da turma, pela
+// turma atual do aluno. A tarefa de outro aluno (ou de outra turma) responde 404, como se
+// não existisse.
 export const taskRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("student"))
   .get("/", validate("query", z.object({ status: z.enum(TASK_FILTERS).default("all") })), async (c) => {
     const { status } = c.req.valid("query");
     const mine = eq(tasks.userId, c.var.user.id);
     const where = status === "all" ? mine : and(mine, eq(tasks.done, status === "done"));
-    const rows = await c.var.db
-      .select()
-      .from(tasks)
-      .where(where)
-      .orderBy(asc(tasks.done), sql`${tasks.dueDate} asc nulls last`, desc(tasks.createdAt));
-    return c.json({ tasks: rows.map(toTask) });
+    const [rows, fromCohort] = await Promise.all([
+      c.var.db.select().from(tasks).where(where),
+      cohortTasks(c.var.db, c.var.user, { status }),
+    ]);
+    return c.json({ tasks: [...rows.map(toTask), ...fromCohort].sort(byListOrder) });
   })
   .post("/", validate("json", createTaskSchema), async (c) => {
     const { title, dueDate } = c.req.valid("json");
@@ -48,8 +106,10 @@ export const taskRoutes = new Hono<AppEnv>()
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const input = c.req.valid("json");
+    const db = c.var.db;
+    const user = c.var.user;
     const now = new Date();
-    const [row] = await c.var.db
+    const [row] = await db
       .update(tasks)
       .set({
         ...(input.title !== undefined && { title: input.title }),
@@ -57,10 +117,23 @@ export const taskRoutes = new Hono<AppEnv>()
         ...(input.done !== undefined && { done: input.done, completedAt: input.done ? now : null }),
         updatedAt: now,
       })
-      .where(and(eq(tasks.id, id), eq(tasks.userId, c.var.user.id)))
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .returning();
-    if (!row) return c.json(NOT_FOUND, 404);
-    return c.json({ task: toTask(row) });
+    if (row) return c.json({ task: toTask(row) });
+
+    // Não é uma tarefa pessoal: pode ser uma tarefa da turma, que o aluno só marca ou desmarca.
+    const [cohortTask] = await cohortTasks(db, user, { id });
+    if (!cohortTask) return c.json(NOT_FOUND, 404);
+    if (input.title !== undefined || input.dueDate !== undefined) return c.json(COHORT_TASK, 403);
+    if (input.done === true) {
+      await db.insert(assignmentCompletions).values({ assignmentId: id, userId: user.id }).onConflictDoNothing();
+    } else if (input.done === false) {
+      await db
+        .delete(assignmentCompletions)
+        .where(and(eq(assignmentCompletions.assignmentId, id), eq(assignmentCompletions.userId, user.id)));
+    }
+    const [updated] = await cohortTasks(db, user, { id });
+    return c.json({ task: updated! });
   })
   .delete("/:id", async (c) => {
     const id = c.req.param("id");
@@ -69,6 +142,9 @@ export const taskRoutes = new Hono<AppEnv>()
       .delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, c.var.user.id)))
       .returning({ id: tasks.id });
-    if (!row) return c.json(NOT_FOUND, 404);
-    return c.body(null, 204);
+    if (row) return c.body(null, 204);
+    // Só o staff apaga uma tarefa da turma.
+    const [cohortTask] = await cohortTasks(c.var.db, c.var.user, { id });
+    if (cohortTask) return c.json(COHORT_TASK, 403);
+    return c.json(NOT_FOUND, 404);
   });

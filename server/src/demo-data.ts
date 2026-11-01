@@ -4,7 +4,7 @@ import { addDays, localDateKey } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { hashPassword } from "./auth/password.ts";
 import type { Db } from "./db/client.ts";
-import { cohorts, notes, tasks, users } from "./db/schema.ts";
+import { assignmentCompletions, assignments, cohorts, notes, tasks, users } from "./db/schema.ts";
 
 export const DEMO_PASSWORD = "Kampus123";
 
@@ -102,15 +102,33 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
     .returning();
   const cohortId = (key: CohortKey) => cohortRows.find((r) => r.name === COHORTS.find((c) => c.key === key)!.name)!.id;
 
-  await db.insert(users).values(
-    STAFF.map((s, i) => ({
-      ...s,
-      passwordHash,
-      role: "staff" as const,
-      lastLoginAt: hoursAgo(2 + i),
-      createdAt: hoursAgo(24 * 30 - i),
-    })),
-  );
+  const staffRows = await db
+    .insert(users)
+    .values(
+      STAFF.map((s, i) => ({
+        ...s,
+        passwordHash,
+        role: "staff" as const,
+        lastLoginAt: hoursAgo(2 + i),
+        createdAt: hoursAgo(24 * 30 - i),
+      })),
+    )
+    .returning({ id: users.id, staffTitle: users.staffTitle });
+  const staffId = (title: string) => staffRows.find((r) => r.staffTitle === title)!.id;
+
+  // Tarefas da turma: as mesmas três em cada turma, cada uma criada por quem trata do assunto.
+  const assignmentRows = await db
+    .insert(assignments)
+    .values(
+      COHORTS.flatMap((c) => [
+        { cohortId: cohortId(c.key), createdBy: staffId("Program Manager"), title: "Sign the learning agreement", dueDate: addDays(today, -1) },
+        { cohortId: cohortId(c.key), createdBy: staffId("Lead Teacher"), title: c.setup, dueDate: today },
+        { cohortId: cohortId(c.key), createdBy: staffId("Career Coach"), title: "Book a chat with the Career Coach", dueDate: addDays(today, 12) },
+      ]).map((a) => ({ ...a, createdAt: hoursAgo(24 * 7), updatedAt: hoursAgo(24 * 7) })),
+    )
+    .returning({ id: assignments.id, cohortId: assignments.cohortId, title: assignments.title });
+  const assignmentId = (cohort: string, title: string) =>
+    assignmentRows.find((a) => a.cohortId === cohort && a.title === title)!.id;
 
   const studentRows = await db
     .insert(users)
@@ -132,9 +150,9 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
 
   const taskValues: (typeof tasks.$inferInsert)[] = [];
   const noteValues: (typeof notes.$inferInsert)[] = [];
+  const completionValues: (typeof assignmentCompletions.$inferInsert)[] = [];
 
   studentRows.forEach((student, i) => {
-    const cohort = COHORTS.find((c) => cohortId(c.key) === student.cohortId)!;
     const done = (title: string, dueDate: string | null, doneHoursAgo: number) => ({
       userId: student.id,
       title,
@@ -152,15 +170,21 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
 
     taskValues.push(
       done("Read the welcome guide", addDays(today, -3), 24 * 4),
-      i % 3 === 0 ? open("Sign the learning agreement", addDays(today, -1)) : done("Sign the learning agreement", addDays(today, -1), 30),
-      open(cohort.setup, today),
       open("Join the cohort chat and say hi", addDays(today, 1)),
       student.tourCompletedAt
         ? done("Take the virtual campus tour", addDays(today, 2), 20 + i * 7)
         : open("Take the virtual campus tour", addDays(today, 2)),
-      open("Book a chat with the Career Coach", addDays(today, 12)),
       open("Pick an idea for your first project", null),
     );
+
+    // Das tarefas da turma, só o acordo de aprendizagem já está feito (por dois em cada três).
+    if (i % 3 !== 0) {
+      completionValues.push({
+        assignmentId: assignmentId(student.cohortId!, "Sign the learning agreement"),
+        userId: student.id,
+        completedAt: hoursAgo(30),
+      });
+    }
 
     noteValues.push(
       {
@@ -188,11 +212,12 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
   });
 
   await db.insert(tasks).values(taskValues);
+  await db.insert(assignmentCompletions).values(completionValues);
   await db.insert(notes).values(noteValues);
 
   return { staff: STAFF.length, students: studentRows.length, cohorts: cohortRows.length };
 }
 
 export async function resetDatabase(db: Db) {
-  await db.execute(sql`truncate table login_attempts, sessions, notes, tasks, users, cohorts restart identity cascade`);
+  await db.execute(sql`truncate table login_attempts, sessions, assignment_completions, assignments, notes, tasks, users, cohorts restart identity cascade`);
 }

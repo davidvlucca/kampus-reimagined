@@ -1,4 +1,4 @@
-import type { Note, StaffOverview, StudentRow, Task } from "@kampus/shared";
+import type { Assignment, Note, StaffOverview, StudentRow, Task } from "@kampus/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setup, STAFF, STUDENT_A, STUDENT_B } from "./helpers.ts";
 
@@ -14,7 +14,8 @@ beforeAll(async () => {
   a = await t.login(STUDENT_A, "student");
   b = await t.login(STUDENT_B, "student");
   staff = await t.login(STAFF, "staff");
-  taskOfB = (await t.request<{ tasks: Task[] }>("GET", "/api/tasks", { cookie: b })).json.tasks[0]!;
+  // Uma tarefa pessoal: as da turma são partilhadas por A e B (estão na mesma turma).
+  taskOfB = (await t.request<{ tasks: Task[] }>("GET", "/api/tasks", { cookie: b })).json.tasks.find((x) => x.source === "personal")!;
   noteOfB = (await t.request<{ notes: Note[] }>("GET", "/api/notes", { cookie: b })).json.notes[0]!;
 });
 afterAll(() => t.close());
@@ -65,6 +66,11 @@ describe("rotas de staff", () => {
     ["POST", "/api/staff/students", { firstName: "X", lastName: "Y", email: "x@example.com", cohortId: "00000000-0000-4000-8000-000000000000", password: "Password1" }],
     ["PATCH", "/api/staff/students/00000000-0000-4000-8000-000000000000", { firstName: "X" }],
     ["DELETE", "/api/staff/students/00000000-0000-4000-8000-000000000000"],
+    ["GET", "/api/staff/assignments"],
+    ["GET", "/api/staff/assignments/00000000-0000-4000-8000-000000000000"],
+    ["POST", "/api/staff/assignments", { cohortId: "00000000-0000-4000-8000-000000000000", title: "X" }],
+    ["PATCH", "/api/staff/assignments/00000000-0000-4000-8000-000000000000", { title: "X" }],
+    ["DELETE", "/api/staff/assignments/00000000-0000-4000-8000-000000000000"],
   ];
 
   it.each(staffRoutes)("aluno em %s %s recebe 403", async (method, path, body) => {
@@ -117,7 +123,8 @@ describe("gestão de alunos pelo staff", () => {
       body: { firstName: "Renamed" },
     });
     expect(edited.json.student.firstName).toBe("Renamed");
-    expect(edited.json.student.taskCount).toBe(1);
+    // A tarefa que criou mais as 3 da turma.
+    expect(edited.json.student.taskCount).toBe(4);
 
     expect((await t.request("DELETE", `/api/staff/students/${id}`, { cookie: staff })).status).toBe(204);
     // A sessão do aluno apagado também deixa de existir.
@@ -195,10 +202,13 @@ describe("o hash da password nunca sai na API", () => {
     // Percorre ainda as rotas de leitura, com cada perfil.
     for (const [cookie, paths] of [
       [a, ["/api/auth/me", "/api/tasks", "/api/notes", "/api/contacts"]],
-      [staff, ["/api/auth/me", "/api/staff/overview", "/api/staff/students", "/api/cohorts"]],
+      [staff, ["/api/auth/me", "/api/staff/overview", "/api/staff/students", "/api/cohorts", "/api/staff/assignments"]],
     ] as const) {
       for (const path of paths) await t.request("GET", path, { cookie });
     }
+    // O autor de uma tarefa da turma vem de `users`: confirma que só saem as colunas públicas.
+    const { assignments } = (await t.request<{ assignments: Assignment[] }>("GET", "/api/staff/assignments", { cookie: staff })).json;
+    await t.request("GET", `/api/staff/assignments/${assignments[0]!.id}`, { cookie: staff });
     await t.request("PATCH", "/api/me", { cookie: a, body: { firstName: "Diana", lastName: "Costa" } });
 
     expect(t.seenBodies.length).toBeGreaterThan(30);

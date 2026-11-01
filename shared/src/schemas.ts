@@ -86,6 +86,20 @@ export const updateTaskSchema = createTaskSchema
   .refine((v) => Object.keys(v).length > 0, "Nothing to update");
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 
+/** Quem do staff criou uma tarefa da turma. */
+export interface StaffRef {
+  id: string;
+  firstName: string;
+  lastName: string;
+  title: string | null;
+}
+
+/**
+ * "personal": criada pelo aluno, que a pode editar e apagar.
+ * "cohort": atribuída pelo staff à turma; o aluno só a pode marcar como feita (ou não).
+ */
+export type TaskSource = "personal" | "cohort";
+
 export interface Task {
   id: string;
   title: string;
@@ -94,6 +108,57 @@ export interface Task {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  source: TaskSource;
+  /** Só nas tarefas da turma; null se a pessoa do staff já não existir. */
+  assignedBy: StaffRef | null;
+}
+
+/** Resposta 403 quando o aluno tenta editar ou apagar uma tarefa da turma. */
+export const COHORT_TASK_MESSAGE = "This task was set by staff for your cohort, so you can only mark it as done.";
+
+// ---------- Tarefas da turma (staff) ----------
+
+const taskTitle = z.string().trim().min(1, "Required").max(120, "Max 120 characters");
+
+export const assignmentQuerySchema = z.object({ cohortId: z.uuid().optional() });
+
+export const createAssignmentSchema = z.object({
+  cohortId: z.uuid("Choose a cohort"),
+  title: taskTitle,
+  dueDate: isoDate.nullable().optional(),
+});
+export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
+
+/** A turma não muda depois de criada: muda-se apagando e criando outra. */
+export const updateAssignmentSchema = z
+  .object({ title: taskTitle, dueDate: isoDate.nullable() })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, "Nothing to update");
+export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>;
+
+export interface Assignment {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  cohort: Cohort;
+  createdBy: StaffRef | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Alunos que estão hoje na turma. */
+  students: number;
+  /** Desses, quantos a marcaram como feita. */
+  done: number;
+}
+
+export interface AssignmentStudentStatus {
+  student: { id: string; firstName: string; lastName: string };
+  done: boolean;
+  completedAt: string | null;
+}
+
+export interface AssignmentDetail extends Assignment {
+  /** Um por aluno da turma: primeiro quem ainda não a fez, depois por nome. */
+  progress: AssignmentStudentStatus[];
 }
 
 // ---------- Notas ----------

@@ -13,7 +13,7 @@ import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { hashPassword } from "../auth/password.ts";
 import type { Db } from "../db/client.ts";
-import { cohorts, notes, sessions, tasks, users } from "../db/schema.ts";
+import { assignmentCompletions, assignments, cohorts, notes, sessions, tasks, users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { iso, toCohort } from "../lib/serialize.ts";
 import { findUserByEmail, isUuid } from "../lib/users.ts";
@@ -34,6 +34,19 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
     .from(tasks)
     .groupBy(tasks.userId)
     .as("task_counts");
+  // Tarefas da turma: contam as da turma ATUAL do aluno, e as conclusões só dessas.
+  const cohortTaskCounts = db
+    .select({ cohortId: assignments.cohortId, total: sql<number>`count(*)::int`.as("cohort_total") })
+    .from(assignments)
+    .groupBy(assignments.cohortId)
+    .as("cohort_task_counts");
+  const cohortDoneCounts = db
+    .select({ userId: assignmentCompletions.userId, done: sql<number>`count(*)::int`.as("cohort_done") })
+    .from(assignmentCompletions)
+    .innerJoin(assignments, eq(assignments.id, assignmentCompletions.assignmentId))
+    .innerJoin(users, and(eq(users.id, assignmentCompletions.userId), eq(users.cohortId, assignments.cohortId)))
+    .groupBy(assignmentCompletions.userId)
+    .as("cohort_done_counts");
   const noteCounts = db
     .select({ userId: notes.userId, total: sql<number>`count(*)::int`.as("note_total") })
     .from(notes)
@@ -53,11 +66,15 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
       createdAt: users.createdAt,
       taskCount: taskCounts.total,
       doneTaskCount: taskCounts.done,
+      cohortTaskCount: cohortTaskCounts.total,
+      cohortDoneCount: cohortDoneCounts.done,
       noteCount: noteCounts.total,
     })
     .from(users)
     .leftJoin(cohorts, eq(cohorts.id, users.cohortId))
     .leftJoin(taskCounts, eq(taskCounts.userId, users.id))
+    .leftJoin(cohortTaskCounts, eq(cohortTaskCounts.cohortId, users.cohortId))
+    .leftJoin(cohortDoneCounts, eq(cohortDoneCounts.userId, users.id))
     .leftJoin(noteCounts, eq(noteCounts.userId, users.id))
     .where(and(isStudent, where))
     .orderBy(asc(users.lastName), asc(users.firstName));
@@ -71,13 +88,13 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
     tourCompletedAt: iso(r.tourCompletedAt),
     lastLoginAt: iso(r.lastLoginAt),
     createdAt: r.createdAt.toISOString(),
-    taskCount: r.taskCount ?? 0,
-    doneTaskCount: r.doneTaskCount ?? 0,
+    taskCount: (r.taskCount ?? 0) + (r.cohortTaskCount ?? 0),
+    doneTaskCount: (r.doneTaskCount ?? 0) + (r.cohortDoneCount ?? 0),
     noteCount: r.noteCount ?? 0,
   }));
 }
 
-async function cohortExists(db: Db, id: string) {
+export async function cohortExists(db: Db, id: string) {
   const [row] = await db.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.id, id)).limit(1);
   return Boolean(row);
 }
