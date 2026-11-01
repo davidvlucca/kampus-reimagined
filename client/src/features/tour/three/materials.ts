@@ -30,6 +30,15 @@ export function mat(color: string): MeshStandardMaterial {
 export const BOX = new BoxGeometry(1, 1, 1);
 export const CYLINDER = new CylinderGeometry(0.5, 0.5, 1, 20);
 
+/** Liberta da GPU tudo o que é partilhado (ao desmontar o 3D). Os objetos continuam utilizáveis. */
+export function disposeShared() {
+  for (const m of cache.values()) m.dispose();
+  BOX.dispose();
+  CYLINDER.dispose();
+  SHADOW.dispose();
+  PLANE.dispose();
+}
+
 /** Sombra falsa: um plano escuro semitransparente no chão, sem shadow maps (barato no telemóvel). */
 export const SHADOW = new MeshBasicMaterial({ color: "#001C55", transparent: true, opacity: 0.14, depthWrite: false });
 export const PLANE = new PlaneGeometry(1, 1);

@@ -1,9 +1,9 @@
 import { Canvas } from "@react-three/fiber";
-import { useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { CameraRig, type Insets } from "./CameraRig.tsx";
 import { CampusModel } from "./CampusModel.tsx";
 import { highlightRoom, roomOfStop } from "./layout.ts";
-import { COLORS } from "./materials.ts";
+import { COLORS, disposeShared } from "./materials.ts";
 import { LabelProjector, RoomLabels } from "./RoomLabels.tsx";
 import { FURNITURE } from "./rooms/index.tsx";
 
@@ -29,10 +29,27 @@ export interface CampusMapProps {
  * se faz aqui também se faz com os botões das paragens. Carregada à parte (React.lazy),
  * para o three.js só ser descarregado quando o 3D vai mesmo ser usado.
  */
-export default function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLost, onReady }: CampusMapProps) {
+function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onLost, onReady }: CampusMapProps) {
   const cameraRoom = view === "room" ? roomOfStop(index) : null;
   const highlight = highlightRoom(nextIndex);
   const labels = useRef<(HTMLSpanElement | null)[]>([]);
+  // Ao desmontar, o R3F força a perda do contexto (meio segundo depois). Isso não é uma
+  // falha: sem esta guarda aparecia o aviso "Showing the 2D tour" ao sair da visita.
+  const alive = useRef(true);
+  const onLostRef = useRef(onLost);
+
+  useEffect(() => {
+    onLostRef.current = onLost;
+  }, [onLost]);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      // As geometrias e os materiais são partilhados: liberta-os da GPU (voltam a subir se o 3D voltar).
+      disposeShared();
+    };
+  }, []);
   return (
     <div aria-hidden="true" className="absolute inset-0">
       <Canvas
@@ -44,8 +61,9 @@ export default function CampusMap({ index, view, nextIndex, insets, instant, onS
         gl={{ antialias: true, powerPreference: "low-power" }}
         onCreated={({ gl }) => {
           gl.domElement.addEventListener("webglcontextlost", (event) => {
+            if (!alive.current) return;
             event.preventDefault();
-            onLost();
+            onLostRef.current();
           });
           requestAnimationFrame(onReady);
         }}
@@ -61,3 +79,7 @@ export default function CampusMap({ index, view, nextIndex, insets, instant, onS
     </div>
   );
 }
+
+// Memo: a TourPage volta a renderizar a cada letra da fala; o 3D só quando as props mudam
+// (senão desenhava ~20 frames por segundo enquanto o texto se escreve).
+export default memo(CampusMap);
