@@ -5,6 +5,7 @@ import { CampusModel } from "./CampusModel.tsx";
 import { highlightRoom, roomOfStop } from "./layout.ts";
 import { COLORS } from "./materials.ts";
 import { LabelProjector, RoomLabels } from "./RoomLabels.tsx";
+import { FURNITURE } from "./rooms/index.tsx";
 
 export interface CampusMapProps {
   /** Paragem atual. */
@@ -52,7 +53,7 @@ export default function CampusMap({ index, view, nextIndex, insets, instant, onS
         <color attach="background" args={[COLORS.ink]} />
         <hemisphereLight args={["#FFFFFF", "#7FA6D6", 2.2]} />
         <directionalLight position={[6, 14, 8]} intensity={1.4} />
-        <CampusModel highlight={highlight} animate={!instant} onSelectStop={onSelectStop} />
+        <CampusModel highlight={highlight} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
         <CameraRig room={cameraRoom} insets={insets} instant={instant} />
         <LabelProjector labels={labels} />
       </Canvas>

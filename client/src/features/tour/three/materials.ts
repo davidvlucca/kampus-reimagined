@@ -1,4 +1,4 @@
-import { BoxGeometry, CylinderGeometry, MeshStandardMaterial } from "three";
+import { BoxGeometry, CylinderGeometry, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
 
 // Paleta do Kampus. Um material por cor, partilhado por todas as peças (menos trabalho para a GPU).
 export const COLORS = {
@@ -29,3 +29,7 @@ export function mat(color: string): MeshStandardMaterial {
 /** Geometrias unitárias partilhadas: cada peça é escalada a partir destas. */
 export const BOX = new BoxGeometry(1, 1, 1);
 export const CYLINDER = new CylinderGeometry(0.5, 0.5, 1, 20);
+
+/** Sombra falsa: um plano escuro semitransparente no chão, sem shadow maps (barato no telemóvel). */
+export const SHADOW = new MeshBasicMaterial({ color: "#001C55", transparent: true, opacity: 0.14, depthWrite: false });
+export const PLANE = new PlaneGeometry(1, 1);

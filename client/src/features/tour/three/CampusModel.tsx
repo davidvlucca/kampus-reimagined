@@ -2,7 +2,7 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Group } from "three";
 import { CORRIDOR_D, DOOR_W, PLAN, ROOM_D, ROOM_W, ROOMS, stopOfRoom, WALL_H, WALL_T, type Room, type RoomId } from "./layout.ts";
-import { BOX, COLORS, CYLINDER, mat } from "./materials.ts";
+import { BOX, COLORS, CYLINDER, mat, PLANE, SHADOW } from "./materials.ts";
 
 const PULSE_S = 1.5;
 
@@ -13,6 +13,11 @@ export function Block({ p, s, color, rotY = 0 }: { p: [number, number, number]; 
 
 export function Cylinder({ p, r, h, color }: { p: [number, number, number]; r: number; h: number; color: string }) {
   return <mesh geometry={CYLINDER} material={mat(color)} position={p} scale={[r * 2, h, r * 2]} />;
+}
+
+/** Sombra falsa por baixo de uma peça: x, z do centro e tamanho (largura, fundo). */
+export function Shadow({ x, z, w, d }: { x: number; z: number; w: number; d: number }) {
+  return <mesh geometry={PLANE} material={SHADOW} position={[x, 0.085, z]} rotation={[-Math.PI / 2, 0, 0]} scale={[w, d, 1]} />;
 }
 
 /** Uma parede ao longo de x (dx=1) ou de z, com uma porta opcional ao centro. */
