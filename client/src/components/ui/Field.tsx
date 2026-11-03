@@ -1,4 +1,5 @@
 import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn.ts";
 
 interface FieldBase {
@@ -12,7 +13,9 @@ interface FieldBase {
 const control = cn(
   // 16px no mínimo: abaixo disso o Safari do iOS amplia a página ao focar o campo.
   "w-full min-w-0 rounded-xl border bg-card px-3.5 text-base text-text placeholder:text-subtle transition",
-  "border-line-strong hover:border-kampus-blue/50 focus:border-kampus-blue focus:outline-none focus:ring-3 focus:ring-kampus-blue/20",
+  // Borda com 3:1 sobre branco (WCAG 1.4.11); outline-hidden e não outline-none: em alto contraste
+  // o anel desaparece e só fica o contorno do sistema.
+  "border-line-control hover:border-kampus-blue focus:border-kampus-blue focus:outline-hidden focus:ring-3 focus:ring-kampus-blue/20",
   "disabled:cursor-not-allowed disabled:bg-surface disabled:text-subtle",
   "aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/20",
 );
@@ -45,23 +48,40 @@ function FieldShell({ id, label, hideLabel, hint, hintId, error, errorId, childr
   );
 }
 
-export type InputProps = FieldBase & InputHTMLAttributes<HTMLInputElement> & { wrapperClassName?: string };
+export type InputProps = FieldBase &
+  InputHTMLAttributes<HTMLInputElement> & {
+    wrapperClassName?: string;
+    /** Ícone decorativo à esquerda (ex.: lupa numa pesquisa). Fica por cima do campo e não apanha cliques. */
+    leadingIcon?: ReactNode;
+  };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hideLabel, hint, error, className, wrapperClassName, ...props },
+  { label, hideLabel, hint, error, className, wrapperClassName, leadingIcon, ...props },
   ref,
 ) {
   const ids = useFieldIds(error, hint);
+  const input = (
+    <input
+      ref={ref}
+      id={ids.id}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={ids.describedBy}
+      className={cn(control, "h-11", leadingIcon != null && "ps-10", className)}
+      {...props}
+    />
+  );
   return (
     <FieldShell id={ids.id} label={label} hideLabel={hideLabel} hint={hint} hintId={ids.hintId} error={error} errorId={ids.errorId} className={wrapperClassName}>
-      <input
-        ref={ref}
-        id={ids.id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={ids.describedBy}
-        className={cn(control, "h-11", className)}
-        {...props}
-      />
+      {leadingIcon != null ? (
+        <div className="relative">
+          <span aria-hidden className="pointer-events-none absolute start-3 top-1/2 grid -translate-y-1/2 text-subtle forced-colors:text-[CanvasText] [&_svg]:size-5">
+            {leadingIcon}
+          </span>
+          {input}
+        </div>
+      ) : (
+        input
+      )}
     </FieldShell>
   );
 });
@@ -96,20 +116,20 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   const ids = useFieldIds(error, hint);
   return (
     <FieldShell id={ids.id} label={label} hideLabel={hideLabel} hint={hint} hintId={ids.hintId} error={error} errorId={ids.errorId} className={wrapperClassName}>
-      <select
-        ref={ref}
-        id={ids.id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={ids.describedBy}
-        className={cn(
-          control,
-          "h-11 appearance-none bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23475569'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5'/%3E%3C/svg%3E\")] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat pr-10",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </select>
+      {/* A seta é um ícone por cima (e não um background-image), para não perder o bg-card nem sumir em alto contraste. */}
+      <div className="relative">
+        <select
+          ref={ref}
+          id={ids.id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={ids.describedBy}
+          className={cn(control, "h-11 appearance-none pe-10", className)}
+          {...props}
+        >
+          {children}
+        </select>
+        <ChevronDown aria-hidden className="pointer-events-none absolute end-3 top-1/2 size-5 -translate-y-1/2 text-muted forced-colors:text-[CanvasText]" />
+      </div>
     </FieldShell>
   );
 });

@@ -19,12 +19,19 @@ const icons = {
 };
 
 let nextId = 1;
+const ERROR_DURATION = 10_000;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const toast = useCallback<ToastFn>(({ title, description, tone = "success" }) => {
-    setToasts((list) => [...list.slice(-2), { id: nextId++, title, description, tone }]);
+    setToasts((list) => {
+      const next = [...list, { id: nextId++, title, description, tone }];
+      if (next.length <= 3) return next;
+      // No máximo três: sai o mais antigo, mas um erro não é empurrado por um "Saved".
+      const drop = next.findIndex((item) => item.tone !== "error");
+      return next.filter((_, i) => i !== (drop >= 0 && drop < next.length - 1 ? drop : 0));
+    });
   }, []);
   const remove = (id: number) => setToasts((list) => list.filter((t) => t.id !== id));
 
@@ -38,6 +45,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <ToastPrimitive.Root
             key={t.id}
             type={t.tone === "error" ? "foreground" : "background"}
+            // Um erro é às vezes o único sítio onde a mensagem aparece: fica 10 s (e pausa com o rato ou o foco).
+            duration={t.tone === "error" ? ERROR_DURATION : undefined}
             onOpenChange={(open) => !open && remove(t.id)}
             // Com um dialog aberto, o Esc fecha o dialog (o toast fica até ao próximo Esc ou ao fim do tempo).
             onEscapeKeyDown={(event) => closeTopDialog() && event.preventDefault()}
