@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { isKnownSpaPath, LOGIN_REDIRECT, MISSING_ASSET, NOINDEX, NON_API_PATHS, SECURITY_HEADERS, vercelRoutes } from "./vercel-routes.ts";
+import { readdirSync } from "node:fs";
+import {
+  isKnownSpaPath,
+  LOGIN_REDIRECT,
+  MISSING_ASSET,
+  NOINDEX,
+  NON_API_PATHS,
+  PUBLIC_SVG,
+  PUBLIC_SVG_CACHE,
+  SECURITY_HEADERS,
+  vercelRoutes,
+} from "./vercel-routes.ts";
 
 // Um caminho de exemplo por cada rota de client/src/router.tsx.
 const KNOWN = [
@@ -63,6 +74,26 @@ describe("rotas da Vercel", () => {
       expect(matches(path), path).toBe(true);
     }
     for (const path of ["/api", "/api/", "/api/auth/me", "/api/health"]) expect(matches(path), path).toBe(false);
+  });
+
+  it("as ilustrações da visita e o favicon têm um dia de cache (antes do filesystem); um que não existe dá 404 sem cache", () => {
+    const routes = vercelRoutes();
+    const filesystem = routes.findIndex((r) => "handle" in r);
+    const cached = routes.findIndex((r) => r.src === PUBLIC_SVG && "continue" in r);
+    expect(cached).toBeGreaterThan(-1);
+    expect(cached).toBeLessThan(filesystem);
+    expect(routes[cached]).toEqual({ src: PUBLIC_SVG, headers: { "cache-control": PUBLIC_SVG_CACHE }, continue: true });
+    const missing = routes.findIndex((r) => r.src === PUBLIC_SVG && "dest" in r);
+    expect(missing).toBeGreaterThan(filesystem);
+    expect(routes[missing]).toMatchObject({ dest: MISSING_ASSET.path, status: 404, headers: { "cache-control": "no-store" } });
+
+    const matches = (path: string) => new RegExp(PUBLIC_SVG).test(path);
+    // Todos os SVG de client/public/tour contam.
+    const tourSvgs = readdirSync(new URL("../client/public/tour", import.meta.url)).filter((f) => f.endsWith(".svg"));
+    expect(tourSvgs.length).toBeGreaterThan(0);
+    for (const file of tourSvgs) expect(matches(`/tour/${file}`), file).toBe(true);
+    expect(matches("/favicon.svg")).toBe(true);
+    for (const path of ["/app/tour", "/tour", "/tour/a/b.svg", "/faviconXsvg", "/assets/x.svg"]) expect(matches(path), path).toBe(false);
   });
 
   it("/login (com ou sem barra) responde 308 para /login/student, antes do filesystem e do SPA", () => {

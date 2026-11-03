@@ -62,6 +62,14 @@ export const SECURITY_HEADERS = {
 /** Tudo menos /api e /api/... (a API responde com os headers dela). */
 export const NON_API_PATHS = "^/(?!api(?:/|$)).*$";
 
+/**
+ * As ilustrações da visita e o favicon (client/public) não têm hash no nome: um dia de cache,
+ * e mais uma semana a servir a cópia antiga enquanto revalida. Uma ilustração nova aparece no
+ * máximo no dia seguinte, sem pedir de novo cada SVG em cada paragem.
+ */
+export const PUBLIC_SVG = "^/(favicon\\.svg|tour/[^/]+\\.svg)$";
+export const PUBLIC_SVG_CACHE = "public, max-age=86400, stale-while-revalidate=604800";
+
 export const LOGIN_REDIRECT = { src: "^/login/?$", status: 308, headers: { Location: "/login/student" } } as const;
 
 export function isKnownSpaPath(path: string): boolean {
@@ -74,12 +82,14 @@ export function vercelRoutes() {
     { src: NON_API_PATHS, headers: SECURITY_HEADERS, continue: true },
     // Ficheiros com hash no nome: cache longa.
     { src: "^/assets/(.*)$", headers: { "cache-control": "public, max-age=31536000, immutable" }, continue: true },
+    { src: PUBLIC_SVG, headers: { "cache-control": PUBLIC_SVG_CACHE }, continue: true },
     { src: "^/api(/.*)?$", dest: "/api" },
     // Um /login sem perfil vai para o de aluno (o React Router faz o mesmo no client).
     LOGIN_REDIRECT,
     { handle: "filesystem" },
     // Já passou pelo filesystem: um /assets/* que chega aqui não existe. Sem a cache longa de cima.
     { src: "^/assets/(.*)$", dest: MISSING_ASSET.path, status: 404, headers: { "cache-control": "no-store" } },
+    { src: PUBLIC_SVG, dest: MISSING_ASSET.path, status: 404, headers: { "cache-control": "no-store" } },
     ...SPA_ROUTES.map((src) => ({ src, dest: "/index.html" })),
     { src: "^/(.*)$", dest: "/index.html", status: 404 },
   ];
