@@ -38,8 +38,8 @@ describe("texto livre", () => {
     expect(createTaskSchema.safeParse({ title: "Team 👩‍💻" }).success).toBe(true);
   });
 
-  it("títulos e nomes são uma linha só: quebras de linha e tabs são recusados", () => {
-    for (const bad of ["Line 1\nLine 2", "a\rb", "a\tb"]) {
+  it("títulos e nomes são uma linha só: quebras de linha são recusadas", () => {
+    for (const bad of ["Line 1\nLine 2", "a\rb"]) {
       expect(fieldError(createTaskSchema.safeParse({ title: bad }), "title")).toBe("Use a single line of text");
       expect(fieldError(updateProfileSchema.safeParse({ firstName: "Ana", lastName: bad }), "lastName")).toBe("Use a single line of text");
     }
@@ -47,8 +47,34 @@ describe("texto livre", () => {
     expect(createTaskSchema.parse({ title: "Read the guide\n" }).title).toBe("Read the guide");
   });
 
+  it("um tab num título ou nome vira espaço em vez de dar erro", () => {
+    expect(createTaskSchema.parse({ title: "Read\tthe guide" }).title).toBe("Read the guide");
+    expect(updateProfileSchema.parse({ firstName: "\tAna", lastName: "Silva\t" })).toEqual({ firstName: "Ana", lastName: "Silva" });
+    expect(fieldError(createTaskSchema.safeParse({ title: "\t\t" }), "title")).toBe("Required");
+  });
+
   it("o corpo da nota pode ter várias linhas", () => {
     expect(createNoteSchema.safeParse({ title: "Day 1", body: "Line 1\nLine 2\r\n\t- item" }).success).toBe(true);
+  });
+});
+
+describe("prazos", () => {
+  it("aceita datas reais entre 1900 e 2100", () => {
+    for (const dueDate of ["2026-11-03", "1900-01-01", "2100-12-31", "2028-02-29"]) {
+      expect(createTaskSchema.safeParse({ title: "Ok", dueDate }).success).toBe(true);
+    }
+  });
+
+  it("um ano de 2 dígitos do seletor de datas (0026) pede uma data entre 1900 e 2100", () => {
+    for (const dueDate of ["0026-11-03", "1899-12-31", "2101-01-01", "9999-01-01"]) {
+      expect(fieldError(createTaskSchema.safeParse({ title: "Ok", dueDate }), "dueDate")).toBe("Use a date between 1900 and 2100");
+      expect(fieldError(createAssignmentSchema.safeParse({ cohortId: COHORT, title: "Ok", dueDate }), "dueDate")).toBe("Use a date between 1900 and 2100");
+    }
+  });
+
+  it("datas que não existem continuam a ser recusadas", () => {
+    expect(fieldError(createTaskSchema.safeParse({ title: "Ok", dueDate: "2026-02-31" }), "dueDate")).toBe("Not a real date");
+    expect(fieldError(createTaskSchema.safeParse({ title: "Ok", dueDate: "2027-02-29" }), "dueDate")).toBe("Not a real date");
   });
 });
 

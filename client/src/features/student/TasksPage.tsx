@@ -1,4 +1,4 @@
-import type { TaskFilter } from "@kampus/shared";
+import { DATE_INPUT_MAX, DATE_INPUT_MIN, type TaskFilter } from "@kampus/shared";
 import { CheckCheck, ListTodo, PartyPopper, Plus } from "lucide-react";
 import { useRef, useState, type FormEvent, type RefObject } from "react";
 import { errorMessage, fieldErrors } from "../../api/client.ts";
@@ -25,6 +25,9 @@ export function TasksPage() {
     done: all.data?.filter((t) => t.done).length,
   };
   const titleRef = useRef<HTMLInputElement>(null);
+  // Só se anuncia a contagem depois de o aluno mudar de filtro (não ao abrir a página).
+  const [filterChanged, setFilterChanged] = useState(false);
+  const shown = tasks.data?.length;
 
   return (
     <>
@@ -42,7 +45,10 @@ export function TasksPage() {
             key={f.value}
             type="button"
             aria-pressed={filter === f.value}
-            onClick={() => setFilter(f.value)}
+            onClick={() => {
+              setFilter(f.value);
+              setFilterChanged(true);
+            }}
             className={cn(
               "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition",
               filter === f.value
@@ -53,20 +59,24 @@ export function TasksPage() {
           >
             {f.label}
             {counts[f.value] !== undefined && (
-              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", filter === f.value ? "bg-white/20" : "bg-surface text-muted")}>{counts[f.value]}</span>
+              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", filter === f.value ? "bg-white text-kampus-blue" : "bg-surface text-muted")}>{counts[f.value]}</span>
             )}
           </button>
         ))}
       </div>
 
+      <p aria-live="polite" className="sr-only">
+        {filterChanged && shown !== undefined ? countMessage(filter, shown) : ""}
+      </p>
+
       <Card>
-        <CardBody className="py-2">
+        <CardBody className="py-2" data-task-list>
           {tasks.isPending ? (
             <SkeletonList rows={4} className="py-3" label="Loading tasks" />
           ) : tasks.isError ? (
             <ErrorState message={errorMessage(tasks.error)} onRetry={() => tasks.refetch()} />
           ) : tasks.data.length === 0 ? (
-            <TasksEmpty filter={filter} hasTasks={(counts.all ?? 0) > 0} onCreate={() => titleRef.current?.focus()} onShowAll={() => setFilter("all")} />
+            <TasksEmpty filter={filter} hasTasks={(counts.all ?? 0) > 0} hasDone={(counts.done ?? 0) > 0} onCreate={() => titleRef.current?.focus()} onShowAll={() => setFilter("all")} />
           ) : (
             <ul className="divide-y divide-line">
               {tasks.data.map((task) => (
@@ -125,7 +135,12 @@ function CreateTaskForm({ titleRef }: { titleRef: RefObject<HTMLInputElement | n
         onChange={(e) => setTitle(e.target.value)}
         wrapperClassName="flex-1"
       />
-      <Input label="Due date (optional)" type="date" value={dueDate} error={errors.dueDate} onChange={(e) => setDueDate(e.target.value)} wrapperClassName="sm:w-48" />
+      <Input
+        label="Due date (optional)"
+        type="date"
+        min={DATE_INPUT_MIN}
+        max={DATE_INPUT_MAX}
+        value={dueDate} error={errors.dueDate} onChange={(e) => setDueDate(e.target.value)} wrapperClassName="sm:w-48" />
       <Button type="submit" loading={create.isPending} icon={<Plus aria-hidden className="size-4" />} className="sm:mt-7">
         Add task
       </Button>
@@ -133,7 +148,27 @@ function CreateTaskForm({ titleRef }: { titleRef: RefObject<HTMLInputElement | n
   );
 }
 
-function TasksEmpty({ filter, hasTasks, onCreate, onShowAll }: { filter: TaskFilter; hasTasks: boolean; onCreate: () => void; onShowAll: () => void }) {
+/** "10 tasks to do", "1 done task", "7 tasks": lido quando muda o filtro. */
+function countMessage(filter: TaskFilter, n: number): string {
+  const tasks = n === 1 ? "task" : "tasks";
+  if (filter === "open") return `${n} ${tasks} to do`;
+  if (filter === "done") return `${n} done ${tasks}`;
+  return `${n} ${tasks}`;
+}
+
+function TasksEmpty({
+  filter,
+  hasTasks,
+  hasDone,
+  onCreate,
+  onShowAll,
+}: {
+  filter: TaskFilter;
+  hasTasks: boolean;
+  hasDone: boolean;
+  onCreate: () => void;
+  onShowAll: () => void;
+}) {
   if (filter === "done")
     return (
       <EmptyState
@@ -147,12 +182,12 @@ function TasksEmpty({ filter, hasTasks, onCreate, onShowAll }: { filter: TaskFil
         }
       />
     );
-  if (filter === "open" && hasTasks)
+  if (filter === "open" && hasTasks && hasDone)
     return (
       <EmptyState
         icon={<PartyPopper aria-hidden />}
         title="All done!"
-        description="You've finished every task. Enjoy the free time."
+        description="You've finished every task. Nice work."
         action={
           <Button variant="secondary" size="sm" onClick={onCreate}>
             Add another task
