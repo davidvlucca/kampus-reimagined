@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword } from "../auth/password.ts";
 import { deleteOtherSessions } from "../auth/session.ts";
 import { users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
-import { loadPublicUser } from "../lib/users.ts";
+import { loadPasswordHash, loadPublicUser } from "../lib/users.ts";
 import { validate } from "../lib/validate.ts";
 
 export const meRoutes = new Hono<AppEnv>()
@@ -23,7 +23,9 @@ export const meRoutes = new Hono<AppEnv>()
     const { currentPassword, newPassword } = c.req.valid("json");
     const user = c.var.user;
     if (isProtectedDemoEmail(user.email)) return c.json({ error: DEMO_ACCOUNT_MESSAGES.ownPassword }, 403);
-    if (!(await verifyPassword(user.passwordHash, currentPassword))) {
+    // O hash não vem na sessão: lê-se só aqui.
+    const passwordHash = await loadPasswordHash(c.var.db, user.id);
+    if (!passwordHash || !(await verifyPassword(passwordHash, currentPassword))) {
       return c.json({ error: "Current password is not correct.", fields: { currentPassword: "Not correct" } }, 400);
     }
     await c.var.db

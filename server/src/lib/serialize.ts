@@ -1,9 +1,9 @@
 import type { Cohort, PublicUser } from "@kampus/shared";
-import type { CohortRow, UserRow } from "../db/schema.ts";
+import type { CohortRow, SessionUser } from "../db/schema.ts";
 
 // O ÚNICO sítio onde um utilizador vira JSON. Lista os campos um a um: um campo
 // novo na tabela (como password_hash) nunca sai na API sem passar por aqui.
-export function toPublicUser(user: UserRow, cohort: CohortRow | null): PublicUser {
+export function toPublicUser(user: SessionUser, cohort: CohortRow | null): PublicUser {
   return {
     id: user.id,
     email: user.email,

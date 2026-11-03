@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import type { Db } from "../db/client.ts";
-import { assignmentCompletions, assignments, tasks, type TaskRow, type UserRow } from "../db/schema.ts";
+import { assignmentCompletions, assignments, tasks, type SessionUser, type TaskRow } from "../db/schema.ts";
 import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { atLimit } from "../lib/limits.ts";
@@ -32,7 +32,7 @@ const TOO_MANY = { error: limitMessage(LIMITS.tasksPerStudent, "tasks") };
  * Tarefas da turma ATUAL do aluno, no formato de `Task`. "Feita" quer dizer que existe
  * uma linha de conclusão deste aluno. Um aluno sem turma não tem nenhuma.
  */
-async function cohortTasks(db: Db, user: UserRow, opts: { id?: string; status?: TaskFilter } = {}): Promise<Task[]> {
+async function cohortTasks(db: Db, user: Pick<SessionUser, "id" | "cohortId">, opts: { id?: string; status?: TaskFilter } = {}): Promise<Task[]> {
   if (!user.cohortId) return [];
   const rows = await db
     .select({

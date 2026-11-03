@@ -131,6 +131,8 @@ export const notes = pgTable(
 );
 
 export type UserRow = typeof users.$inferSelect;
+/** O utilizador sem o hash da password: é o que anda pelos pedidos (c.var.user). */
+export type SessionUser = Omit<UserRow, "passwordHash">;
 export type CohortRow = typeof cohorts.$inferSelect;
 export type TaskRow = typeof tasks.$inferSelect;
 export type NoteRow = typeof notes.$inferSelect;

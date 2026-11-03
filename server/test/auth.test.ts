@@ -1,5 +1,9 @@
 import type { PublicUser, WrongPortalError } from "@kampus/shared";
+import { eq, gt } from "drizzle-orm";
+import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { readSession } from "../src/auth/session.ts";
+import { sessions } from "../src/db/schema.ts";
 import { setup, STAFF, STUDENT_A } from "./helpers.ts";
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -105,6 +109,30 @@ describe("sessão", () => {
     expect((await t.request<{ user: PublicUser }>("GET", "/api/auth/me", { cookie })).json.user.email).toBe(STUDENT_A);
     expect((await t.request("POST", "/api/auth/logout", { cookie })).status).toBe(204);
     expect((await t.request("GET", "/api/auth/me", { cookie })).json).toEqual({ user: null });
+  });
+});
+
+describe("sessões na base", () => {
+  it("a sessão lida em cada pedido não traz o hash da password", async () => {
+    const cookie = await t.login(STUDENT_A, "student");
+    const probe = new Hono().get("/", async (c) => {
+      const session = await readSession(t.db, c);
+      return c.json({ keys: Object.keys(session?.user ?? {}) });
+    });
+    const { keys } = (await (await probe.request("/", { headers: { cookie } })).json()) as { keys: string[] };
+    expect(keys).toEqual(expect.arrayContaining(["id", "email", "role", "cohortId"]));
+    expect(keys).not.toContain("passwordHash");
+  });
+
+  it("um login apaga as sessões já expiradas (de qualquer utilizador)", async () => {
+    const userId = await t.userId("rui.matos@example.com");
+    await t.db.insert(sessions).values({ id: "expired-session-for-test", userId, expiresAt: new Date(Date.now() - 60_000) });
+    await t.login(STUDENT_A, "student");
+    const left = await t.db.select().from(sessions).where(eq(sessions.id, "expired-session-for-test"));
+    expect(left).toHaveLength(0);
+    // As válidas ficam.
+    const valid = await t.db.select().from(sessions).where(gt(sessions.expiresAt, new Date()));
+    expect(valid.length).toBeGreaterThan(0);
   });
 });
 
