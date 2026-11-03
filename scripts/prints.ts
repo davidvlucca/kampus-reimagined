@@ -4,6 +4,7 @@
 //      npm run prints -- --tour-3d  (só os prints da visita 3D)
 import { mkdirSync } from "node:fs";
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { DEMO_PASSWORD } from "../shared/src/demo.ts";
 import { BROWSER_NOW, startStack } from "./stack.ts";
 
 const OUT = "docs/prints";
@@ -61,7 +62,7 @@ async function newContext(browser: Browser, baseURL: string, viewport: ViewportN
 }
 
 async function login(context: BrowserContext, email: string, portal: "staff" | "student") {
-  const res = await context.request.post("/api/auth/login", { data: { email, password: "Kampus123", portal } });
+  const res = await context.request.post("/api/auth/login", { data: { email, password: DEMO_PASSWORD, portal } });
   if (!res.ok()) throw new Error(`Login failed for ${email}: ${res.status()}`);
 }
 

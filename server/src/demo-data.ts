@@ -1,12 +1,10 @@
 // Dados de demonstração. TODOS os nomes, emails e textos são fictícios.
 // Usado pelo seed (npm run db:seed / db:reset), pelos testes e pela reposição diária da demo.
-import { addDays, localDateKey } from "@kampus/shared";
+import { addDays, DEMO_PASSWORD, localDateKey } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { hashPassword } from "./auth/password.ts";
 import type { Db } from "./db/client.ts";
 import { assignmentCompletions, assignments, cohorts, notes, tasks, users } from "./db/schema.ts";
-
-export const DEMO_PASSWORD = "Kampus123";
 
 const STAFF = [
   {
