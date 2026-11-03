@@ -1,4 +1,4 @@
-import { createAssignmentSchema, updateAssignmentSchema, type Assignment, type UpdateAssignmentInput } from "@kampus/shared";
+import { createAssignmentSchema, DATE_INPUT_MAX, DATE_INPUT_MIN, updateAssignmentSchema, type Assignment, type UpdateAssignmentInput } from "@kampus/shared";
 import { CalendarX } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
@@ -13,9 +13,6 @@ type Errors = Partial<Record<FieldName, string>>;
 const FORM_ID = "assignment-form";
 /** A ordem dos campos no formulário: o foco vai para o primeiro com erro. */
 const FIELD_ORDER: FieldName[] = ["cohortId", "title", "dueDate"];
-// Os anos que a validação partilhada aceita; o seletor de datas não deixa sair daqui.
-const MIN_DATE = "1900-01-01";
-const MAX_DATE = "2100-12-31";
 
 // O Zod diz só "Required"; aqui diz-se o que falta.
 const REQUIRED: Partial<Record<FieldName, string>> = { title: "Enter a title", cohortId: "Choose a cohort" };
@@ -38,13 +35,6 @@ function issuesToErrors(issues: readonly { path: readonly PropertyKey[]; message
     }
   }
   return errors;
-}
-
-const RANGE_MESSAGE = "Choose a date between 1900 and 2100";
-
-/** Um ano de 5 dígitos ou 0001 passa no formato mas não faz sentido como prazo. */
-function outOfRange(dueDate: string | null | undefined): boolean {
-  return typeof dueDate === "string" && dueDate !== "" && (dueDate < MIN_DATE || dueDate > MAX_DATE);
 }
 
 /**
@@ -95,7 +85,6 @@ export function AssignmentFormDialog({
         if (!isEdit) {
           const parsed = createAssignmentSchema.safeParse({ ...values, dueDate: values.dueDate || null });
           if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
-          if (outOfRange(parsed.data.dueDate)) return showErrors({ dueDate: RANGE_MESSAGE });
           const created = await createAssignment.mutateAsync(parsed.data);
           toast({ title: "Task added", description: `Everyone in ${created.cohort.name} can see it now.`, tone: "success" });
         } else {
@@ -110,7 +99,6 @@ export function AssignmentFormDialog({
           }
           const parsed = updateAssignmentSchema.safeParse(changes);
           if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
-          if (outOfRange(parsed.data.dueDate)) return showErrors({ dueDate: RANGE_MESSAGE });
           await updateAssignment.mutateAsync({ id: assignment.id, ...parsed.data });
           toast({ title: "Changes saved", tone: "success" });
         }
@@ -188,8 +176,8 @@ export function AssignmentFormDialog({
             label="Due date"
             type="date"
             hint="Optional"
-            min={MIN_DATE}
-            max={MAX_DATE}
+            min={DATE_INPUT_MIN}
+            max={DATE_INPUT_MAX}
             value={values.dueDate}
             error={errors.dueDate}
             onChange={(e) => set("dueDate")(e.target.value)}

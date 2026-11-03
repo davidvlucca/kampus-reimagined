@@ -10,9 +10,9 @@ const OUT = "docs/video";
 const SIZE = { width: 1280, height: 720 };
 const pause = (page: Page, ms: number) => page.waitForTimeout(ms);
 
-/** O botão "Try as …" do Welcome: entra na conta demo com um clique. */
+/** O botão "Explore as …" do Welcome: entra na conta demo com um clique. */
 async function loginWithDemo(page: Page, profile: "student" | "staff") {
-  const button = page.getByRole("button", { name: `Try as ${profile}` });
+  const button = page.getByRole("button", { name: profile === "student" ? "Explore as a student" : "Explore as staff" });
   await button.hover();
   await pause(page, 500);
   await button.click();

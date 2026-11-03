@@ -8,7 +8,7 @@ test.beforeEach(async ({ request }) => {
 test("o staff entra com um clique, cria um aluno e apaga-o", async ({ page }) => {
   await page.goto("/login/staff");
   await expectAccessible(page);
-  await page.getByRole("button", { name: "Log in with demo account" }).click();
+  await page.getByRole("button", { name: "Explore with the demo account" }).click();
   await expect(page).toHaveURL(/\/staff$/);
   await expect(page.getByRole("heading", { name: "Hi Marta!" })).toBeVisible();
   await expectAccessible(page);
@@ -46,7 +46,7 @@ test("/staff/profile passa no axe", async ({ page }) => {
 test("o login demo volta à página privada que a pessoa abriu", async ({ page }) => {
   await page.goto("/staff/students");
   await expect(page).toHaveURL(/\/login\/staff$/);
-  await page.getByRole("button", { name: "Log in with demo account" }).click();
+  await page.getByRole("button", { name: "Explore with the demo account" }).click();
   await expect(page).toHaveURL(/\/staff\/students$/);
 });
 
