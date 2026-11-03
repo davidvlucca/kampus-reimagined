@@ -21,25 +21,78 @@ function formatClock(ms: number): string {
 
 const other = (mode: Mode): Mode => (mode === "focus" ? "break" : "focus");
 
+// O Pomodoro só existe no dashboard: sair da página desmontava-o e o tempo voltava ao início.
+// Guarda-se no sessionStorage (por separador), com a hora-alvo, para sobreviver a navegar e a recarregar.
+const STORAGE_KEY = "kampus.pomodoro";
+
+interface Saved {
+  mode: Mode;
+  status: Status;
+  minutes: Record<Mode, number>;
+  /** Hora (ms) a que o modo acaba, a correr. */
+  target: number | null;
+  /** Tempo que falta, parado ou em pausa. */
+  remaining: number;
+}
+
+const isMinutes = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= MIN_MINUTES && v <= MAX_MINUTES;
+
+function load(): Saved | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<Saved>;
+    const modeOk = v.mode === "focus" || v.mode === "break";
+    const statusOk = v.status === "idle" || v.status === "running" || v.status === "paused";
+    if (!modeOk || !statusOk || !isMinutes(v.minutes?.focus) || !isMinutes(v.minutes?.break)) return null;
+    if (v.status === "running" && typeof v.target !== "number") return null;
+    if (typeof v.remaining !== "number" || v.remaining < 0) return null;
+    return v as Saved;
+  } catch {
+    // Sem storage (modo privado, bloqueado) ou JSON estragado: começa do zero.
+    return null;
+  }
+}
+
+function save(value: Saved | null) {
+  try {
+    if (value) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    else sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Sem storage: o temporizador funciona na mesma, só não sobrevive a sair da página.
+  }
+}
+
 /**
  * Pomodoro. Em 2023 começava a 0/0 e não arrancava; aqui tem valores por omissão e
  * o tempo vem de uma hora-alvo (Date.now), por isso não desliza com o separador em segundo plano.
  */
 export function Pomodoro() {
   const toast = useToast();
-  const [minutes, setMinutes] = useState<Record<Mode, number>>({ focus: 25, break: 5 });
-  const [mode, setMode] = useState<Mode>("focus");
-  const [status, setStatus] = useState<Status>("idle");
-  const [remaining, setRemaining] = useState(25 * 60_000);
+  const [saved] = useState(load);
+  const [minutes, setMinutes] = useState<Record<Mode, number>>(saved?.minutes ?? { focus: 25, break: 5 });
+  const [mode, setMode] = useState<Mode>(saved?.mode ?? "focus");
+  const [status, setStatus] = useState<Status>(saved?.status ?? "idle");
+  const [remaining, setRemaining] = useState(() =>
+    saved ? (saved.status === "running" && saved.target !== null ? Math.max(0, saved.target - Date.now()) : saved.remaining) : 25 * 60_000,
+  );
   const [announcement, setAnnouncement] = useState("");
   // Hora (ms) a que o modo atual acaba; só existe a correr.
-  const targetRef = useRef<number | null>(null);
-  const modeRef = useRef<Mode>("focus");
+  const targetRef = useRef<number | null>(saved?.status === "running" ? saved.target : null);
+  const modeRef = useRef<Mode>(saved?.mode ?? "focus");
   const minutesRef = useRef(minutes);
+  // Botões de - e +: no limite ficam desativados e o foco ia parar ao <body>.
+  const stepRefs = useRef<Partial<Record<`${Mode}-${"down" | "up"}`, HTMLButtonElement | null>>>({});
 
   useEffect(() => {
     minutesRef.current = minutes;
   }, [minutes]);
+
+  // Guarda a cada mudança de estado, não a cada tique: a correr, a hora-alvo chega para recalcular.
+  const frozen = status === "running" ? 0 : remaining;
+  useEffect(() => {
+    save({ mode, status, minutes, target: status === "running" ? targetRef.current : null, remaining: frozen });
+  }, [mode, status, minutes, frozen]);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -95,6 +148,8 @@ export function Pomodoro() {
     const value = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, minutes[which] + delta));
     setMinutes((prev) => ({ ...prev, [which]: value }));
     if (which === mode) setRemaining(value * 60_000);
+    // No limite este botão fica desativado: o foco passa para o do lado em vez de cair no <body>.
+    if (value === MIN_MINUTES || value === MAX_MINUTES) stepRefs.current[`${which}-${delta < 0 ? "up" : "down"}`]?.focus();
   };
 
   const isFocus = mode === "focus";
@@ -103,7 +158,8 @@ export function Pomodoro() {
     <Card>
       <CardHeader title="Pomodoro" description="Work in short focused bursts." icon={<Timer aria-hidden />} />
       <CardBody className="flex flex-col items-center gap-5">
-        <div className="relative grid size-52 place-items-center">
+        {/* Até 13rem, mas nunca mais largo do que o cartão (320px com texto a 200%). */}
+        <div className="relative grid aspect-square w-full max-w-52 place-items-center">
           <svg viewBox="0 0 200 200" className="absolute inset-0 size-full -rotate-90" aria-hidden>
             <circle cx="100" cy="100" r={RADIUS} fill="none" strokeWidth="10" className="stroke-line" />
             <circle
@@ -120,7 +176,7 @@ export function Pomodoro() {
           </svg>
           <div className="relative flex flex-col items-center">
             <span className={cn("text-sm font-semibold tracking-wide uppercase", isFocus ? "text-kampus-blue" : "text-success")}>{MODE_LABEL[mode]}</span>
-            <span className="font-pixel text-7xl leading-none text-kampus-navy tabular-nums" aria-label={`${MODE_LABEL[mode]}: ${formatClock(remaining)} left`} role="timer">
+            <span className="font-pixel text-[min(4.5rem,20vw)] leading-none text-kampus-navy tabular-nums" aria-label={`${MODE_LABEL[mode]}: ${formatClock(remaining)} left`} role="timer">
               {formatClock(remaining)}
             </span>
             {status === "paused" && <span className="text-xs text-muted">Paused</span>}
@@ -148,12 +204,15 @@ export function Pomodoro() {
         </div>
 
         {status === "idle" && (
-          <div className="grid w-full grid-cols-2 gap-3">
+          <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
             {(["focus", "break"] as const).map((which) => (
               <div key={which} className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface p-3">
                 <span className="text-sm font-medium text-kampus-navy">{MODE_LABEL[which]}</span>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   <IconButton
+                    ref={(el) => {
+                      stepRefs.current[`${which}-down`] = el;
+                    }}
                     size="sm"
                     variant="secondary"
                     label={`Decrease ${which} time`}
@@ -165,6 +224,9 @@ export function Pomodoro() {
                     {minutes[which]} min
                   </span>
                   <IconButton
+                    ref={(el) => {
+                      stepRefs.current[`${which}-up`] = el;
+                    }}
                     size="sm"
                     variant="secondary"
                     label={`Increase ${which} time`}

@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { errorMessage } from "../../api/client.ts";
 import { useCurrentUser, useNotes, useTasks } from "../../api/hooks.ts";
 import { buttonClasses, Card, CardBody, CardHeader, EmptyState, ErrorState, ProgressBar, Skeleton, SkeletonList, PageHeader } from "../../components/ui/index.ts";
-import { formatDate } from "../../lib/format.ts";
+import { editedAt } from "../../lib/format.ts";
 import { excerpt } from "./noteText.ts";
 import { Pomodoro } from "./Pomodoro.tsx";
 import { TaskItem } from "./TaskItem.tsx";
@@ -21,24 +21,32 @@ export function DashboardPage() {
     <>
       <PageHeader title={`Hi ${user.firstName}!`} description={today} />
 
+      {/* Telemóvel: a visita por fazer vem primeiro (era o último cartão, depois das tarefas). */}
+      {!tourDone && (
+        <div className="mb-6 md:hidden">
+          <TourCard />
+        </div>
+      )}
+
+      {/* Duas colunas que acabam à mesma altura: as notas ficam debaixo das tarefas, ao lado do Pomodoro. */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           <WeekProgress tourDone={tourDone} />
           <UpcomingTasks />
+          <RecentNotes />
         </div>
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           {tourDone ? (
             <Link to="/app/tour" className={linkClass + " self-start"}>
               <RotateCcw aria-hidden className="size-4" />
               Take the tour again
             </Link>
           ) : (
-            <TourCard />
+            <div className="max-md:hidden">
+              <TourCard />
+            </div>
           )}
           <Pomodoro />
-        </div>
-        <div className="lg:col-span-2">
-          <RecentNotes />
         </div>
       </div>
     </>
@@ -88,7 +96,7 @@ function TourCard() {
       </span>
       <h2 className="mt-4 text-lg font-semibold text-white">Take the campus tour</h2>
       <p className="mt-1 text-sm text-white/85">A short walk through the places you'll use every day. It only takes a few minutes.</p>
-      <Link to="/app/tour" className={buttonClasses({ variant: "light", className: "mt-5" })}>
+      <Link to="/app/tour" className={buttonClasses({ variant: "light", className: "mt-5 h-auto min-h-11 max-w-full py-2 text-center whitespace-normal" })}>
         Start the tour
         <ArrowRight aria-hidden className="size-4" />
       </Link>
@@ -109,7 +117,7 @@ function UpcomingTasks() {
           </Link>
         }
       />
-      <CardBody className="py-2">
+      <CardBody className="py-2" data-task-list>
         {tasks.isPending ? (
           <SkeletonList rows={3} className="py-3" label="Loading tasks" />
         ) : tasks.isError ? (
@@ -171,7 +179,7 @@ function RecentNotes() {
             className="py-6"
           />
         ) : (
-          <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-1 xl:grid-cols-3">
             {notes.data.slice(0, 3).map((note) => (
               <li key={note.id}>
                 <Link
@@ -179,7 +187,7 @@ function RecentNotes() {
                   className="flex h-full flex-col gap-1 rounded-xl border border-line bg-surface p-4 transition hover:border-kampus-blue/40 hover:bg-kampus-blue-soft"
                 >
                   <span className="clip-marks font-semibold break-words text-kampus-navy">{note.title}</span>
-                  <span className="text-xs text-muted">{formatDate(note.updatedAt)}</span>
+                  <span className="text-xs text-muted">Edited {editedAt(note.updatedAt)}</span>
                   {note.body.trim() && <span className="line-clamp-2 text-sm break-words text-muted">{excerpt(note.body)}</span>}
                 </Link>
               </li>
