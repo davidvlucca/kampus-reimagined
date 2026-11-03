@@ -249,7 +249,12 @@ export function LoginPage({ portal }: { portal: Portal }) {
         </div>
 
         <p className="text-center text-sm text-muted">
-          A portfolio project by <ExternalLink href={AUTHOR_URL} className="whitespace-nowrap text-kampus-blue">David Lucca</ExternalLink>
+          A portfolio project by David Lucca
+          <span aria-hidden> · </span>
+          <span className="sr-only">. </span>
+          <ExternalLink href={AUTHOR_URL} className="whitespace-nowrap text-kampus-blue">
+            LinkedIn
+          </ExternalLink>
           <span aria-hidden> · </span>
           <span className="sr-only">. </span>
           <ExternalLink href={REPO_URL} className="whitespace-nowrap text-kampus-blue">

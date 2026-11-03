@@ -132,9 +132,14 @@ export function WelcomePage() {
 
       <footer className="relative px-5 pb-6 text-center text-sm text-white sm:px-10">
         <p className="mx-auto max-w-3xl">
-          A portfolio project by <ExternalLink href={AUTHOR_URL} className="focus-on-dark">David Lucca</ExternalLink>, remade from a team project at Ironhack (2023, 1st place). All data is fictional.
+          A portfolio project by David Lucca, remade from a team project at Ironhack (2023, 1st place). All data is fictional.
         </p>
         <p className="mt-1">
+          <ExternalLink href={AUTHOR_URL} className="focus-on-dark">
+            David on LinkedIn
+          </ExternalLink>
+          <span aria-hidden> · </span>
+          <span className="sr-only">. </span>
           <ExternalLink href={REPO_URL} className="focus-on-dark">
             Code on GitHub
           </ExternalLink>
