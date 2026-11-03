@@ -53,7 +53,7 @@ async function studentFlow(page: Page) {
   await page.getByPlaceholder(/student card/i).fill("Pick up my student card");
   await page.getByRole("button", { name: "Add task" }).click();
   await pause(page, 1200);
-  await page.getByText("Join the cohort chat and say hi").click();
+  await page.getByRole("checkbox", { name: "Join the cohort chat and say hi" }).click();
   await pause(page, 1800);
 
   await nav.getByRole("link", { name: "Notes" }).click();
@@ -67,7 +67,7 @@ async function studentFlow(page: Page) {
   await page.keyboard.press("ControlOrMeta+s");
   await pause(page, 1500);
 
-  await nav.getByRole("link", { name: "Staff" }).click();
+  await nav.getByRole("link", { name: "Contacts" }).click();
   await pause(page, 2500);
 
   await page.getByRole("button", { name: "Log out" }).first().click();

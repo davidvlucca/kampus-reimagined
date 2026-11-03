@@ -78,7 +78,12 @@ async function shoot(context: BrowserContext, shots: Shot[], viewport: ViewportN
     // Imagens (cenários da visita) carregadas antes do print.
     await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
     const file = `${OUT}/${shot.name}-${viewport}.png`;
-    await page.screenshot({ path: file, fullPage: true });
+    // O Chromium headless às vezes falha um print de página inteira alta ("Unable to capture
+    // screenshot"); à segunda passa.
+    await page.screenshot({ path: file, fullPage: true }).catch(async () => {
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: file, fullPage: true });
+    });
     console.log(`  ${file}`);
   }
   await page.close();
