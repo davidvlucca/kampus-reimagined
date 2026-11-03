@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { DEMO_PASSWORD } from "../shared/src/demo.ts";
 import { E2E_CRON_SECRET } from "./env.ts";
 
 /** Repõe a demo (o mesmo que o cron diário faz em produção). */
@@ -11,7 +12,7 @@ export async function resetDemo(request: APIRequestContext) {
 /** Entra pela API (mais rápido que o formulário) com o cookie no contexto da página. */
 export async function loginAs(page: Page, portal: "student" | "staff") {
   const res = await page.request.post("/api/auth/login", {
-    data: { email: `${portal}@example.com`, password: "Kampus123", portal },
+    data: { email: `${portal}@example.com`, password: DEMO_PASSWORD, portal },
   });
   expect(res.ok(), await res.text()).toBe(true);
 }

@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { getConnInfo } from "@hono/node-server/conninfo";
+import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
@@ -9,6 +10,7 @@ import type { Db } from "./db/client.ts";
 import type { SessionConfig } from "./auth/session.ts";
 import { resetDemo } from "./demo-data.ts";
 import type { AppEnv } from "./lib/env.ts";
+import { pgErrorCode } from "./lib/pgErrors.ts";
 import { assignmentRoutes } from "./routes/assignments.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { meRoutes } from "./routes/me.ts";
@@ -33,6 +35,8 @@ export interface AppConfig {
    * Vercel reescreve. Sem proxy, um cliente podia inventar esse header: usa-se o socket.
    */
   trustProxy?: boolean;
+  /** Versão publicada (o commit curto na Vercel), devolvida pelo /api/health. */
+  version?: string;
 }
 
 function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => string | undefined): string {
@@ -48,7 +52,7 @@ function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => st
   }
 }
 
-export const MIN_CRON_SECRET_LENGTH = 32;
+const MIN_CRON_SECRET_LENGTH = 32;
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
@@ -66,12 +70,12 @@ export function describeError(err: unknown, route: string) {
   const withoutParams = (message: string) => message.split("\nparams:")[0]!.slice(0, 500);
   const error = err instanceof Error ? err : new Error(String(err));
   const cause = error.cause instanceof Error ? error.cause : undefined;
-  const code = (cause as { code?: unknown } | undefined)?.code ?? (error as { code?: unknown }).code;
+  const code = pgErrorCode(error);
   return {
     route,
     name: error.name,
     message: withoutParams(error.message),
-    ...(code === undefined ? {} : { code: String(code) }),
+    ...(code === undefined ? {} : { code }),
     ...(cause ? { cause: `${cause.name}: ${withoutParams(cause.message)}` } : {}),
     // Só as linhas "at ...": a primeira linha da stack repete a mensagem inteira.
     stack: (error.stack ?? "")
@@ -84,6 +88,7 @@ export function describeError(err: unknown, route: string) {
 
 export function createApp(config: AppConfig) {
   const allowed = (origin: string) => (config.corsOrigins.includes(origin) ? origin : null);
+  const version = config.version ?? "dev";
   let cronSecret = config.cronSecret;
   if (cronSecret && cronSecret.length < MIN_CRON_SECRET_LENGTH) {
     console.warn(`CRON_SECRET is shorter than ${MIN_CRON_SECRET_LENGTH} characters: /api/cron/reset-demo stays disabled.`);
@@ -97,7 +102,21 @@ export function createApp(config: AppConfig) {
       c.set("clientIp", clientIp(c.req.raw.headers, config.trustProxy ?? false, () => getConnInfo(c).remote.address));
       await next();
     })
-    .get("/health", (c) => c.json({ ok: true }))
+    // Vivo: responde sem tocar na base. Pronto: a base também responde.
+    .get("/health", (c) => {
+      c.header("Cache-Control", "no-store");
+      return c.json({ ok: true, version });
+    })
+    .get("/health/ready", async (c) => {
+      c.header("Cache-Control", "no-store");
+      try {
+        await config.db.execute(sql`select 1`);
+        return c.json({ ok: true, version });
+      } catch (err) {
+        console.error("Health check failed", describeError(err, "GET /api/health/ready"));
+        return c.json({ ok: false }, 503);
+      }
+    })
     // A demo é pública e qualquer visitante pode apagar alunos: o Vercel Cron repõe tudo uma vez por dia.
     .get("/cron/reset-demo", async (c) => {
       if (!cronSecret) return c.json({ error: "Not found." }, 404);
@@ -119,7 +138,20 @@ export function createApp(config: AppConfig) {
     .route("/staff", staffRoutes);
 
   return new Hono()
-    .use(secureHeaders())
+    // A API só devolve JSON: a CSP mais fechada possível, e nunca dentro de um iframe.
+    .use(
+      secureHeaders({
+        strictTransportSecurity: "max-age=63072000; includeSubDomains; preload",
+        xFrameOptions: "DENY",
+        contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      }),
+    )
+    // Respostas com dados de uma sessão não ficam em caches (do browser ou intermédias),
+    // a não ser que a rota diga outra coisa.
+    .use("/api/*", async (c, next) => {
+      await next();
+      if (!c.res.headers.has("cache-control")) c.header("Cache-Control", "no-store");
+    })
     .use("/api/*", cors({ origin: allowed, credentials: true, allowMethods: ["GET", "POST", "PATCH", "DELETE"] }))
     // Bloqueia formulários de outros sites (o cookie SameSite=Lax já trava a maior parte).
     .use("/api/*", csrf({ origin: (origin) => config.corsOrigins.includes(origin) }))
@@ -131,21 +163,4 @@ export function createApp(config: AppConfig) {
       console.error("API error", describeError(err, `${c.req.method} ${c.req.path}`));
       return c.json({ error: "Something went wrong. Please try again." }, 500);
     });
-}
-
-export function parseOrigins(value: string | undefined): string[] {
-  return (value ?? "http://localhost:5173")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-}
-
-/**
- * SESSION_TTL_DAYS: `Number("")` dava 0 (sessões que expiram logo) e lixo dava NaN.
- * Só vale um número positivo até um ano (mais do que isso e a data de expiração podia
- * sair do intervalo de um Date); o resto volta aos 7 dias.
- */
-export function parseSessionTtlDays(value: string | undefined): number {
-  const days = Number(value);
-  return value?.trim() && Number.isFinite(days) && days > 0 && days <= 365 ? days : 7;
 }

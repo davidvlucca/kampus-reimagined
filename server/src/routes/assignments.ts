@@ -16,16 +16,12 @@ import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { atLimit } from "../lib/limits.ts";
 import { iso, toCohort } from "../lib/serialize.ts";
-import { isUuid } from "../lib/users.ts";
-import { validate } from "../lib/validate.ts";
-import { cohortExists } from "./staff.ts";
+import { cohortExists, isStudent, UNKNOWN_COHORT } from "../lib/cohorts.ts";
+import { uuidParam, validate } from "../lib/validate.ts";
 
 // Mesma mensagem que o aluno recebe: para quem usa a app, é tudo "uma tarefa".
 const NOT_FOUND = { error: "Task not found." };
 const TOO_MANY = { error: limitMessage(LIMITS.assignments, "cohort tasks") };
-const UNKNOWN_COHORT = { error: "Please check the highlighted fields.", fields: { cohortId: "Choose a cohort" } };
-
-const isStudent = eq(users.role, "student");
 
 /**
  * As contas são sempre sobre quem está HOJE na turma: um aluno que mudou de turma deixa
@@ -111,9 +107,8 @@ export const assignmentRoutes = new Hono<AppEnv>()
     const where = cohortId ? eq(assignments.cohortId, cohortId) : undefined;
     return c.json({ assignments: await listAssignments(c.var.db, where) });
   })
-  .get("/:id", async (c) => {
+  .get("/:id", uuidParam(NOT_FOUND), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const assignment = await loadDetail(c.var.db, id);
     if (!assignment) return c.json(NOT_FOUND, 404);
     return c.json({ assignment });
@@ -130,9 +125,8 @@ export const assignmentRoutes = new Hono<AppEnv>()
     const [assignment] = await listAssignments(db, eq(assignments.id, row!.id));
     return c.json({ assignment }, 201);
   })
-  .patch("/:id", validate("json", updateAssignmentSchema), async (c) => {
+  .patch("/:id", uuidParam(NOT_FOUND), validate("json", updateAssignmentSchema), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const input = c.req.valid("json");
     const db = c.var.db;
     const [row] = await db
@@ -148,9 +142,8 @@ export const assignmentRoutes = new Hono<AppEnv>()
     const [assignment] = await listAssignments(db, eq(assignments.id, id));
     return c.json({ assignment });
   })
-  .delete("/:id", async (c) => {
+  .delete("/:id", uuidParam(NOT_FOUND), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     // As conclusões dos alunos vão em cascata (ON DELETE CASCADE).
     const [row] = await c.var.db.delete(assignments).where(eq(assignments.id, id)).returning({ id: assignments.id });
     if (!row) return c.json(NOT_FOUND, 404);

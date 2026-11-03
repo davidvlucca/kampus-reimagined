@@ -3,6 +3,7 @@
 // Escreve test-results/rooms/<sala>-desktop.png e -mobile.png. Sem salas: todas.
 import { mkdirSync, rmSync } from "node:fs";
 import { chromium } from "@playwright/test";
+import { DEMO_PASSWORD } from "../shared/src/demo.ts";
 import { TOUR_STOPS } from "../shared/src/tour.ts";
 import { startStack } from "./stack.ts";
 
@@ -25,7 +26,7 @@ try {
     ["mobile", { width: 390, height: 844 }],
   ] as const) {
     const context = await browser.newContext({ baseURL: stack.baseUrl, viewport, deviceScaleFactor: name === "mobile" ? 2 : 1 });
-    await context.request.post("/api/auth/login", { data: { email: "student@example.com", password: "Kampus123", portal: "student" } });
+    await context.request.post("/api/auth/login", { data: { email: "student@example.com", password: DEMO_PASSWORD, portal: "student" } });
     const page = await context.newPage();
     await page.goto("/app/tour");
     await page.locator('[data-tour-view="room"]').waitFor({ timeout: 20_000 });

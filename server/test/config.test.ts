@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createApp, describeError, parseSessionTtlDays } from "../src/app.ts";
+import { createApp, describeError } from "../src/app.ts";
+import { configFromEnv, parseSessionTtlDays } from "../src/config.ts";
 import { attemptKey } from "../src/auth/rateLimit.ts";
-import { createDb } from "../src/db/client.ts";
+import { createDb, type Db } from "../src/db/client.ts";
 import { createPool } from "../src/db/postgres.ts";
+import { isForeignKeyViolation, isUniqueViolation, pgErrorCode } from "../src/lib/pgErrors.ts";
 
 describe("SESSION_TTL_DAYS", () => {
   it("aceita um número positivo", () => {
@@ -13,6 +15,47 @@ describe("SESSION_TTL_DAYS", () => {
 
   it.each([undefined, "", "  ", "0", "-3", "abc", "NaN", "Infinity", "1e9"])("%j volta aos 7 dias", (value) => {
     expect(parseSessionTtlDays(value)).toBe(7);
+  });
+});
+
+describe("configFromEnv", () => {
+  const db = {} as Db;
+
+  it("lê as variáveis de ambiente, com os valores por omissão quando faltam", () => {
+    expect(configFromEnv({}, { db, secureCookies: false, allowCron: true })).toEqual({
+      db,
+      corsOrigins: ["http://localhost:5173"],
+      session: { ttlDays: 7, secureCookies: false },
+      cronSecret: undefined,
+      trustProxy: false,
+      version: "dev",
+    });
+    const vercel = configFromEnv(
+      {
+        CORS_ORIGIN: "https://kampus.example, https://www.kampus.example",
+        SESSION_TTL_DAYS: "14",
+        CRON_SECRET: "x".repeat(40),
+        VERCEL_GIT_COMMIT_SHA: "4af7b6d1c2e3f4a5b6c7",
+        UNRELATED: "ignored",
+      },
+      { db, secureCookies: true, trustProxy: true, allowCron: true },
+    );
+    expect(vercel).toMatchObject({
+      corsOrigins: ["https://kampus.example", "https://www.kampus.example"],
+      session: { ttlDays: 14, secureCookies: true },
+      cronSecret: "x".repeat(40),
+      trustProxy: true,
+      version: "4af7b6d",
+    });
+  });
+
+  it("sem allowCron (API local com uma base Postgres) o CRON_SECRET não liga a rota", () => {
+    expect(configFromEnv({ CRON_SECRET: "x".repeat(40) }, { db, secureCookies: false, allowCron: false }).cronSecret).toBeUndefined();
+    expect(configFromEnv({ CRON_SECRET: "" }, { db, secureCookies: false, allowCron: true }).cronSecret).toBeUndefined();
+  });
+
+  it("um SESSION_TTL_DAYS inválido volta aos 7 dias (não rebenta no arranque)", () => {
+    expect(configFromEnv({ SESSION_TTL_DAYS: "abc" }, { db, secureCookies: false, allowCron: false }).session.ttlDays).toBe(7);
   });
 });
 
@@ -36,6 +79,7 @@ describe("erros 500 no log", () => {
     error.mockRestore();
 
     expect(res.status).toBe(500);
+    expect(res.headers.get("cache-control")).toBe("no-store");
     expect(logged).toContain("POST /api/auth/login");
     expect(logged).toContain("Failed query");
     // 42P01: a tabela não existe.
@@ -69,5 +113,25 @@ describe("pool do Postgres", () => {
     expect(error).toHaveBeenCalledWith("Postgres pool error", { message: "Connection terminated unexpectedly", code: "57P01" });
     error.mockRestore();
     await pool.end();
+  });
+});
+
+describe("códigos de erro do Postgres", () => {
+  it("encontra o código no erro ou na `cause` (o Drizzle embrulha o erro do driver)", () => {
+    const unique = Object.assign(new Error("duplicate key"), { code: "23505" });
+    const fk = Object.assign(new Error("violates foreign key"), { code: "23503" });
+    expect(pgErrorCode(new Error("Failed query", { cause: unique }))).toBe("23505");
+    expect(isUniqueViolation(new Error("Failed query", { cause: unique }))).toBe(true);
+    expect(isForeignKeyViolation(new Error("Failed query", { cause: fk }))).toBe(true);
+    expect(isForeignKeyViolation(fk)).toBe(true);
+    expect(isUniqueViolation(fk)).toBe(false);
+    expect(pgErrorCode(new Error("no code"))).toBeUndefined();
+    expect(pgErrorCode("not an error")).toBeUndefined();
+  });
+
+  it("não fica preso numa `cause` circular", () => {
+    const loop = new Error("loop") as Error & { cause?: unknown };
+    loop.cause = loop;
+    expect(pgErrorCode(loop)).toBeUndefined();
   });
 });

@@ -4,13 +4,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import type { Db } from "../db/client.ts";
-import { assignmentCompletions, assignments, tasks, type TaskRow, type UserRow } from "../db/schema.ts";
+import { assignmentCompletions, assignments, tasks, type SessionUser, type TaskRow } from "../db/schema.ts";
 import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { atLimit } from "../lib/limits.ts";
 import { iso } from "../lib/serialize.ts";
-import { isUuid } from "../lib/users.ts";
-import { validate } from "../lib/validate.ts";
+import { isForeignKeyViolation } from "../lib/pgErrors.ts";
+import { uuidParam, validate } from "../lib/validate.ts";
 
 const toTask = (t: TaskRow): Task => ({
   id: t.id,
@@ -32,7 +32,7 @@ const TOO_MANY = { error: limitMessage(LIMITS.tasksPerStudent, "tasks") };
  * Tarefas da turma ATUAL do aluno, no formato de `Task`. "Feita" quer dizer que existe
  * uma linha de conclusão deste aluno. Um aluno sem turma não tem nenhuma.
  */
-async function cohortTasks(db: Db, user: UserRow, opts: { id?: string; status?: TaskFilter } = {}): Promise<Task[]> {
+async function cohortTasks(db: Db, user: Pick<SessionUser, "id" | "cohortId">, opts: { id?: string; status?: TaskFilter } = {}): Promise<Task[]> {
   if (!user.cohortId) return [];
   const rows = await db
     .select({
@@ -82,12 +82,6 @@ function byListOrder(a: Task, b: Task): number {
   return b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id);
 }
 
-/** Violação de chave estrangeira do Postgres (o Drizzle embrulha o erro do driver em `cause`). */
-function isForeignKeyViolation(error: unknown): boolean {
-  const code = (e: unknown) => (typeof e === "object" && e !== null && "code" in e ? e.code : undefined);
-  return code(error) === "23503" || (typeof error === "object" && error !== null && "cause" in error && code(error.cause) === "23503");
-}
-
 // As tarefas pessoais filtram sempre por user_id = utilizador da sessão; as da turma, pela
 // turma atual do aluno. A tarefa de outro aluno (ou de outra turma) responde 404, como se
 // não existisse.
@@ -113,9 +107,8 @@ export const taskRoutes = new Hono<AppEnv>()
       .returning();
     return c.json({ task: toTask(row!) }, 201);
   })
-  .patch("/:id", validate("json", updateTaskSchema), async (c) => {
+  .patch("/:id", uuidParam(NOT_FOUND), validate("json", updateTaskSchema), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const input = c.req.valid("json");
     const db = c.var.db;
     const user = c.var.user;
@@ -154,9 +147,8 @@ export const taskRoutes = new Hono<AppEnv>()
     if (!updated) return c.json(NOT_FOUND, 404);
     return c.json({ task: updated });
   })
-  .delete("/:id", async (c) => {
+  .delete("/:id", uuidParam(NOT_FOUND), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const [row] = await c.var.db
       .delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, c.var.user.id)))

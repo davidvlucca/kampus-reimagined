@@ -1,10 +1,11 @@
+import { DEMO_PASSWORD } from "@kampus/shared";
 import { eq } from "drizzle-orm";
 import { createApp } from "../src/app.ts";
 import { createDb } from "../src/db/client.ts";
 import { users } from "../src/db/schema.ts";
-import { DEMO_PASSWORD, seedDatabase } from "../src/demo-data.ts";
+import { seedDatabase } from "../src/demo-data.ts";
 
-export const ORIGIN = "http://localhost:5173";
+const ORIGIN = "http://localhost:5173";
 
 /** Uma app com base PGlite só em memória, migrada e com o seed de demo. */
 export async function setup() {

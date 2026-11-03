@@ -1,3 +1,4 @@
+import "./zodConfig.ts";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource/poppins/latin-500.css";
 import "@fontsource/poppins/latin-600.css";

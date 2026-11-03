@@ -1,12 +1,10 @@
 // Dados de demonstração. TODOS os nomes, emails e textos são fictícios.
 // Usado pelo seed (npm run db:seed / db:reset), pelos testes e pela reposição diária da demo.
-import { addDays, localDateKey } from "@kampus/shared";
+import { addDays, DEMO_PASSWORD, localDateKey } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { hashPassword } from "./auth/password.ts";
 import type { Db } from "./db/client.ts";
 import { assignmentCompletions, assignments, cohorts, notes, tasks, users } from "./db/schema.ts";
-
-export const DEMO_PASSWORD = "Kampus123";
 
 const STAFF = [
   {
@@ -220,7 +218,7 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
   return { staff: STAFF.length, students: studentRows.length, cohorts: cohortRows.length, assignments: assignmentRows.length };
 }
 
-export async function resetDatabase(db: Db) {
+async function resetDatabase(db: Db) {
   await db.execute(sql`truncate table login_attempts, sessions, assignment_completions, assignments, notes, tasks, users, cohorts restart identity cascade`);
 }
 

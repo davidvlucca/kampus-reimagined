@@ -55,6 +55,23 @@ describe("um aluno só vê e altera os próprios dados", () => {
 
   it("um id que não é UUID dá 404 (e não 500)", async () => {
     expect((await t.request("PATCH", "/api/tasks/123", { cookie: a, body: { done: true } })).status).toBe(404);
+    // Em todas as rotas com :id, mesmo com um corpo inválido (o id vem antes do corpo).
+    for (const [method, path, cookie] of [
+      ["PATCH", "/api/tasks/123", a],
+      ["DELETE", "/api/tasks/123", a],
+      ["GET", "/api/notes/123", a],
+      ["PATCH", "/api/notes/123", a],
+      ["DELETE", "/api/notes/123", a],
+      ["GET", "/api/staff/assignments/123", staff],
+      ["PATCH", "/api/staff/assignments/123", staff],
+      ["DELETE", "/api/staff/assignments/123", staff],
+      ["PATCH", "/api/staff/students/123", staff],
+      ["DELETE", "/api/staff/students/123", staff],
+    ] as const) {
+      const res = await t.request<{ error: string }>(method, path, { cookie, body: method === "PATCH" ? { title: 42 } : undefined });
+      expect(res.status, `${method} ${path}`).toBe(404);
+      expect(res.json.error, `${method} ${path}`).toMatch(/not found/);
+    }
   });
 });
 
@@ -128,7 +145,7 @@ describe("gestão de alunos pelo staff", () => {
 
     expect((await t.request("DELETE", `/api/staff/students/${id}`, { cookie: staff })).status).toBe(204);
     // A sessão do aluno apagado também deixa de existir.
-    expect((await t.request("GET", "/api/auth/me", { cookie: newCookie })).status).toBe(401);
+    expect((await t.request("GET", "/api/auth/me", { cookie: newCookie })).json).toEqual({ user: null });
   });
 
   it("uma nova password definida pelo staff termina as sessões abertas do aluno", async () => {
@@ -137,7 +154,7 @@ describe("gestão de alunos pelo staff", () => {
     const id = await t.userId(email);
     const res = await t.request("PATCH", `/api/staff/students/${id}`, { cookie: staff, body: { password: "ResetPass1" } });
     expect(res.status).toBe(200);
-    expect((await t.request("GET", "/api/auth/me", { cookie: studentCookie })).status).toBe(401);
+    expect((await t.request("GET", "/api/auth/me", { cookie: studentCookie })).json).toEqual({ user: null });
     await t.login(email, "student", "ResetPass1");
   });
 

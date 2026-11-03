@@ -1,7 +1,7 @@
 // Build para a Vercel no formato Build Output API (.vercel/output):
 //   static/            o build do client (Vite)
 //   functions/api.func  a API (Hono) num só ficheiro, empacotada com esbuild
-//   config.json        rotas (ver scripts/vercel-routes.ts: API, SPA, 404 e noindex) e o cron diário
+//   config.json        rotas (ver scripts/vercel-routes.ts: API, SPA, 404, headers de segurança, cache e noindex) e o cron diário
 // A Vercel corre isto como buildCommand (ver vercel.json) e publica o resultado tal como está.
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";

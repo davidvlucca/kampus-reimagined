@@ -3,8 +3,8 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireUser } from "../auth/middleware.ts";
 import { burnPasswordCheck, verifyPassword } from "../auth/password.ts";
-import { attemptKey, claimLoginAttempt, clearFailures, ipAttemptKey } from "../auth/rateLimit.ts";
-import { clearSessionCookie, createSession, deleteSession, setSessionCookie } from "../auth/session.ts";
+import { attemptKey, claimLoginAttempt, ipAttemptKey } from "../auth/rateLimit.ts";
+import { clearSessionCookie, createSession, deleteSession, readSession, setSessionCookie } from "../auth/session.ts";
 import { users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { findUserByEmail, loadPublicUser } from "../lib/users.ts";
@@ -17,10 +17,10 @@ export const authRoutes = new Hono<AppEnv>()
     const { email, password, portal } = c.req.valid("json");
     const db = c.var.db;
 
-    // 0. Limites: 5 falhas por email+IP e 30 tentativas por IP em 15 minutos. Vêm antes de
-    //    tudo, mesmo de uma password certa. A tentativa fica gravada já aqui (ver claimLoginAttempt).
-    const key = attemptKey(email, c.var.clientIp);
-    const wait = await claimLoginAttempt(db, { account: key, ip: ipAttemptKey(c.var.clientIp) });
+    // 0. Limites: 5 falhas por email+IP e 30 falhas por IP em 15 minutos. Vêm antes de tudo,
+    //    mesmo de uma password certa. A tentativa fica gravada já aqui (ver claimLoginAttempt).
+    const claim = await claimLoginAttempt(db, { account: attemptKey(email, c.var.clientIp), ip: ipAttemptKey(c.var.clientIp) });
+    const wait = claim.wait;
     if (wait > 0) {
       const minutes = Math.ceil(wait / 60);
       c.header("Retry-After", String(wait));
@@ -35,7 +35,7 @@ export const authRoutes = new Hono<AppEnv>()
       return c.json(WRONG_CREDENTIALS, 401);
     }
     if (!(await verifyPassword(user.passwordHash, password))) return c.json(WRONG_CREDENTIALS, 401);
-    await clearFailures(db, key);
+    await claim.succeeded();
 
     // 2. Só com a password certa é que dizemos que o portal é o errado.
     if (user.role !== portal) {
@@ -56,6 +56,9 @@ export const authRoutes = new Hono<AppEnv>()
     clearSessionCookie(c);
     return c.body(null, 204);
   })
-  .get("/me", requireUser, async (c) => {
-    return c.json({ user: await loadPublicUser(c.var.db, c.var.user.id) });
+  // Sem sessão é 200 com `user: null`, não 401: as páginas públicas perguntam sempre quem
+  // está ligado, e um 401 em cada visita era um erro vermelho na consola sem haver erro.
+  .get("/me", async (c) => {
+    const session = await readSession(c.var.db, c);
+    return c.json({ user: session ? await loadPublicUser(c.var.db, session.user.id) : null });
   });

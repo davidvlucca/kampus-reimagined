@@ -1,10 +1,11 @@
 // Uso: npm run db:seed (acrescenta numa base vazia) · npm run db:reset (apaga e repõe).
 // SEED_DATE=YYYY-MM-DD fixa o "hoje" do seed, para os prints serem reprodutíveis.
 import { fileURLToPath } from "node:url";
+import { DEMO_PASSWORD } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { dbFromEnv } from "./db/client.ts";
 import { users } from "./db/schema.ts";
-import { DEMO_PASSWORD, resetDemo, seedDatabase } from "./demo-data.ts";
+import { resetDemo, seedDatabase } from "./demo-data.ts";
 
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -1,5 +1,9 @@
 import type { PublicUser, WrongPortalError } from "@kampus/shared";
+import { eq, gt } from "drizzle-orm";
+import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { readSession } from "../src/auth/session.ts";
+import { sessions } from "../src/db/schema.ts";
 import { setup, STAFF, STUDENT_A } from "./helpers.ts";
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -82,19 +86,53 @@ describe("login", () => {
 });
 
 describe("sessão", () => {
-  it("/auth/me sem cookie dá 401", async () => {
-    expect((await t.request("GET", "/api/auth/me")).status).toBe(401);
+  // As páginas públicas perguntam sempre quem está ligado: sem sessão não é um erro.
+  it("/auth/me sem cookie dá 200 com user null (não 401)", async () => {
+    const res = await t.request("GET", "/api/auth/me");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ user: null });
   });
 
-  it("/auth/me com cookie inventado dá 401", async () => {
-    expect((await t.request("GET", "/api/auth/me", { cookie: "kampus_session=invented" })).status).toBe(401);
+  it("/auth/me com cookie inventado dá 200 com user null", async () => {
+    const res = await t.request("GET", "/api/auth/me", { cookie: "kampus_session=invented" });
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ user: null });
+  });
+
+  it("as outras rotas continuam a dar 401 sem sessão (é assim que o client sabe que a sessão caiu)", async () => {
+    expect((await t.request("GET", "/api/tasks", { cookie: "kampus_session=invented" })).status).toBe(401);
+    expect((await t.request("POST", "/api/auth/logout")).status).toBe(401);
   });
 
   it("logout invalida a sessão no servidor (o mesmo cookie deixa de servir)", async () => {
     const cookie = await t.login(STUDENT_A, "student");
-    expect((await t.request("GET", "/api/auth/me", { cookie })).status).toBe(200);
+    expect((await t.request<{ user: PublicUser }>("GET", "/api/auth/me", { cookie })).json.user.email).toBe(STUDENT_A);
     expect((await t.request("POST", "/api/auth/logout", { cookie })).status).toBe(204);
-    expect((await t.request("GET", "/api/auth/me", { cookie })).status).toBe(401);
+    expect((await t.request("GET", "/api/auth/me", { cookie })).json).toEqual({ user: null });
+  });
+});
+
+describe("sessões na base", () => {
+  it("a sessão lida em cada pedido não traz o hash da password", async () => {
+    const cookie = await t.login(STUDENT_A, "student");
+    const probe = new Hono().get("/", async (c) => {
+      const session = await readSession(t.db, c);
+      return c.json({ keys: Object.keys(session?.user ?? {}) });
+    });
+    const { keys } = (await (await probe.request("/", { headers: { cookie } })).json()) as { keys: string[] };
+    expect(keys).toEqual(expect.arrayContaining(["id", "email", "role", "cohortId"]));
+    expect(keys).not.toContain("passwordHash");
+  });
+
+  it("um login apaga as sessões já expiradas (de qualquer utilizador)", async () => {
+    const userId = await t.userId("rui.matos@example.com");
+    await t.db.insert(sessions).values({ id: "expired-session-for-test", userId, expiresAt: new Date(Date.now() - 60_000) });
+    await t.login(STUDENT_A, "student");
+    const left = await t.db.select().from(sessions).where(eq(sessions.id, "expired-session-for-test"));
+    expect(left).toHaveLength(0);
+    // As válidas ficam.
+    const valid = await t.db.select().from(sessions).where(gt(sessions.expiresAt, new Date()));
+    expect(valid.length).toBeGreaterThan(0);
   });
 });
 
@@ -118,8 +156,8 @@ describe("mudar password", () => {
       body: { currentPassword: "Kampus123", newPassword: "NewPassword1" },
     });
     expect(res.status).toBe(204);
-    expect((await t.request("GET", "/api/auth/me", { cookie: laptop })).status).toBe(200);
-    expect((await t.request("GET", "/api/auth/me", { cookie: phone })).status).toBe(401);
+    expect((await t.request<{ user: PublicUser }>("GET", "/api/auth/me", { cookie: laptop })).json.user.email).toBe(email);
+    expect((await t.request("GET", "/api/auth/me", { cookie: phone })).json).toEqual({ user: null });
 
     const old = await t.request("POST", "/api/auth/login", { body: { email, password: "Kampus123", portal: "student" } });
     expect(old.status).toBe(401);

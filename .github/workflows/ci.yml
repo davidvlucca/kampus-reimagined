@@ -1,5 +1,6 @@
-# Corre em cada push e pull request: lint, tipos, testes (Vitest), build e testes de
-# ponta a ponta (Playwright + axe) numa cópia da app com PGlite. Não precisa de segredos.
+# Corre em cada push e pull request: lint, tipos, testes (Vitest), o build da Vercel com o
+# orçamento do bundle e testes de ponta a ponta (Playwright + axe) numa cópia da app com
+# PGlite. Não precisa de segredos. Node 22, o mesmo da função na Vercel (nodejs22.x).
 name: CI
 
 on:
@@ -16,20 +17,23 @@ permissions:
 
 jobs:
   check:
-    name: Lint, types, tests, build
+    name: Lint, types, tests, build, bundle size
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      # O mesmo build que a Vercel corre (client, bundle da API e rotas). O server não tem
+      # outro passo de build: o typecheck acima já é o "npm run build -w server".
+      - run: npm run build:vercel
+      - run: node scripts/check-bundle.ts
 
   e2e:
     name: End-to-end (Playwright + axe)
@@ -39,7 +43,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium

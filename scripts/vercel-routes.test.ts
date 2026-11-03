@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { isKnownSpaPath, MISSING_ASSET, NOINDEX, vercelRoutes } from "./vercel-routes.ts";
+import { readdirSync } from "node:fs";
+import {
+  isKnownSpaPath,
+  LOGIN_REDIRECT,
+  MISSING_ASSET,
+  NOINDEX,
+  NON_API_PATHS,
+  PUBLIC_SVG,
+  PUBLIC_SVG_CACHE,
+  SECURITY_HEADERS,
+  vercelRoutes,
+} from "./vercel-routes.ts";
 
 // Um caminho de exemplo por cada rota de client/src/router.tsx.
 const KNOWN = [
@@ -50,5 +61,63 @@ describe("rotas da Vercel", () => {
   it("com NOINDEX ligado, a primeira rota põe X-Robots-Tag em tudo", () => {
     if (!NOINDEX) return;
     expect(vercelRoutes()[0]).toEqual({ src: "^/(.*)$", headers: { "X-Robots-Tag": "noindex" }, continue: true });
+  });
+
+  it("as páginas e os ficheiros levam os headers de segurança; a API não (tem os seus)", () => {
+    const routes = vercelRoutes();
+    const security = routes.findIndex((r) => "headers" in r && r.headers === SECURITY_HEADERS);
+    expect(routes[security]).toEqual({ src: NON_API_PATHS, headers: SECURITY_HEADERS, continue: true });
+    // Antes da API e do filesystem, para valer em tudo o que não é /api.
+    expect(security).toBeLessThan(routes.findIndex((r) => "dest" in r && r.dest === "/api"));
+    const matches = (path: string) => new RegExp(NON_API_PATHS).test(path);
+    for (const path of ["/", "/login/student", "/app/tour", "/assets/index-abc.js", "/favicon.svg", "/apiary", "/nope"]) {
+      expect(matches(path), path).toBe(true);
+    }
+    for (const path of ["/api", "/api/", "/api/auth/me", "/api/health"]) expect(matches(path), path).toBe(false);
+  });
+
+  it("as ilustrações da visita e o favicon têm um dia de cache (antes do filesystem); um que não existe dá 404 sem cache", () => {
+    const routes = vercelRoutes();
+    const filesystem = routes.findIndex((r) => "handle" in r);
+    const cached = routes.findIndex((r) => r.src === PUBLIC_SVG && "continue" in r);
+    expect(cached).toBeGreaterThan(-1);
+    expect(cached).toBeLessThan(filesystem);
+    expect(routes[cached]).toEqual({ src: PUBLIC_SVG, headers: { "cache-control": PUBLIC_SVG_CACHE }, continue: true });
+    const missing = routes.findIndex((r) => r.src === PUBLIC_SVG && "dest" in r);
+    expect(missing).toBeGreaterThan(filesystem);
+    expect(routes[missing]).toMatchObject({ dest: MISSING_ASSET.path, status: 404, headers: { "cache-control": "no-store" } });
+
+    const matches = (path: string) => new RegExp(PUBLIC_SVG).test(path);
+    // Todos os SVG de client/public/tour contam.
+    const tourSvgs = readdirSync(new URL("../client/public/tour", import.meta.url)).filter((f) => f.endsWith(".svg"));
+    expect(tourSvgs.length).toBeGreaterThan(0);
+    for (const file of tourSvgs) expect(matches(`/tour/${file}`), file).toBe(true);
+    expect(matches("/favicon.svg")).toBe(true);
+    for (const path of ["/app/tour", "/tour", "/tour/a/b.svg", "/faviconXsvg", "/assets/x.svg"]) expect(matches(path), path).toBe(false);
+  });
+
+  it("/login (com ou sem barra) responde 308 para /login/student, antes do filesystem e do SPA", () => {
+    const routes = vercelRoutes();
+    const redirect = routes.indexOf(LOGIN_REDIRECT);
+    expect(redirect).toBeGreaterThan(-1);
+    expect(redirect).toBeLessThan(routes.findIndex((r) => "handle" in r));
+    expect(LOGIN_REDIRECT).toMatchObject({ status: 308, headers: { Location: "/login/student" } });
+    const matches = (path: string) => new RegExp(LOGIN_REDIRECT.src).test(path);
+    expect(matches("/login")).toBe(true);
+    expect(matches("/login/")).toBe(true);
+    for (const path of ["/login/student", "/login/staff", "/loginx", "/app/login"]) expect(matches(path), path).toBe(false);
+    // O destino é uma rota da app.
+    expect(isKnownSpaPath(LOGIN_REDIRECT.headers.Location)).toBe(true);
+  });
+
+  it("a CSP não deixa correr scripts de fora nem eval, e a página não pode ir para um iframe", () => {
+    const csp = SECURITY_HEADERS["Content-Security-Policy"];
+    const directives = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1).join(" ")]));
+    expect(directives["script-src"]).toBe("'self'");
+    expect(csp).not.toMatch(/unsafe-eval|wasm-unsafe-eval|\*/);
+    expect(directives["frame-ancestors"]).toBe("'none'");
+    expect(directives["object-src"]).toBe("'none'");
+    expect(SECURITY_HEADERS["X-Frame-Options"]).toBe("DENY");
+    expect(SECURITY_HEADERS["X-Content-Type-Options"]).toBe("nosniff");
   });
 });

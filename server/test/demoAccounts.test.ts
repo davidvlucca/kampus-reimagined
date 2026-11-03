@@ -20,7 +20,8 @@ describe("contas partilhadas da demo", () => {
     const res = await t.request<{ error: string }>("DELETE", `/api/staff/students/${demoStudentId}`, { cookie: staff });
     expect(res.status).toBe(403);
     expect(res.json.error).toBe(DEMO_ACCOUNT_MESSAGES.delete);
-    expect((await t.request("GET", "/api/auth/me", { cookie: await t.login(STUDENT_A, "student") })).status).toBe(200);
+    const me = await t.request<{ user: { email: string } | null }>("GET", "/api/auth/me", { cookie: await t.login(STUDENT_A, "student") });
+    expect(me.json.user?.email).toBe(STUDENT_A);
   });
 
   it("o staff não muda o email nem a password da conta de demo do aluno", async () => {
