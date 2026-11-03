@@ -1,6 +1,6 @@
 # Kampus Reimagined
 
-By [David Lucca](https://github.com/davidvlucca)
+By David Lucca · [LinkedIn](https://www.linkedin.com/in/davidvlucca/) · [GitHub](https://github.com/davidvlucca)
 
 [![CI](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml/badge.svg)](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml)
 
