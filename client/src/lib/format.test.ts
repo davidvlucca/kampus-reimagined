@@ -46,5 +46,7 @@ describe("editedAt", () => {
     expect(editedAt(new Date(2026, 9, 28, 12).toISOString(), now)).toBe("6 days ago");
     expect(editedAt(new Date(2026, 9, 27, 11).toISOString(), now)).toBe("27 Oct");
     expect(editedAt(new Date(2025, 11, 31, 12).toISOString(), now)).toBe("31 Dec 2025");
+    // Relógio do computador atrasado: nunca "tomorrow".
+    expect(editedAt(new Date(2026, 10, 4, 12).toISOString(), now)).toBe("just now");
   });
 });

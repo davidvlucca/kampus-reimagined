@@ -44,7 +44,10 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 export function editedAt(iso: string, now: Date = new Date()): string {
   const date = parseDate(iso);
   if (!date) return "";
-  return now.getTime() - date.getTime() < WEEK_MS ? timeAgo(iso, now) : formatDate(iso, { short: true, now });
+  const ago = now.getTime() - date.getTime();
+  // No futuro só com o relógio do computador adiantado ou atrasado: "tomorrow" não faz sentido aqui.
+  if (ago < 0) return "just now";
+  return ago < WEEK_MS ? timeAgo(iso, now) : formatDate(iso, { short: true, now });
 }
 
 export function fullName(person: { firstName: string; lastName: string }): string {

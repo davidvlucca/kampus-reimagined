@@ -1,6 +1,14 @@
-/** Excerto de uma nota numa só linha (quebras de linha viram espaços). */
+// Marcas de markdown no início de uma linha: títulos (#), citações (>), listas (-, *, +, 1.) e caixas ([ ]).
+const LINE_MARKS = /^\s*(?:#{1,6}\s+|>\s*|(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?)/;
+
+/** Excerto de uma nota numa só linha: quebras de linha viram espaços e as marcas de lista e de título saem. */
 export function excerpt(body: string, max = 160): string {
-  const flat = body.replace(/\s+/g, " ").trim();
+  const flat = body
+    .split(/\r?\n/)
+    .map((line) => line.replace(LINE_MARKS, ""))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
   return flat.length > max ? `${flat.slice(0, max).trimEnd()}…` : flat;
 }
 
