@@ -38,7 +38,6 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
   // `prev` fica por baixo enquanto o cenário novo aparece (fade).
   const [{ index, prev }, setScenes] = useState<{ index: number; prev: number | null }>({ index: 0, prev: null });
 
-  const markVisited = useCallback((i: number) => setVisited((v) => (v.has(i) ? v : new Set(v).add(i))), []);
   const goTo = useCallback(
     (next: number) => {
       const target = Math.max(0, Math.min(TOTAL - 1, next));
@@ -49,14 +48,13 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
       setArrived(null);
       onStopChange();
       setScenes({ index: target, prev: index });
-      if (view === "room") markVisited(target);
     },
-    [index, cardRef, stopSpeech, onStopChange, view, markVisited],
+    [index, cardRef, stopSpeech, onStopChange],
   );
 
   /**
-   * Se o foco está no que vai desaparecer (o cartão do diálogo ou do mapa, ou o botão
-   * "Back to map" por cima do 3D), segue para o cartão novo.
+   * Se o foco está no que vai desaparecer (o cartão do diálogo, com o "Back to map", ou o
+   * do mapa), segue para o cartão novo.
    */
   const keepFocus = useCallback(() => {
     const active = document.activeElement;
@@ -76,10 +74,9 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
         if (focusDialog) focusAfterViewChange.current = true;
       }
       goTo(i);
-      markVisited(i);
       setView("room");
     },
-    [goTo, keepFocus, markVisited, view, cardRef],
+    [goTo, keepFocus, view, cardRef],
   );
   // Identidade fixa para o 3D (memo): com o enterRoom direto, mudava a cada letra da fala e o
   // canvas voltava a desenhar enquanto o texto se escreve.
@@ -99,16 +96,20 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
   /** Ao trocar de modo a meio da visita: o 3D entra já na sala da paragem atual, sem a introdução. */
   const enterCurrentRoom = useCallback(() => {
     introDone.current = true;
-    markVisited(index);
     setArrived(null);
     setView("room");
-  }, [index, markVisited]);
+  }, []);
+
+  // 3D: dentro da sala, a ilustração aparece por cima do canvas quando a câmara chega.
+  const interior = is3D && view === "room" && arrived !== null && arrived === roomOfStop(index);
+  // Uma paragem fica vista quando aparece: no 2D logo, no 3D só quando a câmara chega à sala
+  // (sair para o mapa a meio do voo não conta, e o "Continue to" volta a propor essa sala).
+  const seen = is3D ? (interior ? index : null) : index;
+  if (seen !== null && !visited.has(seen)) setVisited(new Set(visited).add(seen));
 
   // Na vista geral, a sala seguinte é a da paragem atual se ainda não se entrou nela.
   const mapNext = visited.has(index) ? Math.min(index + 1, TOTAL - 1) : index;
   const nextIndex = view === "map" ? mapNext : index + 1 < TOTAL ? index + 1 : null;
-  // 3D: dentro da sala, a ilustração aparece por cima do canvas quando a câmara chega.
-  const interior = is3D && view === "room" && arrived !== null && arrived === roomOfStop(index);
 
   // 3D: começa na vista geral e, ao fim de um momento (contado a partir do primeiro frame,
   // não do clique: num telemóvel lento o 3D demora a carregar), voa para a Entrance.
@@ -120,11 +121,10 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
       // Se a pessoa já mudou de paragem no mapa (setas, botões), não entra sozinha noutra sala.
       if (view !== "map" || visited.size > 0 || index !== 0) return;
       keepFocus();
-      markVisited(index);
       setView("room");
     }, 1200);
     return () => window.clearTimeout(id);
-  }, [is3D, mapReady, view, visited, index, keepFocus, markVisited]);
+  }, [is3D, mapReady, view, visited, index, keepFocus]);
 
   useEffect(() => {
     if (!focusAfterStopChange.current) return;
