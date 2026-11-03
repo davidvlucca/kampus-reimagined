@@ -1,6 +1,6 @@
 import { createAssignmentSchema, updateAssignmentSchema, type Assignment, type UpdateAssignmentInput } from "@kampus/shared";
 import { CalendarX } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useCohorts, useCreateAssignment, useUpdateAssignment } from "../../api/hooks.ts";
 import { Button, Dialog, Input, Select, useToast } from "../../components/ui/index.ts";
@@ -11,6 +11,14 @@ type Values = Record<FieldName, string>;
 type Errors = Partial<Record<FieldName, string>>;
 
 const FORM_ID = "assignment-form";
+/** A ordem dos campos no formulário: o foco vai para o primeiro com erro. */
+const FIELD_ORDER: FieldName[] = ["cohortId", "title", "dueDate"];
+// Os anos que a validação partilhada aceita; o seletor de datas não deixa sair daqui.
+const MIN_DATE = "1900-01-01";
+const MAX_DATE = "2100-12-31";
+
+// O Zod diz só "Required"; aqui diz-se o que falta.
+const REQUIRED: Partial<Record<FieldName, string>> = { title: "Enter a title", cohortId: "Choose a cohort" };
 
 function initialValues(assignment: Assignment | null, defaultCohortId: string): Values {
   return {
@@ -25,9 +33,18 @@ function issuesToErrors(issues: readonly { path: readonly PropertyKey[]; message
   const errors: Errors = {};
   for (const issue of issues) {
     const key = issue.path[0];
-    if (typeof key === "string" && !(key in errors)) errors[key as FieldName] = issue.message;
+    if (typeof key === "string" && !(key in errors)) {
+      errors[key as FieldName] = issue.message === "Required" ? (REQUIRED[key as FieldName] ?? issue.message) : issue.message;
+    }
   }
   return errors;
+}
+
+const RANGE_MESSAGE = "Choose a date between 1900 and 2100";
+
+/** Um ano de 5 dígitos ou 0001 passa no formato mas não faz sentido como prazo. */
+function outOfRange(dueDate: string | null | undefined): boolean {
+  return typeof dueDate === "string" && dueDate !== "" && (dueDate < MIN_DATE || dueDate > MAX_DATE);
 }
 
 /**
@@ -54,6 +71,14 @@ export function AssignmentFormDialog({
   const [values, setValues] = useState<Values>(() => initialValues(assignment, defaultCohortId));
   const [errors, setErrors] = useState<Errors>({});
   const lock = useSubmitLock();
+  const fieldRefs = useRef<Partial<Record<FieldName, HTMLInputElement | HTMLSelectElement | null>>>({});
+
+  /** Mostra os erros e leva o foco ao primeiro campo com erro (quem usa teclado ou leitor de ecrã chega logo lá). */
+  const showErrors = (next: Errors) => {
+    setErrors(next);
+    const first = FIELD_ORDER.find((f) => next[f]);
+    if (first) fieldRefs.current[first]?.focus();
+  };
 
   const set = (field: FieldName) => (value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -69,7 +94,8 @@ export function AssignmentFormDialog({
       try {
         if (!isEdit) {
           const parsed = createAssignmentSchema.safeParse({ ...values, dueDate: values.dueDate || null });
-          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
+          if (outOfRange(parsed.data.dueDate)) return showErrors({ dueDate: RANGE_MESSAGE });
           const created = await createAssignment.mutateAsync(parsed.data);
           toast({ title: "Task added", description: `Everyone in ${created.cohort.name} can see it now.`, tone: "success" });
         } else {
@@ -83,7 +109,8 @@ export function AssignmentFormDialog({
             return;
           }
           const parsed = updateAssignmentSchema.safeParse(changes);
-          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
+          if (outOfRange(parsed.data.dueDate)) return showErrors({ dueDate: RANGE_MESSAGE });
           await updateAssignment.mutateAsync({ id: assignment.id, ...parsed.data });
           toast({ title: "Changes saved", tone: "success" });
         }
@@ -92,7 +119,7 @@ export function AssignmentFormDialog({
         // Apagado entretanto (noutro separador ou por outra pessoa): fecha, a lista já se atualiza.
         if (isEdit && isNotFound(error)) onOpenChange(false);
         const fields = fieldErrors(error);
-        if (Object.keys(fields).length > 0) setErrors(fields);
+        if (Object.keys(fields).length > 0) showErrors(fields);
         toast({ title: isEdit ? "Couldn't save changes" : "Couldn't add the task", description: errorMessage(error), tone: "error" });
       }
     });
@@ -120,6 +147,9 @@ export function AssignmentFormDialog({
           <Input label="Cohort" value={assignment.cohort.name} readOnly hint="The cohort can't change. Delete the task and add a new one instead." />
         ) : (
           <Select
+            ref={(el) => {
+              fieldRefs.current.cohortId = el;
+            }}
             label="Cohort"
             required
             value={values.cohortId}
@@ -138,6 +168,9 @@ export function AssignmentFormDialog({
           </Select>
         )}
         <Input
+          ref={(el) => {
+            fieldRefs.current.title = el;
+          }}
           label="Title"
           placeholder="e.g. Hand in your housing form"
           autoComplete="off"
@@ -148,7 +181,19 @@ export function AssignmentFormDialog({
           onChange={(e) => set("title")(e.target.value)}
         />
         <div className="flex flex-col gap-2">
-          <Input label="Due date" type="date" hint="Optional" value={values.dueDate} error={errors.dueDate} onChange={(e) => set("dueDate")(e.target.value)} />
+          <Input
+            ref={(el) => {
+              fieldRefs.current.dueDate = el;
+            }}
+            label="Due date"
+            type="date"
+            hint="Optional"
+            min={MIN_DATE}
+            max={MAX_DATE}
+            value={values.dueDate}
+            error={errors.dueDate}
+            onChange={(e) => set("dueDate")(e.target.value)}
+          />
           {values.dueDate && (
             <Button variant="ghost" size="sm" className="self-start" icon={<CalendarX aria-hidden className="size-4" />} onClick={() => set("dueDate")("")}>
               Remove due date

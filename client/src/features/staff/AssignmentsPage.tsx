@@ -185,20 +185,28 @@ function AssignmentCard({
 }) {
   const [showWho, setShowWho] = useState(false);
   const listId = `assignment-${a.id}-students`;
+  // A mesma tarefa pode estar em várias turmas: a turma entra nos nomes para os distinguir.
+  const named = `"${a.title}" for ${a.cohort.name}`;
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold break-words">{a.title}</h2>
+      {/* flex-wrap: com o texto a 200% os botões passam para baixo em vez de espremer o título. */}
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-[min(100%,10rem)] flex-1">
+          <h2 className="text-base font-semibold break-words">
+            {a.title}
+            <span className="sr-only">, {a.cohort.name}</span>
+          </h2>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge tone="sky">{a.cohort.name}</Badge>
+            <Badge tone="sky" className="max-w-full rounded-xl whitespace-normal break-words">
+              {a.cohort.name}
+            </Badge>
             <AssignmentDeadline assignment={a} />
           </div>
         </div>
-        <div className="-mt-1 -mr-1 flex shrink-0 gap-1">
-          <IconButton label={`Edit "${a.title}"`} icon={<Pencil aria-hidden />} onClick={() => onEdit(a)} />
-          <IconButton label={`Delete "${a.title}"`} variant="danger" icon={<Trash2 aria-hidden />} onClick={() => onDelete(a)} />
+        <div className="-mt-1 -mr-1 ml-auto flex shrink-0 gap-1">
+          <IconButton label={`Edit ${named}`} icon={<Pencil aria-hidden />} onClick={() => onEdit(a)} />
+          <IconButton label={`Delete ${named}`} variant="danger" icon={<Trash2 aria-hidden />} onClick={() => onDelete(a)} />
         </div>
       </div>
 
@@ -217,7 +225,7 @@ function AssignmentCard({
           >
             {/* Rótulo fixo: o estado vem do aria-expanded; o título distingue os cartões. */}
             See who
-            <span className="sr-only"> has done "{a.title}"</span>
+            <span className="sr-only"> has done {named}</span>
           </Button>
           <div id={listId} hidden={!showWho}>
             {showWho && <StudentProgress assignment={a} />}
@@ -232,7 +240,7 @@ function AssignmentCard({
 function StudentProgress({ assignment }: { assignment: Assignment }) {
   const detail = useAssignment(assignment.id, true);
 
-  if (detail.isPending) return <SkeletonList rows={3} className="mt-3" label={`Loading students for "${assignment.title}"`} />;
+  if (detail.isPending) return <SkeletonList rows={3} className="mt-3" label={`Loading students for "${assignment.title}" in ${assignment.cohort.name}`} />;
   if (detail.isError) return <ErrorState message={errorMessage(detail.error)} onRetry={() => detail.refetch()} className="py-6" />;
   if (detail.data.progress.length === 0) return <p className="mt-3 text-sm text-muted">No students in this cohort yet.</p>;
 
