@@ -2,7 +2,7 @@
 // junta este ficheiro e as dependências num só bundle. Só usa Postgres (Neon): o PGlite
 // não entra no bundle.
 import { getRequestListener } from "@hono/node-server";
-import { createApp, parseOrigins, parseSessionTtlDays } from "./app.ts";
+import { appVersion, createApp, parseOrigins, parseSessionTtlDays } from "./app.ts";
 import { createPostgresDb } from "./db/postgres.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -19,6 +19,7 @@ const app = createApp({
   cronSecret: process.env.CRON_SECRET || undefined,
   // A Vercel reescreve o x-forwarded-for com o IP real do cliente.
   trustProxy: true,
+  version: appVersion(process.env.VERCEL_GIT_COMMIT_SHA),
 });
 
 // Handler Node (req, res): a Vercel chama-o por cada pedido a /api/*.

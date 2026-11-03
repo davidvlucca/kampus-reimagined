@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { appVersion, createApp } from "../src/app.ts";
+import type { Db } from "../src/db/client.ts";
 import { setup, STUDENT_A } from "./helpers.ts";
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -39,5 +41,44 @@ describe("Cache-Control da API", () => {
     const res = await t.request("POST", "/api/auth/login", { body: { email: STUDENT_A, password: "Kampus123", portal: "student" } });
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+});
+
+describe("/api/health", () => {
+  it("responde ok, sem cache, com a versão", async () => {
+    const res = await t.request<{ ok: boolean; version: string }>("GET", "/api/health");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ ok: true, version: "dev" });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("a versão é o commit curto da Vercel, ou dev", () => {
+    expect(appVersion("4af7b6d1c2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7")).toBe("4af7b6d");
+    expect(appVersion(undefined)).toBe("dev");
+    expect(appVersion("  ")).toBe("dev");
+  });
+
+  it("/api/health/ready corre um select 1 na base", async () => {
+    const res = await t.request<{ ok: boolean; version: string }>("GET", "/api/health/ready");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ ok: true, version: "dev" });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("/api/health/ready dá 503 se a base não responde, com o erro no log e não na resposta", async () => {
+    const down = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:5432"), { code: "ECONNREFUSED" });
+    const db = { execute: () => Promise.reject(down) } as unknown as Db;
+    const app = createApp({ db, corsOrigins: [], session: { ttlDays: 7, secureCookies: false }, version: "abc1234" });
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await app.request("/api/health/ready");
+    const logged = JSON.stringify(error.mock.calls);
+    error.mockRestore();
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ ok: false });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(logged).toContain("GET /api/health/ready");
+    expect(logged).toContain("ECONNREFUSED");
+    // O /api/health (vivo) não depende da base.
+    expect(await (await app.request("/api/health")).json()).toEqual({ ok: true, version: "abc1234" });
   });
 });

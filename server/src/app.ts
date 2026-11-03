@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { getConnInfo } from "@hono/node-server/conninfo";
+import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
@@ -33,6 +34,13 @@ export interface AppConfig {
    * Vercel reescreve. Sem proxy, um cliente podia inventar esse header: usa-se o socket.
    */
   trustProxy?: boolean;
+  /** Versão publicada (o commit curto na Vercel), devolvida pelo /api/health. */
+  version?: string;
+}
+
+/** O commit curto (VERCEL_GIT_COMMIT_SHA) ou "dev" fora da Vercel. */
+export function appVersion(commitSha: string | undefined): string {
+  return commitSha?.trim() ? commitSha.trim().slice(0, 7) : "dev";
 }
 
 function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => string | undefined): string {
@@ -84,6 +92,7 @@ export function describeError(err: unknown, route: string) {
 
 export function createApp(config: AppConfig) {
   const allowed = (origin: string) => (config.corsOrigins.includes(origin) ? origin : null);
+  const version = config.version ?? "dev";
   let cronSecret = config.cronSecret;
   if (cronSecret && cronSecret.length < MIN_CRON_SECRET_LENGTH) {
     console.warn(`CRON_SECRET is shorter than ${MIN_CRON_SECRET_LENGTH} characters: /api/cron/reset-demo stays disabled.`);
@@ -97,7 +106,21 @@ export function createApp(config: AppConfig) {
       c.set("clientIp", clientIp(c.req.raw.headers, config.trustProxy ?? false, () => getConnInfo(c).remote.address));
       await next();
     })
-    .get("/health", (c) => c.json({ ok: true }))
+    // Vivo: responde sem tocar na base. Pronto: a base também responde.
+    .get("/health", (c) => {
+      c.header("Cache-Control", "no-store");
+      return c.json({ ok: true, version });
+    })
+    .get("/health/ready", async (c) => {
+      c.header("Cache-Control", "no-store");
+      try {
+        await config.db.execute(sql`select 1`);
+        return c.json({ ok: true, version });
+      } catch (err) {
+        console.error("Health check failed", describeError(err, "GET /api/health/ready"));
+        return c.json({ ok: false }, 503);
+      }
+    })
     // A demo é pública e qualquer visitante pode apagar alunos: o Vercel Cron repõe tudo uma vez por dia.
     .get("/cron/reset-demo", async (c) => {
       if (!cronSecret) return c.json({ error: "Not found." }, 404);

@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { createApp, parseOrigins, parseSessionTtlDays } from "./app.ts";
+import { appVersion, createApp, parseOrigins, parseSessionTtlDays } from "./app.ts";
 import { dbFromEnv } from "./db/client.ts";
 
 const handle = dbFromEnv();
@@ -17,6 +17,7 @@ const app = createApp({
   // PGlite: um .env tirado da Vercel (DATABASE_URL de produção + CRON_SECRET) não pode pôr
   // a API local a apagar a base de produção.
   cronSecret: handle.kind === "pglite" ? process.env.CRON_SECRET || undefined : undefined,
+  version: appVersion(process.env.VERCEL_GIT_COMMIT_SHA),
 });
 
 // API_PORT ganha a PORT: em dev, ferramentas que arrancam o Vite também definem PORT.
