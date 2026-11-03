@@ -62,6 +62,8 @@ export const SECURITY_HEADERS = {
 /** Tudo menos /api e /api/... (a API responde com os headers dela). */
 export const NON_API_PATHS = "^/(?!api(?:/|$)).*$";
 
+export const LOGIN_REDIRECT = { src: "^/login/?$", status: 308, headers: { Location: "/login/student" } } as const;
+
 export function isKnownSpaPath(path: string): boolean {
   return SPA_ROUTES.some((pattern) => new RegExp(pattern).test(path));
 }
@@ -73,6 +75,8 @@ export function vercelRoutes() {
     // Ficheiros com hash no nome: cache longa.
     { src: "^/assets/(.*)$", headers: { "cache-control": "public, max-age=31536000, immutable" }, continue: true },
     { src: "^/api(/.*)?$", dest: "/api" },
+    // Um /login sem perfil vai para o de aluno (o React Router faz o mesmo no client).
+    LOGIN_REDIRECT,
     { handle: "filesystem" },
     // Já passou pelo filesystem: um /assets/* que chega aqui não existe. Sem a cache longa de cima.
     { src: "^/assets/(.*)$", dest: MISSING_ASSET.path, status: 404, headers: { "cache-control": "no-store" } },

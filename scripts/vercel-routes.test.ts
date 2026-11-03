@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isKnownSpaPath, MISSING_ASSET, NOINDEX, NON_API_PATHS, SECURITY_HEADERS, vercelRoutes } from "./vercel-routes.ts";
+import { isKnownSpaPath, LOGIN_REDIRECT, MISSING_ASSET, NOINDEX, NON_API_PATHS, SECURITY_HEADERS, vercelRoutes } from "./vercel-routes.ts";
 
 // Um caminho de exemplo por cada rota de client/src/router.tsx.
 const KNOWN = [
@@ -63,6 +63,20 @@ describe("rotas da Vercel", () => {
       expect(matches(path), path).toBe(true);
     }
     for (const path of ["/api", "/api/", "/api/auth/me", "/api/health"]) expect(matches(path), path).toBe(false);
+  });
+
+  it("/login (com ou sem barra) responde 308 para /login/student, antes do filesystem e do SPA", () => {
+    const routes = vercelRoutes();
+    const redirect = routes.indexOf(LOGIN_REDIRECT);
+    expect(redirect).toBeGreaterThan(-1);
+    expect(redirect).toBeLessThan(routes.findIndex((r) => "handle" in r));
+    expect(LOGIN_REDIRECT).toMatchObject({ status: 308, headers: { Location: "/login/student" } });
+    const matches = (path: string) => new RegExp(LOGIN_REDIRECT.src).test(path);
+    expect(matches("/login")).toBe(true);
+    expect(matches("/login/")).toBe(true);
+    for (const path of ["/login/student", "/login/staff", "/loginx", "/app/login"]) expect(matches(path), path).toBe(false);
+    // O destino é uma rota da app.
+    expect(isKnownSpaPath(LOGIN_REDIRECT.headers.Location)).toBe(true);
   });
 
   it("a CSP não deixa correr scripts de fora nem eval, e a página não pode ir para um iframe", () => {

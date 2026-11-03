@@ -1,19 +1,25 @@
-import { createBrowserRouter, type RouteObject } from "react-router";
-import { AppShell } from "./components/layout/AppShell.tsx";
+import type { Role } from "@kampus/shared";
+import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
 import { FullPageSpinner } from "./components/ui/index.ts";
 import { RequireAuth } from "./components/layout/RequireAuth.tsx";
-import { ContactsPage } from "./features/contacts/ContactsPage.tsx";
-import { ProfilePage } from "./features/profile/ProfilePage.tsx";
 import { LoginPage } from "./features/public/LoginPage.tsx";
 import { NotFoundPage } from "./features/public/NotFoundPage.tsx";
 import { RouteErrorPage } from "./features/public/RouteErrorPage.tsx";
 import { WelcomePage } from "./features/public/WelcomePage.tsx";
-import { DashboardPage } from "./features/student/DashboardPage.tsx";
-import { NotesPage } from "./features/student/NotesPage.tsx";
-import { TasksPage } from "./features/student/TasksPage.tsx";
 
-// A visita e a área de staff carregam à parte (code splitting): um aluno não descarrega
-// o código do staff, e a visita só vem quando é aberta.
+// Só as páginas públicas vêm no arranque. O resto carrega à parte (code splitting): quem só
+// vê a entrada e o login não descarrega a app, um aluno não descarrega o código do staff, e
+// a visita só vem quando é aberta. O React Router pede o chunk do layout e o da página ao
+// mesmo tempo.
+const lazyShell = (role: Role) => async () => {
+  const { AppShell } = await import("./components/layout/AppShell.tsx");
+  return { element: <AppShell role={role} /> };
+};
+const lazyDashboard = async () => ({ Component: (await import("./features/student/DashboardPage.tsx")).DashboardPage });
+const lazyTasks = async () => ({ Component: (await import("./features/student/TasksPage.tsx")).TasksPage });
+const lazyNotes = async () => ({ Component: (await import("./features/student/NotesPage.tsx")).NotesPage });
+const lazyContacts = async () => ({ Component: (await import("./features/contacts/ContactsPage.tsx")).ContactsPage });
+const lazyProfile = async () => ({ Component: (await import("./features/profile/ProfilePage.tsx")).ProfilePage });
 const lazyTour = async () => ({ Component: (await import("./features/tour/TourPage.tsx")).TourPage });
 const lazyStaffDashboard = async () => ({ Component: (await import("./features/staff/StaffDashboardPage.tsx")).StaffDashboardPage });
 const lazyStudents = async () => ({ Component: (await import("./features/staff/StudentsPage.tsx")).StudentsPage });
@@ -22,6 +28,8 @@ const lazyAssignments = async () => ({ Component: (await import("./features/staf
 const routes: RouteObject[] = [
   // Público
   { path: "/", element: <WelcomePage /> },
+  // Um /login sem perfil vai para o de aluno (a Vercel responde 308 antes de chegar aqui).
+  { path: "/login", element: <Navigate to="/login/student" replace /> },
   { path: "/login/student", element: <LoginPage portal="student" /> },
   { path: "/login/staff", element: <LoginPage portal="staff" /> },
 
@@ -33,14 +41,14 @@ const routes: RouteObject[] = [
       { path: "/app/tour", lazy: lazyTour },
       {
         path: "/app",
-        element: <AppShell role="student" />,
+        lazy: lazyShell("student"),
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: "tasks", element: <TasksPage /> },
-          { path: "notes", element: <NotesPage /> },
-          { path: "notes/:noteId", element: <NotesPage /> },
-          { path: "contacts", element: <ContactsPage /> },
-          { path: "profile", element: <ProfilePage /> },
+          { index: true, lazy: lazyDashboard },
+          { path: "tasks", lazy: lazyTasks },
+          { path: "notes", lazy: lazyNotes },
+          { path: "notes/:noteId", lazy: lazyNotes },
+          { path: "contacts", lazy: lazyContacts },
+          { path: "profile", lazy: lazyProfile },
         ],
       },
     ],
@@ -52,12 +60,12 @@ const routes: RouteObject[] = [
     children: [
       {
         path: "/staff",
-        element: <AppShell role="staff" />,
+        lazy: lazyShell("staff"),
         children: [
           { index: true, lazy: lazyStaffDashboard },
           { path: "students", lazy: lazyStudents },
           { path: "assignments", lazy: lazyAssignments },
-          { path: "profile", element: <ProfilePage /> },
+          { path: "profile", lazy: lazyProfile },
         ],
       },
     ],
