@@ -36,6 +36,7 @@ describe("erros 500 no log", () => {
     error.mockRestore();
 
     expect(res.status).toBe(500);
+    expect(res.headers.get("cache-control")).toBe("no-store");
     expect(logged).toContain("POST /api/auth/login");
     expect(logged).toContain("Failed query");
     // 42P01: a tabela não existe.

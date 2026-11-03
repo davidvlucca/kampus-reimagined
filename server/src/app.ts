@@ -119,7 +119,20 @@ export function createApp(config: AppConfig) {
     .route("/staff", staffRoutes);
 
   return new Hono()
-    .use(secureHeaders())
+    // A API só devolve JSON: a CSP mais fechada possível, e nunca dentro de um iframe.
+    .use(
+      secureHeaders({
+        strictTransportSecurity: "max-age=63072000; includeSubDomains; preload",
+        xFrameOptions: "DENY",
+        contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      }),
+    )
+    // Respostas com dados de uma sessão não ficam em caches (do browser ou intermédias),
+    // a não ser que a rota diga outra coisa.
+    .use("/api/*", async (c, next) => {
+      await next();
+      if (!c.res.headers.has("cache-control")) c.header("Cache-Control", "no-store");
+    })
     .use("/api/*", cors({ origin: allowed, credentials: true, allowMethods: ["GET", "POST", "PATCH", "DELETE"] }))
     // Bloqueia formulários de outros sites (o cookie SameSite=Lax já trava a maior parte).
     .use("/api/*", csrf({ origin: (origin) => config.corsOrigins.includes(origin) }))
