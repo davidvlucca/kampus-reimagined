@@ -56,6 +56,8 @@ async function openTour3D(page: Page) {
 test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende a seguinte e Back to map volta", async ({ page }) => {
   await openTour3D(page);
   await expect(page.getByRole("region", { name: "Guide" })).toContainText("Welcome to Kampus!");
+  // A Entrance só conta como vista quando a câmara lá chega (ver o teste do Back to map a meio do voo).
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
 
   await page.getByRole("button", { name: "Back to map" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
