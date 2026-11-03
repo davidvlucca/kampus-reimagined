@@ -16,7 +16,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { to: "/app/tasks", label: "Tasks", icon: SquareCheckBig },
     { to: "/app/notes", label: "Notes", icon: NotebookPen },
     { to: "/app/tour", label: "Tour", icon: Map },
-    { to: "/app/contacts", label: "Staff", icon: Contact },
+    { to: "/app/contacts", label: "Contacts", icon: Contact },
     { to: "/app/profile", label: "Profile", icon: UserRound, desktopOnly: true },
   ],
   staff: [

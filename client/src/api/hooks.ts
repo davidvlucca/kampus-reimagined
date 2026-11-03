@@ -23,7 +23,7 @@ import type {
   UpdateTaskInput,
 } from "@kampus/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiRequestError, isNotFound, unexpectedResponse } from "./client.ts";
+import { api, isNotFound, unexpectedResponse } from "./client.ts";
 
 // Um 404 numa mutation quer dizer que a linha já não existe (apagada noutro separador ou
 // por outra pessoa): cada hook volta a pedir a lista, para ela deixar de aparecer.
@@ -48,17 +48,17 @@ export const keys = {
 
 // ---------- Sessão ----------
 
-/** O utilizador da sessão, ou `null` se não houver sessão (401). */
+/**
+ * O utilizador da sessão, ou `null` se não houver sessão (a API responde 200 com `user: null`).
+ * Um 401 de outro pedido quer dizer que a sessão caiu a meio: ver o onSessionLost do main.tsx.
+ */
 export function useMe() {
   return useQuery({
     queryKey: keys.me,
     queryFn: async () => {
-      try {
-        return (await api<{ user: PublicUser }>("/auth/me")).user;
-      } catch (error) {
-        if (error instanceof ApiRequestError && error.status === 401) return null;
-        throw error;
-      }
+      const { user } = await api<{ user?: PublicUser | null }>("/auth/me");
+      if (user === undefined) throw unexpectedResponse();
+      return user;
     },
     staleTime: 60_000,
   });

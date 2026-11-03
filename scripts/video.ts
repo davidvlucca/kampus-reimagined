@@ -10,9 +10,9 @@ const OUT = "docs/video";
 const SIZE = { width: 1280, height: 720 };
 const pause = (page: Page, ms: number) => page.waitForTimeout(ms);
 
-/** O botão "Try as …" do Welcome: entra na conta demo com um clique. */
+/** O botão "Explore as …" do Welcome: entra na conta demo com um clique. */
 async function loginWithDemo(page: Page, profile: "student" | "staff") {
-  const button = page.getByRole("button", { name: `Try as ${profile}` });
+  const button = page.getByRole("button", { name: profile === "student" ? "Explore as a student" : "Explore as staff" });
   await button.hover();
   await pause(page, 500);
   await button.click();
@@ -53,7 +53,7 @@ async function studentFlow(page: Page) {
   await page.getByPlaceholder(/student card/i).fill("Pick up my student card");
   await page.getByRole("button", { name: "Add task" }).click();
   await pause(page, 1200);
-  await page.getByText("Join the cohort chat and say hi").click();
+  await page.getByRole("checkbox", { name: "Join the cohort chat and say hi" }).click();
   await pause(page, 1800);
 
   await nav.getByRole("link", { name: "Notes" }).click();
@@ -67,7 +67,7 @@ async function studentFlow(page: Page) {
   await page.keyboard.press("ControlOrMeta+s");
   await pause(page, 1500);
 
-  await nav.getByRole("link", { name: "Staff" }).click();
+  await nav.getByRole("link", { name: "Contacts" }).click();
   await pause(page, 2500);
 
   await page.getByRole("button", { name: "Log out" }).first().click();

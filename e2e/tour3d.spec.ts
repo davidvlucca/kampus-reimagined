@@ -1,5 +1,5 @@
 import { TOUR_STOPS } from "../shared/src/tour.ts";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectAccessible, loginAs, resetDemo } from "./helpers.ts";
 
 // Corre no projeto "tour-3d" (Chromium com SwiftShader: WebGL no CPU, sem GPU).
@@ -17,6 +17,33 @@ async function settled(page: Page) {
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
 }
 
+/**
+ * O R3F liberta o contexto WebGL meio segundo depois de desmontar o canvas (sair da visita, passar
+ * a 2D). Devolve uma espera por esse momento, para ver a seguir que não apareceu o aviso do 2D.
+ */
+async function watchRelease(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { glReleased?: boolean };
+    w.glReleased = false;
+    document.querySelector("canvas")!.addEventListener("webglcontextlost", () => (w.glReleased = true), { once: true });
+  });
+  return async () => {
+    await page.waitForFunction(() => (window as unknown as { glReleased?: boolean }).glReleased === true);
+    // Um frame para o React desenhar o aviso, se houvesse.
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+  };
+}
+
+/** Espera que a etiqueta pare (segue a câmara, que pode ainda estar a voar). */
+async function settledBox(label: Locator) {
+  let last = "";
+  await expect(async () => {
+    const prev = last;
+    last = JSON.stringify(await label.boundingBox());
+    expect(last).toBe(prev);
+  }).toPass({ intervals: [400], timeout: 15_000 });
+}
+
 async function openTour3D(page: Page) {
   await loginAs(page, "student");
   await page.goto("/app/tour");
@@ -29,6 +56,8 @@ async function openTour3D(page: Page) {
 test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende a seguinte e Back to map volta", async ({ page }) => {
   await openTour3D(page);
   await expect(page.getByRole("region", { name: "Guide" })).toContainText("Welcome to Kampus!");
+  // A Entrance só conta como vista quando a câmara lá chega (ver o teste do Back to map a meio do voo).
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
 
   await page.getByRole("button", { name: "Back to map" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
@@ -65,6 +94,7 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
 
 test("teclado: Esc numa sala volta ao mapa sem perder o foco; Esc no mapa sai sem marcar a visita como saltada", async ({ page }) => {
   await openTour3D(page);
+  const released = await watchRelease(page);
   await page.getByRole("button", { name: "Back to map" }).focus();
   await page.keyboard.press("Enter");
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
@@ -81,7 +111,7 @@ test("teclado: Esc numa sala volta ao mapa sem perder o foco; Esc no mapa sai se
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/app$/);
   // O R3F liberta o contexto WebGL meio segundo depois de desmontar: isso não é uma falha.
-  await page.waitForTimeout(900);
+  await released();
   await expect(page.getByText("Showing the 2D tour")).toHaveCount(0);
   const me = (await (await page.request.get("/api/auth/me")).json()) as { user: { tourSkippedAt: string | null } };
   expect(me.user.tourSkippedAt).toBeNull();
@@ -104,9 +134,11 @@ test("sem WebGL: a visita 2D, sem descarregar o 3D e sem aviso", async ({ page }
   await page.goto("/app/tour");
   await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
   await expect(page.getByText("STOP 1/7")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Switch to/ })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Tour view" })).toHaveCount(0);
   await expect(page.getByText("Showing the 2D tour")).toHaveCount(0);
   expect(chunks).toEqual([]);
+  // Ao abrir, o foco vai para o título da página (não fica no <body>).
+  await expect(page.getByRole("heading", { level: 1, name: /Campus tour/ })).toBeFocused();
 });
 
 test("se o WebGL se perder a meio, a visita continua em 2D com um aviso", async ({ page }) => {
@@ -122,11 +154,14 @@ test("se o WebGL se perder a meio, a visita continua em 2D com um aviso", async 
 
 test("trocar 3D → 2D → 3D: sem aviso e o botão continua lá", async ({ page }) => {
   await openTour3D(page);
-  await page.getByRole("button", { name: "Switch to 2D tour" }).click();
+  await expect(page.getByRole("button", { name: "3D tour" })).toHaveAttribute("aria-pressed", "true");
+  const released = await watchRelease(page);
+  await page.getByRole("button", { name: "2D tour" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
-  await page.waitForTimeout(900);
+  await expect(page.getByRole("button", { name: "2D tour" })).toHaveAttribute("aria-pressed", "true");
+  await released();
   await expect(page.getByText("Showing the 2D tour")).toHaveCount(0);
-  await page.getByRole("button", { name: "Switch to 3D tour" }).click();
+  await page.getByRole("button", { name: "3D tour" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-mode", "3d");
   await expect(page.locator("canvas")).toBeVisible();
   // Entra logo na sala da paragem atual.
@@ -135,14 +170,16 @@ test("trocar 3D → 2D → 3D: sem aviso e o botão continua lá", async ({ page
 
 test("sair com Skip tour a partir de uma sala, depois de trocar 3D → 2D → 3D, não mostra o aviso do 2D", async ({ page }) => {
   await openTour3D(page);
-  await page.getByRole("button", { name: "Switch to 2D tour" }).click();
+  await page.getByRole("button", { name: "2D tour" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
-  await page.getByRole("button", { name: "Switch to 3D tour" }).click();
+  await page.getByRole("button", { name: "3D tour" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "room");
+  await expect(page.locator("canvas")).toBeVisible();
+  const released = await watchRelease(page);
   await page.getByRole("button", { name: "Skip tour" }).click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByText("You can take the tour anytime from the menu.").first()).toBeVisible();
-  await page.waitForTimeout(900);
+  await released();
   await expect(page.getByText("Showing the 2D tour")).toHaveCount(0);
 });
 
@@ -172,7 +209,7 @@ test.describe("com reduced motion", () => {
     await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
     await expect(page.getByText("STOP 1/7")).toBeVisible();
     expect(chunks).toEqual([]);
-    await page.getByRole("button", { name: "Switch to 3D tour" }).click();
+    await page.getByRole("button", { name: "3D tour" }).click();
     await expect(root(page)).toHaveAttribute("data-tour-mode", "3d");
     await expect(page.locator("canvas")).toBeVisible();
   });
@@ -184,12 +221,7 @@ test("no mapa, clicar numa sala no 3D entra nela", async ({ page }) => {
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
   // Espera o voo para a vista geral acabar (as etiquetas seguem a câmara).
   const label = page.locator("[data-lit-room] span", { hasText: "UX/UI" });
-  let last = "";
-  await expect(async () => {
-    const prev = last;
-    last = JSON.stringify(await label.boundingBox());
-    expect(last).toBe(prev);
-  }).toPass({ intervals: [400], timeout: 15_000 });
+  await settledBox(label);
   const box = (await label.boundingBox())!;
   // A etiqueta não recebe cliques: o clique cai no chão da sala, que está por baixo dela.
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -225,6 +257,28 @@ test("o Next numa sala sai para o mapa e volta a entrar na seguinte; dentro, a i
   expect(log.map(([room]) => room)).toEqual(["", "web-dev"]);
   // Sobe ao mapa (0,9 s) e mergulha (1,2 s): não é uma troca direta.
   expect(log[1]![1] - log[0]![1]).toBeGreaterThan(1500);
+});
+
+test("Back to map a meio do voo não dá a sala seguinte como vista", async ({ page }) => {
+  await openTour3D(page);
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  // A câmara ainda vai a caminho da Web Dev (sobe ao mapa e mergulha): não se entrou nela.
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "");
+  await page.getByRole("button", { name: "Back to map" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+  await expect(root(page)).toHaveAttribute("data-next-room", "web-dev");
+  await expect(page.getByRole("button", { name: "Continue to Web Dev room" })).toBeVisible();
+});
+
+test("as etiquetas das salas no mapa têm o nome das paragens", async ({ page }) => {
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Back to map" }).click();
+  const labels = await page.locator("[data-lit-room] span").allTextContents();
+  const names = TOUR_STOPS.map((s) => s.name.replace(/ room$/, ""));
+  for (const label of labels) expect(names).toContain(label);
+  expect(labels).toContain("Data Analytics");
 });
 
 for (const viewport of [
@@ -284,7 +338,8 @@ test("as etiquetas do mapa seguem a câmara depois de rodar o ecrã com ela para
     return Boolean(box && box.x >= 0 && box.y >= 0 && box.x + box.width <= size.width && box.y + box.height <= size.height);
   };
   await expect.poll(onScreen, FLIGHT).toBe(true);
-  await page.waitForTimeout(2500);
+  // Roda o ecrã só com a câmara parada.
+  await settledBox(label);
   await page.setViewportSize({ width: 844, height: 390 });
   await expect.poll(onScreen, FLIGHT).toBe(true);
 });

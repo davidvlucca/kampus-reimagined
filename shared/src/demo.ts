@@ -3,6 +3,9 @@
 // os visitantes seguintes). O nome pode mudar: a reposição diária volta a pô-lo.
 export const PROTECTED_DEMO_EMAILS = ["staff@example.com", "student@example.com"] as const;
 
+/** A password de todas as contas do seed (está no ecrã de login: a demo é pública). */
+export const DEMO_PASSWORD = "Kampus123";
+
 export function isProtectedDemoEmail(email: string): boolean {
   return (PROTECTED_DEMO_EMAILS as readonly string[]).includes(email.trim().toLowerCase());
 }

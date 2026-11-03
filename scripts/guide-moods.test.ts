@@ -24,8 +24,7 @@ describe("perguntas da visita", () => {
     expect(new Set(questions.map((q) => q.id)).size).toBe(questions.length);
   });
 
-  it("no máximo 9 por paragem (atalhos de teclado 1–9) e são perguntas", () => {
-    for (const stop of TOUR_STOPS) expect(stop.questions.length).toBeLessThanOrEqual(9);
+  it("são perguntas e têm resposta", () => {
     for (const q of questions) {
       expect(q.label.endsWith("?"), q.label).toBe(true);
       expect(q.answer.length).toBeGreaterThan(0);

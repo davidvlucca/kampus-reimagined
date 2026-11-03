@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { createDb } from "../src/db/client.ts";
-import { ipAttemptKey } from "../src/auth/rateLimit.ts";
+import { ipAttemptKey, ipSuccessKey } from "../src/auth/rateLimit.ts";
 import { loginAttempts } from "../src/db/schema.ts";
 import { seedDatabase } from "../src/demo-data.ts";
 
@@ -84,7 +84,7 @@ describe("limite de tentativas de login (5 falhas por email+IP em 15 min)", () =
   });
 });
 
-describe("limite por IP (30 tentativas em 15 min, seja qual for o email)", () => {
+describe("limite por IP (30 falhas em 15 min, seja qual for o email)", () => {
   it("emails sempre diferentes não escapam ao limite: a 31.ª tentativa dá 429, mesmo a certa", async () => {
     const ip = "198.51.100.20";
     for (let i = 0; i < 30; i++) expect((await login(`nobody${i}@example.com`, "x", ip)).status).toBe(401);
@@ -98,10 +98,33 @@ describe("limite por IP (30 tentativas em 15 min, seja qual for o email)", () =>
     expect((await login("elena.varga@example.com", "Kampus123", "198.51.100.21")).status).toBe(200);
   });
 
-  it("os logins certos também contam (a password da demo é pública)", async () => {
+  it("os logins certos não contam: numa sala com um só IP, muitos logins na demo não bloqueiam ninguém", async () => {
     const ip = "198.51.100.22";
-    for (let i = 0; i < 30; i++) expect((await login("filipe.gomes@example.com", "Kampus123", ip)).status).toBe(200);
-    expect((await login("filipe.gomes@example.com", "Kampus123", ip)).status).toBe(429);
+    for (let i = 0; i < 40; i++) expect((await login("filipe.gomes@example.com", "Kampus123", ip)).status).toBe(200);
+    // As 30 falhas continuam todas disponíveis para este IP.
+    for (let i = 0; i < 30; i++) expect((await login(`nobody${i}@example.com`, "x", ip)).status).toBe(401);
+    expect((await login("nobody-else@example.com", "x", ip)).status).toBe(429);
+  });
+
+  it("um login certo a meio não gasta vaga: 29 falhas, logins certos, e ainda cabe 1 falha antes do 429", async () => {
+    const ip = "198.51.100.24";
+    for (let i = 0; i < 29; i++) expect((await login(`ghost${i}@example.com`, "x", ip)).status).toBe(401);
+    for (let i = 0; i < 3; i++) expect((await login("filipe.gomes@example.com", "Kampus123", ip)).status).toBe(200);
+    expect((await login("ghost-last@example.com", "x", ip)).status).toBe(401);
+    expect((await login("ghost-blocked@example.com", "x", ip)).status).toBe(429);
+  });
+
+  it("os logins certos têm um teto largo por IP (200 em 15 min), para um script com a password da demo", async () => {
+    const ip = "198.51.100.25";
+    // Simula 200 logins certos já feitos (mais rápido do que 200 argon2).
+    const key = ipSuccessKey(ipAttemptKey(ip));
+    await handle.db.insert(loginAttempts).values(Array.from({ length: 200 }, () => ({ key, attemptedAt: new Date() })));
+    const blocked = await login("filipe.gomes@example.com", "Kampus123", ip);
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    // Passada a janela, volta a entrar.
+    await handle.db.update(loginAttempts).set({ attemptedAt: sql`now() - interval '16 minutes'` }).where(sql`${loginAttempts.key} = ${key}`);
+    expect((await login("filipe.gomes@example.com", "Kampus123", ip)).status).toBe(200);
   });
 
   it("200 pedidos em paralelo com emails diferentes: no máximo 30 chegam ao argon2", async () => {

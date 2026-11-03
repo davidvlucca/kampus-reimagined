@@ -1,5 +1,6 @@
-import { Canvas } from "@react-three/fiber";
-import { memo, useEffect, useRef } from "react";
+import { Canvas, type GLProps } from "@react-three/fiber";
+import { memo, useCallback, useEffect, useRef } from "react";
+import { WebGLRenderer } from "three";
 import { CameraRig, type Insets } from "./CameraRig.tsx";
 import { CampusModel } from "./CampusModel.tsx";
 import { highlightRoom, roomOfStop, type RoomId } from "./layout.ts";
@@ -54,6 +55,20 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onAr
       disposeShared();
     };
   }, []);
+
+  // O contexto pode já chegar perdido (o browser tira-o nos primeiros instantes, ou outro script
+  // usou este canvas antes): o three.js rebentava ao ler a precisão dos shaders, com dois erros na
+  // consola antes do 2D. Assim passa logo ao 2D. A promessa fica pendente: o canvas vai desmontar.
+  const createRenderer = useCallback<Extract<GLProps, (defaults: never) => Promise<unknown>>>(({ canvas }) => {
+    const attributes = { alpha: true, antialias: true, powerPreference: "low-power" } as const;
+    const context = (canvas as HTMLCanvasElement).getContext("webgl2", attributes) as WebGL2RenderingContext | null;
+    if (!context || context.isContextLost()) {
+      if (alive.current) onLostRef.current();
+      return new Promise(() => {});
+    }
+    return Promise.resolve(new WebGLRenderer({ ...attributes, canvas: canvas as HTMLCanvasElement, context }));
+  }, []);
+
   return (
     <div aria-hidden="true" className="absolute inset-0" data-lit-room={highlight ?? ""}>
       <Canvas
@@ -62,7 +77,7 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onAr
         dpr={[1, 2]}
         frameloop="demand"
         camera={{ fov: 35, near: 0.5, far: 200, position: [0, 30, 30] }}
-        gl={{ antialias: true, powerPreference: "low-power" }}
+        gl={createRenderer}
         onCreated={({ gl }) => {
           gl.domElement.addEventListener("webglcontextlost", (event) => {
             // Um canvas que já saiu da página está a ser desmontado (sair da visita, trocar para 2D):

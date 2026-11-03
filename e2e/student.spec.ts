@@ -10,7 +10,7 @@ test("um clique no Welcome abre a demo de aluno e a visita, que se faz até ao f
   await expect(page.getByRole("heading", { name: "Welcome!" })).toBeVisible();
   await expectAccessible(page);
 
-  await page.getByRole("button", { name: "Try as student" }).click();
+  await page.getByRole("button", { name: "Explore as a student" }).click();
   await expect(page).toHaveURL(/\/app\/tour$/);
   await expect(page.getByText("STOP 1/7")).toBeVisible();
   await expectAccessible(page);

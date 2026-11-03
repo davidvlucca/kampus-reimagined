@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isDateKey } from "./dates.ts";
 
 // Regras e tipos partilhados entre a API e o client: a mesma validação dos dois lados.
 
@@ -20,16 +21,22 @@ const CONTROL = /[\u0000-\u001F\u007F]/;
 /**
  * Texto obrigatório de uma linha (títulos, nomes). Uma quebra de linha é recusada,
  * não convertida: os campos do client são de uma linha, por isso só chega por API.
+ * Um tab chega por colar texto de uma folha de cálculo: vira espaço em vez de dar erro.
  */
 const singleLine = (max: number) =>
   z
     .string()
-    .trim()
-    .min(1, "Required")
-    .refine(noNul, NUL_MESSAGE)
-    .refine((v) => !CONTROL.test(v), "Use a single line of text")
-    .refine((v) => v.replace(INVISIBLE, "").trim().length > 0, "Required")
-    .max(max, `Max ${max} characters`);
+    .transform((v) => v.replace(/\t/g, " "))
+    .pipe(
+      z
+        .string()
+        .trim()
+        .min(1, "Required")
+        .refine(noNul, NUL_MESSAGE)
+        .refine((v) => !CONTROL.test(v), "Use a single line of text")
+        .refine((v) => v.replace(INVISIBLE, "").trim().length > 0, "Required")
+        .max(max, `Max ${max} characters`),
+    );
 
 // 254 é o máximo de um endereço (RFC 5321); um email enorme rebentava o índice único (500).
 const email = z.string().trim().toLowerCase().max(254, "Max 254 characters").pipe(z.email("Enter a valid email"));
@@ -39,16 +46,23 @@ export const passwordRule = z
   .min(8, "At least 8 characters")
   .max(128, "Max 128 characters");
 
-/** Data sem hora, no formato YYYY-MM-DD. */
+/** Anos aceites num prazo. O seletor de datas do Chrome aceita um ano de 2 dígitos (0026). */
+export const DATE_MIN_YEAR = 1900;
+export const DATE_MAX_YEAR = 2100;
+/** Os mesmos limites para o `min`/`max` de um `<input type="date">`. */
+export const DATE_INPUT_MIN = `${DATE_MIN_YEAR}-01-01`;
+export const DATE_INPUT_MAX = `${DATE_MAX_YEAR}-12-31`;
+
+/** Data sem hora, no formato YYYY-MM-DD, entre 1900 e 2100. */
 export const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
   .refine((v) => {
-    // Recusa datas que não existem (2026-02-31): o Postgres dava erro 500.
-    const [y, m, d] = v.split("-").map(Number);
-    const date = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1));
-    return date.getUTCFullYear() === y && date.getUTCMonth() + 1 === m && date.getUTCDate() === d;
-  }, "Not a real date");
+    const year = Number(v.slice(0, 4));
+    return year >= DATE_MIN_YEAR && year <= DATE_MAX_YEAR;
+  }, `Use a date between ${DATE_MIN_YEAR} and ${DATE_MAX_YEAR}`)
+  // Recusa datas que não existem (2026-02-31): o Postgres dava erro 500.
+  .refine(isDateKey, "Not a real date");
 
 // ---------- Auth e perfil ----------
 

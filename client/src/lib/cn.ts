@@ -7,7 +7,7 @@ const twMerge = extendTailwindMerge({
     theme: {
       color: [
         "kampus-ink", "kampus-navy", "kampus-indigo", "kampus-blue", "kampus-blue-deep", "kampus-indigo-soft",
-        "kampus-sky", "kampus-sky-soft", "kampus-blue-soft", "surface", "card", "line", "line-strong", "text",
+        "kampus-sky", "kampus-sky-soft", "kampus-blue-soft", "surface", "card", "line", "line-strong", "line-control", "text",
         "muted", "subtle", "success", "success-soft", "warning", "warning-soft", "danger", "danger-soft",
       ],
       font: ["display", "pixel"],

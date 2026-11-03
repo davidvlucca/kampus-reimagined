@@ -1,5 +1,5 @@
 import { createStudentSchema, isProtectedDemoEmail, updateStudentSchema, type StudentRow, type UpdateStudentInput } from "@kampus/shared";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useCohorts, useCreateStudent, useUpdateStudent } from "../../api/hooks.ts";
 import { Button, Dialog, Input, Select, useToast } from "../../components/ui/index.ts";
@@ -11,6 +11,17 @@ type Values = Record<FieldName, string>;
 type Errors = Partial<Record<FieldName, string>>;
 
 const FORM_ID = "student-form";
+/** A ordem dos campos no formulário: o foco vai para o primeiro com erro. */
+const FIELD_ORDER: FieldName[] = ["firstName", "lastName", "email", "cohortId", "password"];
+
+// O Zod diz só "Required"; aqui diz-se o que falta.
+const REQUIRED: Record<FieldName, string> = {
+  firstName: "Enter a first name",
+  lastName: "Enter a last name",
+  email: "Enter an email",
+  cohortId: "Choose a cohort",
+  password: "Enter a temporary password",
+};
 
 function initialValues(student: StudentRow | null): Values {
   return {
@@ -27,14 +38,28 @@ function issuesToErrors(issues: readonly { path: readonly PropertyKey[]; message
   const errors: Errors = {};
   for (const issue of issues) {
     const key = issue.path[0];
-    if (typeof key === "string" && !(key in errors)) errors[key as FieldName] = issue.message;
+    if (typeof key === "string" && !(key in errors)) {
+      const field = key as FieldName;
+      errors[field] = issue.message === "Required" ? REQUIRED[field] : issue.message;
+    }
   }
   return errors;
+}
+
+/** Um campo vazio diz o que falta ("Enter an email"), não a regra de formato. */
+function withEmptyMessages(errors: Errors, values: Values): Errors {
+  const next = { ...errors };
+  for (const field of FIELD_ORDER) {
+    if (next[field] && values[field].trim() === "") next[field] = REQUIRED[field];
+  }
+  return next;
 }
 
 /** Dialog para criar (student = null) ou editar um aluno. O pai muda a `key` a cada abertura para repor o formulário. */
 export function StudentFormDialog({ open, onOpenChange, student }: { open: boolean; onOpenChange: (open: boolean) => void; student: StudentRow | null }) {
   const isEdit = student !== null;
+  // A conta partilhada da demo: a API recusa mudar o email e a password, por isso nem se deixa tentar.
+  const isDemo = student !== null && isProtectedDemoEmail(student.email);
   const toast = useToast();
   const cohorts = useCohorts();
   const createStudent = useCreateStudent();
@@ -42,6 +67,14 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
   const [values, setValues] = useState<Values>(() => initialValues(student));
   const [errors, setErrors] = useState<Errors>({});
   const lock = useSubmitLock();
+  const fieldRefs = useRef<Partial<Record<FieldName, HTMLInputElement | HTMLSelectElement | null>>>({});
+
+  /** Mostra os erros e leva o foco ao primeiro campo com erro. */
+  const showErrors = (next: Errors) => {
+    setErrors(next);
+    const first = FIELD_ORDER.find((f) => next[f]);
+    if (first) fieldRefs.current[first]?.focus();
+  };
 
   const set = (field: FieldName) => (value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -57,7 +90,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
       try {
         if (!isEdit) {
           const parsed = createStudentSchema.safeParse(values);
-          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          if (!parsed.success) return showErrors(withEmptyMessages(issuesToErrors(parsed.error.issues), values));
           await createStudent.mutateAsync(parsed.data);
           toast({ title: "Student added", description: `${fullName(parsed.data)} can now log in.`, tone: "success" });
         } else {
@@ -74,7 +107,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
             return;
           }
           const parsed = updateStudentSchema.safeParse(changes);
-          if (!parsed.success) return setErrors(issuesToErrors(parsed.error.issues));
+          if (!parsed.success) return showErrors(withEmptyMessages(issuesToErrors(parsed.error.issues), values));
           await updateStudent.mutateAsync({ id: student.id, ...parsed.data });
           toast({ title: "Changes saved", tone: "success" });
         }
@@ -83,7 +116,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
         // Apagado entretanto (noutro separador ou por outra pessoa): fecha, a lista já se atualiza.
         if (isEdit && isNotFound(error)) onOpenChange(false);
         const fields = fieldErrors(error);
-        if (Object.keys(fields).length > 0) setErrors(fields);
+        if (Object.keys(fields).length > 0) showErrors(fields);
         toast({ title: isEdit ? "Couldn't save changes" : "Couldn't add student", description: errorMessage(error), tone: "error" });
       }
     });
@@ -107,13 +140,16 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
       }
     >
       <form id={FORM_ID} noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
-        {student && isProtectedDemoEmail(student.email) && (
+        {isDemo && (
           <p className="rounded-xl border border-kampus-blue/20 bg-kampus-blue-soft px-4 py-3 text-sm text-kampus-navy">
             This is the shared demo account. You can change the name and cohort, but not the email or password.
           </p>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
+            ref={(el) => {
+              fieldRefs.current.firstName = el;
+            }}
             label="First name"
             autoComplete="off"
             required
@@ -122,6 +158,9 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
             onChange={(e) => set("firstName")(e.target.value)}
           />
           <Input
+            ref={(el) => {
+              fieldRefs.current.lastName = el;
+            }}
             label="Last name"
             autoComplete="off"
             required
@@ -131,15 +170,22 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
           />
         </div>
         <Input
+          ref={(el) => {
+            fieldRefs.current.email = el;
+          }}
           label="Email"
           type="email"
           autoComplete="off"
           required
+          disabled={isDemo}
           value={values.email}
           error={errors.email}
           onChange={(e) => set("email")(e.target.value)}
         />
         <Select
+          ref={(el) => {
+            fieldRefs.current.cohortId = el;
+          }}
           label="Cohort"
           required
           value={values.cohortId}
@@ -157,14 +203,24 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
           ))}
         </Select>
         <Input
+          ref={(el) => {
+            fieldRefs.current.password = el;
+          }}
           label={isEdit ? "New password (optional)" : "Temporary password"}
+          disabled={isDemo}
           type="password"
           autoComplete="new-password"
           required={!isEdit}
           minLength={8}
           value={values.password}
           error={errors.password}
-          hint={isEdit ? "Leave empty to keep their current password." : "Share it with the student. They can change it in their profile."}
+          hint={
+            isDemo
+              ? "Locked on the shared demo account."
+              : isEdit
+                ? "Leave empty to keep their current password."
+                : "Share it with the student. They can change it in their profile."
+          }
           onChange={(e) => set("password")(e.target.value)}
         />
       </form>

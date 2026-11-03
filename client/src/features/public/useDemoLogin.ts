@@ -1,4 +1,4 @@
-import type { Portal, PublicUser } from "@kampus/shared";
+import { DEMO_PASSWORD, type Portal, type PublicUser } from "@kampus/shared";
 import { useNavigate } from "react-router";
 import { errorMessage } from "../../api/client.ts";
 import { useLogin } from "../../api/hooks.ts";
@@ -10,7 +10,7 @@ export const DEMO_ACCOUNTS: Record<Portal, string> = {
   student: "student@example.com",
   staff: "staff@example.com",
 };
-export const DEMO_PASSWORD = "Kampus123";
+export { DEMO_PASSWORD };
 
 /**
  * Entra numa conta demo com um clique. Quem visita o portfólio dá poucos minutos ao
