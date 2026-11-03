@@ -39,11 +39,6 @@ export interface AppConfig {
   version?: string;
 }
 
-/** O commit curto (VERCEL_GIT_COMMIT_SHA) ou "dev" fora da Vercel. */
-export function appVersion(commitSha: string | undefined): string {
-  return commitSha?.trim() ? commitSha.trim().slice(0, 7) : "dev";
-}
-
 function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => string | undefined): string {
   if (trustProxy) {
     const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -168,21 +163,4 @@ export function createApp(config: AppConfig) {
       console.error("API error", describeError(err, `${c.req.method} ${c.req.path}`));
       return c.json({ error: "Something went wrong. Please try again." }, 500);
     });
-}
-
-export function parseOrigins(value: string | undefined): string[] {
-  return (value ?? "http://localhost:5173")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-}
-
-/**
- * SESSION_TTL_DAYS: `Number("")` dava 0 (sessões que expiram logo) e lixo dava NaN.
- * Só vale um número positivo até um ano (mais do que isso e a data de expiração podia
- * sair do intervalo de um Date); o resto volta aos 7 dias.
- */
-export function parseSessionTtlDays(value: string | undefined): number {
-  const days = Number(value);
-  return value?.trim() && Number.isFinite(days) && days > 0 && days <= 365 ? days : 7;
 }

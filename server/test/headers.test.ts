@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { appVersion, createApp } from "../src/app.ts";
+import { createApp } from "../src/app.ts";
+import { appVersion } from "../src/config.ts";
 import type { Db } from "../src/db/client.ts";
 import { setup, STUDENT_A } from "./helpers.ts";
 
