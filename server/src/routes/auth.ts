@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { requireUser } from "../auth/middleware.ts";
 import { burnPasswordCheck, verifyPassword } from "../auth/password.ts";
 import { attemptKey, claimLoginAttempt, clearFailures, ipAttemptKey } from "../auth/rateLimit.ts";
-import { clearSessionCookie, createSession, deleteSession, setSessionCookie } from "../auth/session.ts";
+import { clearSessionCookie, createSession, deleteSession, readSession, setSessionCookie } from "../auth/session.ts";
 import { users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { findUserByEmail, loadPublicUser } from "../lib/users.ts";
@@ -56,6 +56,9 @@ export const authRoutes = new Hono<AppEnv>()
     clearSessionCookie(c);
     return c.body(null, 204);
   })
-  .get("/me", requireUser, async (c) => {
-    return c.json({ user: await loadPublicUser(c.var.db, c.var.user.id) });
+  // Sem sessão é 200 com `user: null`, não 401: as páginas públicas perguntam sempre quem
+  // está ligado, e um 401 em cada visita era um erro vermelho na consola sem haver erro.
+  .get("/me", async (c) => {
+    const session = await readSession(c.var.db, c);
+    return c.json({ user: session ? await loadPublicUser(c.var.db, session.user.id) : null });
   });
