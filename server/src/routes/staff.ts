@@ -10,7 +10,7 @@ import {
   type StaffOverview,
   type StudentRow,
 } from "@kampus/shared";
-import { and, asc, desc, eq, ilike, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { hashPassword } from "../auth/password.ts";
@@ -27,6 +27,10 @@ const TOO_MANY = { error: limitMessage(LIMITS.students, "students") };
 const EMAIL_TAKEN = { error: "This email already has an account.", fields: { email: "Already in use" } };
 
 const isStudent = eq(users.role, "student");
+
+/** Atividade recente: quantos eventos (visitas, alunos novos) e de quanto tempo os logins. */
+const RECENT_EVENTS = 10;
+const RECENT_LOGINS_MS = 48 * 60 * 60 * 1000;
 
 async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[]> {
   const taskCounts = db
@@ -144,20 +148,25 @@ export const staffRoutes = new Hono<AppEnv>()
       .where(and(isStudent, isNull(users.tourCompletedAt)))
       .orderBy(asc(users.lastName), asc(users.firstName));
 
-    // "Atividade recente" sem tabela de eventos: as 10 datas mais recentes de três colunas.
+    // "Atividade recente" sem tabela de eventos, a partir de três colunas: as 10 visitas
+    // concluídas e alunos criados mais recentes, mais os logins das últimas 48 horas. Os logins
+    // vêm à parte (o client junta-os numa linha por dia): numa manhã de aulas eram os 10 mais
+    // recentes e escondiam o resto. Cada aluno só tem o último login, por isso são no máximo
+    // tantos quantos alunos.
     const student = { id: users.id, firstName: users.firstName, lastName: users.lastName };
+    const loginsSince = new Date(Date.now() - RECENT_LOGINS_MS);
     const [logins, tours, created] = await Promise.all([
-      db.select({ ...student, at: users.lastLoginAt }).from(users).where(and(isStudent, isNotNull(users.lastLoginAt))).orderBy(desc(users.lastLoginAt)).limit(10),
-      db.select({ ...student, at: users.tourCompletedAt }).from(users).where(and(isStudent, isNotNull(users.tourCompletedAt))).orderBy(desc(users.tourCompletedAt)).limit(10),
-      db.select({ ...student, at: users.createdAt }).from(users).where(isStudent).orderBy(desc(users.createdAt)).limit(10),
+      db.select({ ...student, at: users.lastLoginAt }).from(users).where(and(isStudent, gte(users.lastLoginAt, loginsSince))).orderBy(desc(users.lastLoginAt)),
+      db.select({ ...student, at: users.tourCompletedAt }).from(users).where(and(isStudent, isNotNull(users.tourCompletedAt))).orderBy(desc(users.tourCompletedAt)).limit(RECENT_EVENTS),
+      db.select({ ...student, at: users.createdAt }).from(users).where(isStudent).orderBy(desc(users.createdAt)).limit(RECENT_EVENTS),
     ]);
     const toItems = (kind: ActivityItem["kind"], rows: { id: string; firstName: string; lastName: string; at: Date | null }[]) =>
       rows.flatMap((r) =>
         r.at ? [{ kind, at: r.at.toISOString(), student: { id: r.id, firstName: r.firstName, lastName: r.lastName } }] : [],
       );
-    const recentActivity = [...toItems("login", logins), ...toItems("tour_completed", tours), ...toItems("student_created", created)]
-      .sort((a, b) => b.at.localeCompare(a.at))
-      .slice(0, 10);
+    const byNewest = (a: ActivityItem, b: ActivityItem) => b.at.localeCompare(a.at);
+    const events = [...toItems("tour_completed", tours), ...toItems("student_created", created)].sort(byNewest).slice(0, RECENT_EVENTS);
+    const recentActivity = [...toItems("login", logins), ...events].sort(byNewest);
 
     const overview: StaffOverview = {
       totalStudents: byCohortRows.reduce((sum, r) => sum + r.students, 0),
