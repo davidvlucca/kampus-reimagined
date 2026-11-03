@@ -26,24 +26,27 @@ function ErrorScreen({ newVersion }: { newVersion: boolean }) {
           <Logo />
         </a>
       </header>
-      <main role="alert" className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center">
-        <span
-          className={
-            newVersion
-              ? "grid size-16 place-items-center rounded-2xl bg-kampus-blue-soft text-kampus-blue"
-              : "grid size-16 place-items-center rounded-2xl bg-danger-soft text-danger"
-          }
-        >
-          {newVersion ? <Sparkles aria-hidden className="size-8" /> : <AlertTriangle aria-hidden className="size-8" />}
-        </span>
-        <h1 className="mt-5 text-2xl font-semibold sm:text-3xl">
-          {newVersion ? "A new version of Kampus is available" : "Something went wrong"}
-        </h1>
-        <p className="mt-2 max-w-sm text-muted">
-          {newVersion
-            ? "Kampus was updated while this tab was open. Reload to get the latest version."
-            : "This page hit an unexpected error. Reloading usually fixes it."}
-        </p>
+      {/* O role="alert" vai num div: no <main> não é permitido e tirava o landmark à página. */}
+      <main className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center">
+        <div role="alert" className="flex w-full flex-col items-center">
+          <span
+            className={
+              newVersion
+                ? "grid size-16 place-items-center rounded-2xl bg-kampus-blue-soft text-kampus-blue"
+                : "grid size-16 place-items-center rounded-2xl bg-danger-soft text-danger"
+            }
+          >
+            {newVersion ? <Sparkles aria-hidden className="size-8" /> : <AlertTriangle aria-hidden className="size-8" />}
+          </span>
+          <h1 className="mt-5 text-2xl font-semibold sm:text-3xl">
+            {newVersion ? "A new version of Kampus is available" : "Something went wrong"}
+          </h1>
+          <p className="mt-2 max-w-sm text-muted">
+            {newVersion
+              ? "Kampus was updated while this tab was open. Reload to get the latest version."
+              : "This page hit an unexpected error. Reloading usually fixes it."}
+          </p>
+        </div>
         <div className="mt-8 flex w-full max-w-xs flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
           <Button size="lg" icon={<RotateCcw aria-hidden className="size-5" />} onClick={() => window.location.reload()}>
             Reload
