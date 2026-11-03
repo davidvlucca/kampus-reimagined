@@ -10,6 +10,7 @@ import type { Db } from "./db/client.ts";
 import type { SessionConfig } from "./auth/session.ts";
 import { resetDemo } from "./demo-data.ts";
 import type { AppEnv } from "./lib/env.ts";
+import { pgErrorCode } from "./lib/pgErrors.ts";
 import { assignmentRoutes } from "./routes/assignments.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { meRoutes } from "./routes/me.ts";
@@ -74,12 +75,12 @@ export function describeError(err: unknown, route: string) {
   const withoutParams = (message: string) => message.split("\nparams:")[0]!.slice(0, 500);
   const error = err instanceof Error ? err : new Error(String(err));
   const cause = error.cause instanceof Error ? error.cause : undefined;
-  const code = (cause as { code?: unknown } | undefined)?.code ?? (error as { code?: unknown }).code;
+  const code = pgErrorCode(error);
   return {
     route,
     name: error.name,
     message: withoutParams(error.message),
-    ...(code === undefined ? {} : { code: String(code) }),
+    ...(code === undefined ? {} : { code }),
     ...(cause ? { cause: `${cause.name}: ${withoutParams(cause.message)}` } : {}),
     // Só as linhas "at ...": a primeira linha da stack repete a mensagem inteira.
     stack: (error.stack ?? "")

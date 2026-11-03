@@ -19,14 +19,14 @@ import { assignmentCompletions, assignments, cohorts, notes, sessions, tasks, us
 import type { AppEnv } from "../lib/env.ts";
 import { atLimit } from "../lib/limits.ts";
 import { iso, toCohort } from "../lib/serialize.ts";
-import { findUserByEmail, isUuid } from "../lib/users.ts";
-import { validate } from "../lib/validate.ts";
+import { cohortExists, isStudent, UNKNOWN_COHORT } from "../lib/cohorts.ts";
+import { isUniqueViolation } from "../lib/pgErrors.ts";
+import { findUserByEmail } from "../lib/users.ts";
+import { uuidParam, validate } from "../lib/validate.ts";
 
 const NOT_FOUND = { error: "Student not found." };
 const TOO_MANY = { error: limitMessage(LIMITS.students, "students") };
 const EMAIL_TAKEN = { error: "This email already has an account.", fields: { email: "Already in use" } };
-
-const isStudent = eq(users.role, "student");
 
 /** Atividade recente: quantos eventos (visitas, alunos novos) e de quanto tempo os logins. */
 const RECENT_EVENTS = 10;
@@ -101,21 +101,6 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
     noteCount: r.noteCount ?? 0,
   }));
 }
-
-export async function cohortExists(db: Db, id: string) {
-  const [row] = await db.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.id, id)).limit(1);
-  return Boolean(row);
-}
-
-/** Violação de UNIQUE (dois pedidos ao mesmo tempo com o mesmo email). */
-function isUniqueViolation(error: unknown): boolean {
-  for (let e: unknown = error; e && typeof e === "object"; e = (e as { cause?: unknown }).cause) {
-    if ((e as { code?: unknown }).code === "23505") return true;
-  }
-  return false;
-}
-
-const UNKNOWN_COHORT = { error: "Please check the highlighted fields.", fields: { cohortId: "Unknown cohort" } };
 
 export const cohortRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("staff"))
@@ -224,9 +209,8 @@ export const staffRoutes = new Hono<AppEnv>()
     const [student] = await listStudents(db, eq(users.id, row!.id));
     return c.json({ student }, 201);
   })
-  .patch("/students/:id", validate("json", updateStudentSchema), async (c) => {
+  .patch("/students/:id", uuidParam(NOT_FOUND), validate("json", updateStudentSchema), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const input = c.req.valid("json");
     const db = c.var.db;
 
@@ -241,7 +225,7 @@ export const staffRoutes = new Hono<AppEnv>()
       }
     }
 
-    if (input.email) {
+    if (input.email !== undefined) {
       const [taken] = await db
         .select({ id: users.id })
         .from(users)
@@ -249,20 +233,20 @@ export const staffRoutes = new Hono<AppEnv>()
         .limit(1);
       if (taken) return c.json(EMAIL_TAKEN, 409);
     }
-    if (input.cohortId && !(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
+    if (input.cohortId !== undefined && !(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
 
     // Só toca em alunos: um staff com este id responde 404, como um id que não existe.
-    const passwordHash = input.password ? await hashPassword(input.password) : undefined;
+    const passwordHash = input.password !== undefined ? await hashPassword(input.password) : undefined;
     let row: { id: string } | undefined;
     try {
       [row] = await db
         .update(users)
         .set({
-          ...(input.firstName && { firstName: input.firstName }),
-          ...(input.lastName && { lastName: input.lastName }),
-          ...(input.email && { email: input.email }),
-          ...(input.cohortId && { cohortId: input.cohortId }),
-          ...(passwordHash && { passwordHash }),
+          ...(input.firstName !== undefined && { firstName: input.firstName }),
+          ...(input.lastName !== undefined && { lastName: input.lastName }),
+          ...(input.email !== undefined && { email: input.email }),
+          ...(input.cohortId !== undefined && { cohortId: input.cohortId }),
+          ...(passwordHash !== undefined && { passwordHash }),
           updatedAt: new Date(),
         })
         .where(and(eq(users.id, id), isStudent))
@@ -273,13 +257,12 @@ export const staffRoutes = new Hono<AppEnv>()
     }
     if (!row) return c.json(NOT_FOUND, 404);
     // Nova password ou novo email: as sessões abertas do aluno deixam de valer.
-    if (passwordHash || input.email) await db.delete(sessions).where(eq(sessions.userId, id));
+    if (passwordHash !== undefined || input.email !== undefined) await db.delete(sessions).where(eq(sessions.userId, id));
     const [student] = await listStudents(db, eq(users.id, id));
     return c.json({ student });
   })
-  .delete("/students/:id", async (c) => {
+  .delete("/students/:id", uuidParam(NOT_FOUND), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const [target] = await c.var.db.select({ email: users.email }).from(users).where(eq(users.id, id)).limit(1);
     if (target && isProtectedDemoEmail(target.email)) return c.json({ error: DEMO_ACCOUNT_MESSAGES.delete }, 403);
     // Tarefas, notas e sessões do aluno vão em cascata (ON DELETE CASCADE).

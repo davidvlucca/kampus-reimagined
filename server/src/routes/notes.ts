@@ -5,8 +5,7 @@ import { requireRole, requireUser } from "../auth/middleware.ts";
 import { notes, type NoteRow } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { atLimit } from "../lib/limits.ts";
-import { isUuid } from "../lib/users.ts";
-import { validate } from "../lib/validate.ts";
+import { uuidParam, validate } from "../lib/validate.ts";
 
 const toNote = (n: NoteRow): Note => ({
   id: n.id,
@@ -29,9 +28,8 @@ export const noteRoutes = new Hono<AppEnv>()
       .orderBy(desc(notes.updatedAt));
     return c.json({ notes: rows.map(toNote) });
   })
-  .get("/:id", async (c) => {
+  .get("/:id", uuidParam(NOT_FOUND), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const [row] = await c.var.db
       .select()
       .from(notes)
@@ -46,9 +44,8 @@ export const noteRoutes = new Hono<AppEnv>()
     const [row] = await c.var.db.insert(notes).values({ userId: c.var.user.id, title, body }).returning();
     return c.json({ note: toNote(row!) }, 201);
   })
-  .patch("/:id", validate("json", updateNoteSchema), async (c) => {
+  .patch("/:id", uuidParam(NOT_FOUND), validate("json", updateNoteSchema), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const input = c.req.valid("json");
     const [row] = await c.var.db
       .update(notes)
@@ -58,9 +55,8 @@ export const noteRoutes = new Hono<AppEnv>()
     if (!row) return c.json(NOT_FOUND, 404);
     return c.json({ note: toNote(row) });
   })
-  .delete("/:id", async (c) => {
+  .delete("/:id", uuidParam(NOT_FOUND), async (c) => {
     const id = c.req.param("id");
-    if (!isUuid(id)) return c.json(NOT_FOUND, 404);
     const [row] = await c.var.db
       .delete(notes)
       .where(and(eq(notes.id, id), eq(notes.userId, c.var.user.id)))

@@ -3,6 +3,7 @@ import { createApp, describeError, parseSessionTtlDays } from "../src/app.ts";
 import { attemptKey } from "../src/auth/rateLimit.ts";
 import { createDb } from "../src/db/client.ts";
 import { createPool } from "../src/db/postgres.ts";
+import { isForeignKeyViolation, isUniqueViolation, pgErrorCode } from "../src/lib/pgErrors.ts";
 
 describe("SESSION_TTL_DAYS", () => {
   it("aceita um número positivo", () => {
@@ -70,5 +71,25 @@ describe("pool do Postgres", () => {
     expect(error).toHaveBeenCalledWith("Postgres pool error", { message: "Connection terminated unexpectedly", code: "57P01" });
     error.mockRestore();
     await pool.end();
+  });
+});
+
+describe("códigos de erro do Postgres", () => {
+  it("encontra o código no erro ou na `cause` (o Drizzle embrulha o erro do driver)", () => {
+    const unique = Object.assign(new Error("duplicate key"), { code: "23505" });
+    const fk = Object.assign(new Error("violates foreign key"), { code: "23503" });
+    expect(pgErrorCode(new Error("Failed query", { cause: unique }))).toBe("23505");
+    expect(isUniqueViolation(new Error("Failed query", { cause: unique }))).toBe(true);
+    expect(isForeignKeyViolation(new Error("Failed query", { cause: fk }))).toBe(true);
+    expect(isForeignKeyViolation(fk)).toBe(true);
+    expect(isUniqueViolation(fk)).toBe(false);
+    expect(pgErrorCode(new Error("no code"))).toBeUndefined();
+    expect(pgErrorCode("not an error")).toBeUndefined();
+  });
+
+  it("não fica preso numa `cause` circular", () => {
+    const loop = new Error("loop") as Error & { cause?: unknown };
+    loop.cause = loop;
+    expect(pgErrorCode(loop)).toBeUndefined();
   });
 });

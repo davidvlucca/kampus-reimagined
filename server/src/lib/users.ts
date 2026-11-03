@@ -28,7 +28,3 @@ export async function findUserByEmail(db: Db, email: string): Promise<UserRow | 
   const [row] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   return row;
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** Um id que não é UUID nunca existe: responde-se 404 em vez de deixar o Postgres dar erro. */
-export const isUuid = (value: string) => UUID.test(value);
