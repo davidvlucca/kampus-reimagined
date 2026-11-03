@@ -2,15 +2,28 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "sh
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
-/** "2 Nov 2026" a partir de um ISO ou de YYYY-MM-DD (este último lido como data local). */
-export function formatDate(value: string, opts: { short?: boolean } = {}): string {
+/** Um ISO ou YYYY-MM-DD (este lido como data local); null se não for uma data. */
+function parseDate(value: string): Date | null {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value);
-  return (opts.short ? shortDate : dateFormat).format(date);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * "2 Nov 2026"; com `short`, "2 Nov" (com o ano só se não for o de `now`).
+ * Uma data inválida dá "" (o Intl dava RangeError e rebentava a página inteira).
+ */
+export function formatDate(value: string, opts: { short?: boolean; now?: Date } = {}): string {
+  const date = parseDate(value);
+  if (!date) return "";
+  const sameYear = date.getFullYear() === (opts.now ?? new Date()).getFullYear();
+  return (opts.short && sameYear ? shortDate : dateFormat).format(date);
 }
 
 /** "3 hours ago", "yesterday"... */
 export function timeAgo(iso: string, now: Date = new Date()): string {
-  const seconds = Math.round((new Date(iso).getTime() - now.getTime()) / 1000);
+  const date = parseDate(iso);
+  if (!date) return "";
+  const seconds = Math.round((date.getTime() - now.getTime()) / 1000);
   const units: [Intl.RelativeTimeFormatUnit, number][] = [
     ["day", 86400],
     ["hour", 3600],
@@ -20,6 +33,18 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
     if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
   }
   return "just now";
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Quando algo foi editado, sempre com a mesma regra: relativo na última semana
+ * ("3 hours ago", "yesterday"), depois a data curta ("2 Nov", ou "2 Nov 2025").
+ */
+export function editedAt(iso: string, now: Date = new Date()): string {
+  const date = parseDate(iso);
+  if (!date) return "";
+  return now.getTime() - date.getTime() < WEEK_MS ? timeAgo(iso, now) : formatDate(iso, { short: true, now });
 }
 
 export function fullName(person: { firstName: string; lastName: string }): string {
