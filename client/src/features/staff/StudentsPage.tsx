@@ -1,6 +1,6 @@
-import type { StudentRow } from "@kampus/shared";
-import { Pencil, SearchX, Trash2, UserPlus, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { DEMO_ACCOUNT_MESSAGES, isProtectedDemoEmail, type StudentRow } from "@kampus/shared";
+import { Lock, Pencil, Search, SearchX, Trash2, UserPlus, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client.ts";
 import { useCohorts, useDeleteStudent, useStudents } from "../../api/hooks.ts";
@@ -15,6 +15,7 @@ import {
   IconButton,
   Input,
   PageHeader,
+  ProgressBar,
   Select,
   Skeleton,
   useToast,
@@ -25,6 +26,8 @@ import { cohortFilter } from "./cohortFilter.ts";
 import { StudentFormDialog } from "./StudentFormDialog.tsx";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+// O Badge não quebra linha; com nomes de turma compridos e texto a 200% saía do cartão.
+const wrapBadge = "max-w-full rounded-xl whitespace-normal break-words";
 
 export function StudentsPage() {
   const toast = useToast();
@@ -33,9 +36,19 @@ export function StudentsPage() {
 
   // O texto da pesquisa vive no estado local e vai para o URL com debounce.
   const [search, setSearch] = useState(q);
+  // O último `q` que a própria pesquisa escreveu. Um `q` diferente veio de fora (o item
+  // "Students" do menu, voltar atrás no browser) e a caixa passa a mostrá-lo; sem isto o
+  // debounce voltava a pôr no URL o texto que ainda estava na caixa.
+  const writtenQ = useRef(q);
+  useEffect(() => {
+    if (q === writtenQ.current) return;
+    writtenQ.current = q;
+    setSearch(q);
+  }, [q]);
   useEffect(() => {
     const id = window.setTimeout(() => {
       if (search.trim() === q) return;
+      writtenQ.current = search.trim();
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -129,15 +142,19 @@ export function StudentsPage() {
       {/* Pela largura do conteúdo (container query): com o texto a 200% a pesquisa ficava com uma letra. */}
       <div className="@container mb-4">
         <div role="search" className="flex flex-col gap-3 @2xl:flex-row @2xl:items-end">
-          <Input
-            label="Search students"
-            hideLabel
-            type="search"
-            placeholder="Search by name or email"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            wrapperClassName="@2xl:flex-1"
-          />
+          <div className="relative @2xl:flex-1">
+            {/* A meio da caixa (h-11 = 2.75rem): o rótulo está escondido, por isso a caixa é a primeira coisa. */}
+            <Search aria-hidden className="pointer-events-none absolute top-[1.375rem] left-3.5 size-4 -translate-y-1/2 text-subtle" />
+            <Input
+              label="Search students"
+              hideLabel
+              type="search"
+              placeholder="Search by name or email"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <Select label="Filter by cohort" hideLabel value={cohortId} onChange={(e) => setCohort(e.target.value)} wrapperClassName="@2xl:w-60">
             <option value="">All cohorts</option>
             {cohorts.data?.map((c) => (
@@ -233,12 +250,45 @@ function LastLogin({ at }: { at: string | null }) {
   return at ? <time dateTime={at}>{timeAgo(at)}</time> : <span>Never</span>;
 }
 
+/** A conta partilhada da demo não se apaga (a API recusa): diz-se antes de alguém tentar. */
+function DemoBadge({ student }: { student: StudentRow }) {
+  if (!isProtectedDemoEmail(student.email)) return null;
+  return (
+    <span title={DEMO_ACCOUNT_MESSAGES.delete}>
+      <Badge tone="neutral" icon={<Lock aria-hidden />}>
+        Demo account
+      </Badge>
+    </span>
+  );
+}
+
+function TaskProgress({ student: s }: { student: StudentRow }) {
+  if (s.taskCount === 0) return <span className="text-subtle">No tasks</span>;
+  return (
+    <div className="flex flex-col gap-1">
+      <ProgressBar value={s.doneTaskCount} max={s.taskCount} label={`${fullName(s)}: tasks done`} className="h-1.5 max-w-24" />
+      <span className="text-xs text-muted tabular-nums">
+        {s.doneTaskCount}/{s.taskCount} done
+      </span>
+    </div>
+  );
+}
+
 function RowActions({ student, onEdit, onDelete }: { student: StudentRow; onEdit: ListProps["onEdit"]; onDelete: ListProps["onDelete"] }) {
   const name = fullName(student);
+  const isDemo = isProtectedDemoEmail(student.email);
   return (
     <div className="flex justify-end gap-1">
       <IconButton label={`Edit ${name}`} icon={<Pencil aria-hidden />} onClick={() => onEdit(student)} />
-      <IconButton label={`Delete ${name}`} variant="danger" icon={<Trash2 aria-hidden />} onClick={() => onDelete(student)} />
+      <IconButton
+        label={isDemo ? `Delete ${name} (not available on the shared demo account)` : `Delete ${name}`}
+        title={isDemo ? DEMO_ACCOUNT_MESSAGES.delete : undefined}
+        variant="danger"
+        icon={<Trash2 aria-hidden />}
+        disabled={isDemo}
+        className="disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted"
+        onClick={() => onDelete(student)}
+      />
     </div>
   );
 }
@@ -282,14 +332,29 @@ function StudentsTable({ students, onEdit, onDelete }: ListProps) {
                 <div className="flex items-center gap-3">
                   <Avatar firstName={s.firstName} lastName={s.lastName} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-text">{fullName(s)}</p>
-                    <p className="truncate text-muted">{s.email}</p>
+                    <p className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium text-text" title={fullName(s)}>
+                        {fullName(s)}
+                      </span>
+                      <DemoBadge student={s} />
+                    </p>
+                    <p className="truncate text-muted" title={s.email}>
+                      {s.email}
+                    </p>
                   </div>
                 </div>
               </td>
-              <td className="truncate px-4 py-3">{s.cohort ? <Badge tone="sky">{s.cohort.name}</Badge> : <span className="text-subtle">No cohort</span>}</td>
-              <td className="px-4 py-3 whitespace-nowrap text-text">
-                {s.doneTaskCount}/{s.taskCount} done
+              <td className="px-4 py-3">
+                {s.cohort ? (
+                  <Badge tone="sky" className={wrapBadge}>
+                    {s.cohort.name}
+                  </Badge>
+                ) : (
+                  <span className="text-subtle">No cohort</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-text">
+                <TaskProgress student={s} />
               </td>
               <td className="px-4 py-3">
                 <TourBadge done={Boolean(s.tourCompletedAt)} />
@@ -316,23 +381,27 @@ function StudentCards({ students, onEdit, onDelete }: ListProps) {
         <li key={s.id}>
           <Card className="p-4">
             {/* flex-wrap: sem espaço (texto a 200%), os botões passam para a linha de baixo. */}
-            <div className="flex flex-wrap items-start gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Avatar firstName={s.firstName} lastName={s.lastName} />
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-base font-semibold">{fullName(s)}</h2>
-                <p className="truncate text-sm text-muted">{s.email}</p>
-              </div>
+              <h2 className="min-w-[min(100%,8rem)] flex-1 text-base font-semibold break-words">{fullName(s)}</h2>
               <RowActions student={s} onEdit={onEdit} onDelete={onDelete} />
             </div>
+            {/* Por baixo, com a largura toda e inteiro (parte só se não couber): cortado com reticências não se lia. */}
+            <p className="mt-0.5 pl-13 text-sm wrap-anywhere text-muted">{s.email}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {s.cohort && <Badge tone="sky">{s.cohort.name}</Badge>}
+              {s.cohort && (
+                <Badge tone="sky" className={wrapBadge}>
+                  {s.cohort.name}
+                </Badge>
+              )}
               <TourBadge done={Boolean(s.tourCompletedAt)} />
+              <DemoBadge student={s} />
             </div>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
               <div>
                 <dt className="text-subtle">Tasks</dt>
-                <dd className="text-text">
-                  {s.doneTaskCount}/{s.taskCount} done
+                <dd className="mt-1 text-text">
+                  <TaskProgress student={s} />
                 </dd>
               </div>
               <div>
