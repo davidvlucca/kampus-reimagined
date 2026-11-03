@@ -16,8 +16,9 @@ export function DeadlineBadge({ task, withDate = false }: { task: Pick<Task, "do
   if (!status) return null;
   const date = formatDate(task.dueDate, { short: true });
   const badge = (
-    <span title={withDate ? `Due ${date}` : undefined} className="inline-flex">
-      <Badge tone={TONE[status.kind]}>
+    <span title={withDate ? `Due ${date}` : undefined} className="inline-flex min-w-0">
+      {/* Pode partir em duas linhas: com texto a 200% num ecrã de 320px não cabia. */}
+      <Badge tone={TONE[status.kind]} className="whitespace-normal">
         {status.label}
         {withDate && status.unit === "day" && <span className="sr-only">, {date}</span>}
       </Badge>
