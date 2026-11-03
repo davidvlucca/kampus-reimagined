@@ -40,9 +40,10 @@ await build({
   logLevel: "info",
 });
 
+// fra1 (Frankfurt): ao lado do Neon (AWS eu-central-1). Em iad1 cada consulta atravessava o Atlântico.
 writeFileSync(
   `${FUNC}/.vc-config.json`,
-  JSON.stringify({ runtime: "nodejs22.x", handler: "index.mjs", launcherType: "Nodejs", shouldAddHelpers: false, maxDuration: 30 }, null, 2),
+  JSON.stringify({ runtime: "nodejs22.x", regions: ["fra1"], handler: "index.mjs", launcherType: "Nodejs", shouldAddHelpers: false, maxDuration: 30 }, null, 2),
 );
 
 // 3. Rotas e cron
