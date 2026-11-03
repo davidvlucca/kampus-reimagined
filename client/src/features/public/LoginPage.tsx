@@ -1,12 +1,15 @@
 import { loginSchema, PORTALS, type Portal, type PublicUser } from "@kampus/shared";
-import { ArrowLeft, Eye, EyeOff, Info, KeyRound } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, CircleAlert, Eye, EyeOff, Info, KeyRound, TriangleAlert, type LucideIcon } from "lucide-react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { ApiRequestError, errorMessage, fieldErrors } from "../../api/client.ts";
 import { useLogin, useMe } from "../../api/hooks.ts";
 import type { LoginRedirectState } from "../../components/layout/RequireAuth.tsx";
 import { homePathFor, loginPath } from "../../components/layout/paths.ts";
 import { Button, IconButton, Input, Logo, useToast } from "../../components/ui/index.ts";
+import { cn } from "../../lib/cn.ts";
+import { ExternalLink } from "./ExternalLink.tsx";
+import { AUTHOR_URL, REPO_URL } from "./links.ts";
 import { PublicBackdrop } from "./PublicBackdrop.tsx";
 import { useDocumentTitle } from "../../lib/useDocumentTitle.ts";
 import { DEMO_ACCOUNTS, DEMO_PASSWORD, useDemoLogin } from "./useDemoLogin.ts";
@@ -29,6 +32,23 @@ const COPY: Record<Portal, { title: string; panelTitle: string; panelText: strin
 const PREFIX: Record<Portal, string> = { student: "/app", staff: "/staff" };
 
 type FieldName = "email" | "password";
+
+// Os três avisos do login com a mesma forma: cor e ícone dizem o tom, não só a cor.
+const ALERT_TONES: Record<"info" | "error" | "warning", { className: string; icon: LucideIcon; iconClassName: string }> = {
+  info: { className: "border-kampus-blue/20 bg-kampus-blue-soft text-kampus-navy", icon: Info, iconClassName: "text-kampus-blue" },
+  error: { className: "border-danger/20 bg-danger-soft font-medium text-danger", icon: CircleAlert, iconClassName: "" },
+  warning: { className: "border-warning/25 bg-warning-soft text-warning", icon: TriangleAlert, iconClassName: "" },
+};
+
+function Alert({ tone, role, children }: { tone: keyof typeof ALERT_TONES; role: "alert" | "status"; children: ReactNode }) {
+  const { className, icon: Icon, iconClassName } = ALERT_TONES[tone];
+  return (
+    <div role={role} className={cn("flex items-start gap-2 rounded-xl border px-4 py-3 text-sm", className)}>
+      <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", iconClassName)} />
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
 
 function isPortal(value: unknown): value is Portal {
   return typeof value === "string" && (PORTALS as readonly string[]).includes(value);
@@ -139,27 +159,28 @@ export function LoginPage({ portal }: { portal: Portal }) {
           <p className="mt-1 text-muted">Log in with the email and password you were given.</p>
 
           {redirect?.reason === "session" && (
-            <p role="status" className="mt-5 flex items-center gap-2 rounded-xl border border-kampus-blue/20 bg-kampus-blue-soft px-4 py-3 text-sm text-kampus-navy">
-              <Info aria-hidden className="size-4 shrink-0 text-kampus-blue" />
-              Please log in to continue.
-            </p>
+            <div className="mt-5">
+              <Alert tone="info" role="status">
+                Please log in to continue.
+              </Alert>
+            </div>
           )}
 
           <form noValidate onSubmit={submit} className="mt-6 flex flex-col gap-4">
             {(formError || wrongPortal) && (
             <div>
               {formError && (
-                <p role="alert" className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
+                <Alert tone="error" role="alert">
                   {formError}
-                </p>
+                </Alert>
               )}
               {wrongPortal && (
-                <div role="alert" className="rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
+                <Alert tone="warning" role="alert">
                   <p className="font-semibold">This is a {wrongPortal} account.</p>
                   <Link to={loginPath(wrongPortal)} className="mt-1 inline-block font-semibold text-kampus-navy underline underline-offset-2">
                     Go to {COPY[wrongPortal].label} login
                   </Link>
-                </div>
+                </Alert>
               )}
             </div>
             )}
@@ -222,10 +243,19 @@ export function LoginPage({ portal }: { portal: Portal }) {
               <dd className="font-medium text-text">{DEMO_PASSWORD}</dd>
             </dl>
             <Button variant="secondary" size="sm" className="mt-4" loading={demo.isPending} disabled={login.isPending} onClick={() => demo.start(portal, (user) => targetAfterLogin(user, portal, redirect?.from))}>
-              Log in with demo account
+              Explore with the demo account
             </Button>
           </aside>
         </div>
+
+        <p className="text-center text-sm text-muted">
+          A portfolio project by <ExternalLink href={AUTHOR_URL} className="whitespace-nowrap text-kampus-blue">David Lucca</ExternalLink>
+          <span aria-hidden> · </span>
+          <span className="sr-only">. </span>
+          <ExternalLink href={REPO_URL} className="whitespace-nowrap text-kampus-blue">
+            Code on GitHub
+          </ExternalLink>
+        </p>
       </main>
     </div>
   );
