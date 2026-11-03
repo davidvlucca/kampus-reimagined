@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isKnownSpaPath, MISSING_ASSET, NOINDEX, vercelRoutes } from "./vercel-routes.ts";
+import { isKnownSpaPath, MISSING_ASSET, NOINDEX, NON_API_PATHS, SECURITY_HEADERS, vercelRoutes } from "./vercel-routes.ts";
 
 // Um caminho de exemplo por cada rota de client/src/router.tsx.
 const KNOWN = [
@@ -50,5 +50,29 @@ describe("rotas da Vercel", () => {
   it("com NOINDEX ligado, a primeira rota põe X-Robots-Tag em tudo", () => {
     if (!NOINDEX) return;
     expect(vercelRoutes()[0]).toEqual({ src: "^/(.*)$", headers: { "X-Robots-Tag": "noindex" }, continue: true });
+  });
+
+  it("as páginas e os ficheiros levam os headers de segurança; a API não (tem os seus)", () => {
+    const routes = vercelRoutes();
+    const security = routes.findIndex((r) => "headers" in r && r.headers === SECURITY_HEADERS);
+    expect(routes[security]).toEqual({ src: NON_API_PATHS, headers: SECURITY_HEADERS, continue: true });
+    // Antes da API e do filesystem, para valer em tudo o que não é /api.
+    expect(security).toBeLessThan(routes.findIndex((r) => "dest" in r && r.dest === "/api"));
+    const matches = (path: string) => new RegExp(NON_API_PATHS).test(path);
+    for (const path of ["/", "/login/student", "/app/tour", "/assets/index-abc.js", "/favicon.svg", "/apiary", "/nope"]) {
+      expect(matches(path), path).toBe(true);
+    }
+    for (const path of ["/api", "/api/", "/api/auth/me", "/api/health"]) expect(matches(path), path).toBe(false);
+  });
+
+  it("a CSP não deixa correr scripts de fora nem eval, e a página não pode ir para um iframe", () => {
+    const csp = SECURITY_HEADERS["Content-Security-Policy"];
+    const directives = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1).join(" ")]));
+    expect(directives["script-src"]).toBe("'self'");
+    expect(csp).not.toMatch(/unsafe-eval|wasm-unsafe-eval|\*/);
+    expect(directives["frame-ancestors"]).toBe("'none'");
+    expect(directives["object-src"]).toBe("'none'");
+    expect(SECURITY_HEADERS["X-Frame-Options"]).toBe("DENY");
+    expect(SECURITY_HEADERS["X-Content-Type-Options"]).toBe("nosniff");
   });
 });
