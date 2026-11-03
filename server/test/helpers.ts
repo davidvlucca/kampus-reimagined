@@ -5,7 +5,7 @@ import { createDb } from "../src/db/client.ts";
 import { users } from "../src/db/schema.ts";
 import { seedDatabase } from "../src/demo-data.ts";
 
-export const ORIGIN = "http://localhost:5173";
+const ORIGIN = "http://localhost:5173";
 
 /** Uma app com base PGlite só em memória, migrada e com o seed de demo. */
 export async function setup() {

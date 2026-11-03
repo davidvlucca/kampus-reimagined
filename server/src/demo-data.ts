@@ -218,7 +218,7 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
   return { staff: STAFF.length, students: studentRows.length, cohorts: cohortRows.length, assignments: assignmentRows.length };
 }
 
-export async function resetDatabase(db: Db) {
+async function resetDatabase(db: Db) {
   await db.execute(sql`truncate table login_attempts, sessions, assignment_completions, assignments, notes, tasks, users, cohorts restart identity cascade`);
 }
 

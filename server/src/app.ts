@@ -52,7 +52,7 @@ function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => st
   }
 }
 
-export const MIN_CRON_SECRET_LENGTH = 32;
+const MIN_CRON_SECRET_LENGTH = 32;
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
