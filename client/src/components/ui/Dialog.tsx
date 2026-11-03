@@ -26,6 +26,21 @@ export interface DialogProps {
   className?: string;
 }
 
+/**
+ * Ao abrir, o foco vai para o primeiro campo do formulário (o Radix punha-o no X de fechar,
+ * e quem abriu "Add student" tinha de dar Tab antes de escrever). Sem campos, fica o do Radix.
+ */
+function focusFirstField(event: Event) {
+  const content = event.target;
+  if (!(content instanceof HTMLElement)) return;
+  const field = [...content.querySelectorAll<HTMLElement>("input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])")].find(
+    (el) => el.getClientRects().length > 0,
+  );
+  if (!field) return;
+  event.preventDefault();
+  field.focus();
+}
+
 export function Dialog({ open, onOpenChange, title, description, children, footer, className }: DialogProps) {
   const returnFocus = useReturnFocus(open);
   useDialogEscape(open, () => onOpenChange(false));
@@ -33,15 +48,17 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={overlay} />
-        <DialogPrimitive.Content className={cn(panel, className)} onCloseAutoFocus={returnFocus}>
+        <DialogPrimitive.Content
+          className={cn(panel, className)}
+          onOpenAutoFocus={focusFirstField}
+          onCloseAutoFocus={returnFocus}
+          // Sem descrição não há aria-describedby (repetir o título só fazia o leitor de ecrã dizê-lo duas vezes).
+          {...(description ? {} : { "aria-describedby": undefined })}
+        >
           <div className="flex items-start justify-between gap-4 border-b border-line px-6 pt-5 pb-4">
             <div className="min-w-0">
               <DialogPrimitive.Title className="font-display text-lg font-semibold break-words text-kampus-navy">{title}</DialogPrimitive.Title>
-              {description ? (
-                <DialogPrimitive.Description className="clip-marks mt-1 text-sm break-words text-muted">{description}</DialogPrimitive.Description>
-              ) : (
-                <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
-              )}
+              {description && <DialogPrimitive.Description className="clip-marks mt-1 text-sm break-words text-muted">{description}</DialogPrimitive.Description>}
             </div>
             <DialogPrimitive.Close
               aria-label="Close"
