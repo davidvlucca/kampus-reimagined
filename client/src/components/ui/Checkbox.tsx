@@ -22,7 +22,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
           id={inputId}
           type="checkbox"
           className={cn(
-            "peer size-6 cursor-pointer appearance-none rounded-lg border-2 border-line-strong bg-card transition",
+            "peer size-6 cursor-pointer appearance-none rounded-lg border-2 border-line-control bg-card transition",
             "hover:border-kampus-blue checked:border-kampus-blue checked:bg-kampus-blue",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}

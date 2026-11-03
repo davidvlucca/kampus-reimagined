@@ -26,6 +26,7 @@
   --color-card: #ffffff;
   --color-line: #e2e8f0;
   --color-line-strong: #cbd5e1;
+  --color-line-control: #76869e; /* bordas de campos: 3.7:1 sobre branco (WCAG 1.4.11) */
   --color-text: #0f172a;
   --color-muted: #475569; /* 7.6:1 sobre branco */
   --color-subtle: #64748b; /* 4.8:1 sobre branco */
@@ -83,6 +84,23 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+  }
+  /*
+    Telemóvel: a barra do topo (sticky) e a de baixo (fixa) tapavam o elemento focado com Tab
+    (WCAG 2.4.11). O AppShell mede as barras (--shell-top/--shell-bottom, já com a margem do
+    iPhone); sem JS fica a altura normal delas.
+  */
+  html:has([data-app-shell]) {
+    scroll-padding-top: calc(var(--shell-top, 4rem) + 0.75rem);
+    scroll-padding-bottom: calc(var(--shell-bottom, calc(4rem + env(safe-area-inset-bottom))) + 0.75rem);
+    @media (width >= 64rem) {
+      scroll-padding-top: 0;
+      scroll-padding-bottom: 0;
+    }
+  }
+  /* O AppShell foca o título ao mudar de página: é só para o leitor de ecrã, sem anel à volta. */
+  h1[tabindex="-1"]:focus {
+    outline: none;
   }
   body {
     background-color: var(--color-surface);
