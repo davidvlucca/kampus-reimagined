@@ -165,7 +165,7 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 
 ## 13. Limite de logins guardado em Postgres
 
-**O que é.** Cada login falhado grava uma linha em `login_attempts` com o sha256 de "email|IP". Antes de verificar a password, a API conta as falhas dos últimos 15 minutos para esse par; a partir de 5 responde 429 com `Retry-After` (os segundos até a falha mais antiga sair da janela), mesmo que a password esteja certa. Um login certo apaga as falhas desse par.
+**O que é.** Cada login falhado grava uma linha em `login_attempts` com o sha256 de "email|IP". Antes de verificar a password, a API conta as falhas dos últimos 15 minutos para esse par; a partir de 5 responde 429 com `Retry-After` (os segundos até a falha mais antiga sair da janela), mesmo que a password esteja certa. Um login certo apaga as falhas desse par e não conta para o limite por IP (30 em 15 minutos): só as falhas contam, para uma turma ou um escritório inteiro poder entrar na demo pelo mesmo IP. Os logins certos têm um teto próprio e largo (200 por IP em 15 minutos), porque a password da demo é pública e cada login custa um argon2 e uma sessão nova.
 
 **Porquê em Postgres e não em memória.** Na Vercel cada pedido pode cair numa instância diferente da função, e as instâncias morrem quando querem. Um contador em memória deixava passar quase tudo. A base já existe e é partilhada por todas as instâncias.
 
@@ -197,16 +197,16 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 
 ## 16. Entrar na demo com um clique
 
-**Porquê.** Quem abre um portfólio dá poucos minutos a cada projeto. Antes, ver a visita pedia três passos: escolher o perfil, carregar em "Use demo account" e depois em "Log in". Agora o Welcome tem "Try as student" e "Try as staff", que entram logo na conta demo, e no ecrã de login o botão do cartão "Demo account" entra diretamente (respeitando a página pedida, se a pessoa veio de um link privado).
+**Porquê.** Quem abre um portfólio dá poucos minutos a cada projeto. Antes, ver a visita pedia três passos: escolher o perfil, carregar em "Use demo account" e depois em "Log in". Agora o Welcome tem "Explore as a student" e "Explore as staff" como ação principal, que entram logo na conta demo, e no ecrã de login o botão do cartão "Demo account" entra diretamente (respeitando a página pedida, se a pessoa veio de um link privado).
 
-**O custo.** Nenhum para a segurança: as contas demo já eram públicas (email e password estão no ecrã) e estão protegidas: ninguém as pode apagar nem mudar o email ou a password. Os logins pelo botão contam para o mesmo limite de tentativas falhadas.
+**O custo.** Nenhum para a segurança: as contas demo já eram públicas (email e password estão no ecrã) e estão protegidas: ninguém as pode apagar nem mudar o email ou a password. Os logins pelo botão passam pelo mesmo limite de tentativas falhadas (ver 13).
 
 ---
 
 ## 17. Testes de ponta a ponta com Playwright e axe, no GitHub Actions
 
 **O que correm.** `npm run e2e` arranca uma cópia isolada da app (a mesma de `scripts/stack.ts`, com PGlite) e testa num Chromium de desktop e noutro de telemóvel:
-- o clique em "Try as student" abre a visita, que se percorre até ao fim (com teclado e botões);
+- o clique em "Explore as a student" abre a visita, que se percorre até ao fim (com teclado e botões);
 - marcar uma tarefa como feita sobrevive a um reload (o bug de 2023);
 - um aluno que abre `/staff/...` volta para a sua área e a API responde 403;
 - sem sessão, uma página privada manda para o login;
@@ -218,7 +218,7 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 
 **O que já apanharam.** No telemóvel, o link do avatar tinha `aria-label="Your profile"` mas mostrava as iniciais: o nome acessível não incluía o texto visível (WCAG 2.5.3, quem usa controlo por voz diz o que vê). Passou a ter o nome em texto `sr-only`.
 
-**CI.** `.github/workflows/ci.yml` corre em cada push e pull request: lint, tipos, Vitest e build num job, e os testes E2E noutro, em paralelo. Não precisa de segredos (tudo corre com PGlite). Se os E2E falharem, o relatório e os traces do Playwright ficam como artefacto durante 7 dias.
+**CI.** `.github/workflows/ci.yml` corre em cada push e pull request: lint, tipos, Vitest, o build da Vercel (`npm run build:vercel`, o mesmo do deploy) e o orçamento do bundle (`scripts/check-bundle.ts`) num job, em Node 22 como a função, e os testes E2E noutro, em paralelo. Não precisa de segredos (tudo corre com PGlite). Se os E2E falharem, o relatório e os traces do Playwright ficam como artefacto durante 7 dias.
 
 **Pergunta.** *"Porque não testar no Safari, se fizeste QA no iPhone?"* — O WebKit do Playwright não é o Safari do iOS; o QA no simulador apanhou coisas (zoom nos campos, o campo de data) que nenhum browser de CI apanharia. Os E2E protegem os fluxos contra regressões; o QA em dispositivo continua a ser à mão.
 
@@ -260,7 +260,7 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 
 **Orçamento e desempenho.**
 - O arranque da app não muda: o three.js vem num chunk à parte (`React.lazy`), que só se pede quando o 3D vai mesmo aparecer. Quem tem reduced motion, não tem WebGL ou escolheu 2D nunca o descarrega (há um teste E2E que verifica que esse pedido não acontece).
-- Medido no build: arranque 187,3 KB gz no main e 187,8 KB gz no ramo (+0,5 KB, a divisão em chunks mudou); o chunk 3D tem 244 KB gz com `gzip -9` (o Vite mostra 248 KB), abaixo do orçamento de 250 KB mas com pouca margem: o próximo passo, se crescer, é importar só as partes do three que se usam.
+- Medido no build (gzip com o nível por omissão do zlib): o chunk 3D tem 245,8 KB gz (o Vite mostra 249 KB), abaixo do orçamento de 250 KB mas com pouca margem: o próximo passo, se crescer, é importar só as partes do three que se usam. O arranque desceu de 190,4 para 180,7 KB gz quando as páginas do aluno passaram também a chunks próprios. A CI falha se o arranque passar de 200 KB ou o chunk 3D de 255 KB.
 - `frameloop="demand"`: o canvas só desenha durante um voo de câmara, o pulso do pino ou um hover. Parado, não gasta bateria.
 - DPR limitado a 2, uma luz hemisférica e uma direcional, sem shadow maps (as sombras são planos escuros semitransparentes), geometrias e materiais partilhados, menos de 35 peças por sala.
 
@@ -287,4 +287,16 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 - *"Como é que um utilizador de leitor de ecrã faz a visita 3D?"* — Exatamente como a 2D: os botões das paragens, o diálogo e o aria-live são os mesmos. O canvas está escondido porque não acrescenta informação que não esteja no texto.
 - *"E num telemóvel fraco?"* — O 3D só é descarregado quando vai ser usado, desenha só quando algo se mexe e tem um botão para passar a 2D. Se o WebGL cair, a visita continua em 2D no mesmo sítio.
 - *"Porque não usaste modelos 3D prontos?"* — Licenças (o projeto de 2023 tinha imagens sem licença) e peso: caixas e cilindros em código pesam quase nada e ficam na paleta do Kampus.
+
+---
+
+## 21. Headers de segurança e CSP
+
+**O que é.** Todas as páginas e ficheiros (tudo menos `/api`) saem com uma Content-Security-Policy fechada (`script-src 'self'`, sem `unsafe-eval`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` e `Cross-Origin-Opener-Policy`. Os headers estão definidos num só sítio (`scripts/vercel-routes.ts`) e o `vite preview` usa os mesmos, por isso os E2E correm debaixo da CSP. A API tem a sua: `default-src 'none'`, HSTS de 2 anos e `Cache-Control: no-store` por omissão, para nenhuma cache guardar dados de um utilizador.
+
+**Porquê.** Sem `frame-ancestors`, qualquer site podia pôr o login ou a página de alunos do staff num iframe invisível (clickjacking). E um portfólio que um revisor passa no securityheaders.com não pode tirar F.
+
+**O que custou.** O Zod 4 compila os esquemas com `new Function` (mais rápido), o que uma CSP sem `unsafe-eval` bloqueia. Ficou em modo `jitless`, num chunk próprio para a configuração correr antes de qualquer esquema do shared ser criado; o `check-bundle.ts` falha se essa configuração desaparecer do build. O `style-src` precisa de `'unsafe-inline'` por causa do `<style>` que o Radix injeta nos diálogos.
+
+**Pergunta.** *"Porque `/api/auth/me` devolve 200 sem sessão?"* — Não ter sessão não é um erro numa página pública: com 401, cada visita ao Welcome deixava um erro vermelho na consola. Agora é `200 { user: null }`; os outros endpoints continuam a dar 401, e esse 401 leva ao login.
 
