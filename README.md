@@ -1,19 +1,45 @@
 # Kampus Reimagined
 
+By [David Lucca](https://github.com/davidvlucca)
+
 [![CI](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml/badge.svg)](https://github.com/davidvlucca/kampus-reimagined/actions/workflows/ci.yml)
 
 **A campus onboarding app for new students: a visual-novel tour of the campus, tasks with deadlines, notes, a focus timer and the staff contacts. Staff add students, give each cohort its tasks and see how everyone is settling in.**
 
 This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
 
+**3D campus tour** in React Three Fiber with a 2D fallback · **214 Vitest tests** (123 on the API, against a real Postgres) + **43 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
+
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
-- **Live demo: https://kampus-reimagined.vercel.app** (one click on "Try as student" or "Try as staff"; the data resets every day)
+![The 3D campus map: six rooms, the next stop lit up](docs/prints/visita-3d-mapa-desktop.png)
+
+- **Live demo: https://kampus-reimagined.vercel.app** (one click on "Explore as a student" or "Explore as staff", no sign-up; the data resets every day)
 - Original 2023 code: [glowinZero/kampus](https://github.com/glowinZero/kampus) (front end) and [glowinZero/project-3-backend](https://github.com/glowinZero/project-3-backend) (back end)
 - Short video of both flows (40 s): [`docs/video/kampus-demo.mp4`](docs/video/kampus-demo.mp4)
 - Technical decisions (in Portuguese): [`docs/DECISOES.md`](docs/DECISOES.md)
 
+**Stack in short:**
+- **Client:** React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query, React Three Fiber
+- **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon in production), Zod schemas shared with the client
+- **Quality:** Vitest, Playwright with axe (WCAG 2.1 AA), GitHub Actions, deployed on Vercel
+
 > All data in this project is **fictional**: the campus, cohorts, people, emails, tasks and notes.
+
+## Key engineering decisions
+
+The reasoning behind each one, with the trade-offs, is in [`docs/DECISOES.md`](docs/DECISOES.md) (in Portuguese).
+
+- **Monorepo with npm workspaces:** the Zod schemas live in `shared/`, so the form and the API validate with the same rules. ([§1](docs/DECISOES.md#1-um-só-repositório-com-npm-workspaces-client-server-shared))
+- **Hono, tested without a server:** Vitest calls `app.request()` on a fresh in-memory Postgres (PGlite) with the real migrations and seed. ([§2](docs/DECISOES.md#2-hono-no-servidor-em-vez-de-express))
+- **Drizzle + Postgres:** relational data with foreign keys and cascades; PGlite in development, Neon in production, same SQL migrations. ([§3](docs/DECISOES.md#3-drizzle-orm--postgres), [§4](docs/DECISOES.md#4-pglite-em-desenvolvimento-neon-em-produção))
+- **Cookie sessions, not JWT:** `httpOnly` cookie, only the token's SHA-256 stored, argon2id passwords, and the same 401 with similar timing for unknown emails. ([§5](docs/DECISOES.md#5-sessões-em-cookie-httponly-em-vez-de-jwt))
+- **404, not 403, for another student's data:** a student can't even learn that someone else's note exists. ([§7](docs/DECISOES.md#7-respostas-404-e-não-403-para-dados-de-outro-aluno))
+- **Login rate limit in Postgres:** 5 failures per email and IP, 30 attempts per IP, shared by every serverless instance. ([§13](docs/DECISOES.md#13-limite-de-logins-guardado-em-postgres))
+- **TanStack Query with optimistic updates:** ticking a task is instant and rolls back if the API fails; CSRF covered by `SameSite`, Hono's `csrf()` and JSON-only writes. ([§6](docs/DECISOES.md#6-tanstack-query-no-client-e-o-csrf-do-hono))
+- **3D tour in React Three Fiber:** a lazy chunk that is never downloaded with reduced motion or without WebGL, which get the accessible 2D tour. ([§20](docs/DECISOES.md#20-a-visita-em-3d-react-three-fiber-um-canvas-acessível-e-um-fallback-a-sério))
+- **A public demo that looks after itself:** a Vercel Cron resets the data every day, and the shared accounts can't be deleted or have their password changed. ([§12](docs/DECISOES.md#12-deploy-na-vercel-com-neon))
+- **Accessibility checked in CI:** Playwright runs axe (WCAG 2.1 A and AA) on every main screen, on desktop and mobile. ([§17](docs/DECISOES.md#17-testes-de-ponta-a-ponta-com-playwright-e-axe-no-github-actions))
 
 ## Run it
 
@@ -36,15 +62,16 @@ Other scripts:
 | --- | --- |
 | `npm run dev` | Starts API and web app (after a first `npm run demo`) |
 | `npm run db:reset` | Wipes the local database and loads the demo data again |
-| `npm test` | API tests (auth and authorization) and date tests, with Vitest |
-| `npm run e2e` | End-to-end tests in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen (Playwright) |
+| `npm test` | 214 Vitest tests: 123 on the API (auth, authorization, limits, cron), plus schemas, dates in three time zones and client logic |
+| `npm run e2e` | 43 end-to-end tests (Playwright): the main flows in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen, and the 3D tour in WebGL |
 | `npm run lint` / `npm run typecheck` / `npm run build` | ESLint, TypeScript, production build |
 | `npm run prints` | Screenshots of the main screens into `docs/prints/` (Playwright) |
 | `npm run video` | Records the demo video into `docs/video/` (Playwright + ffmpeg) |
 
 In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of PGlite; the schema and migrations are the same. See `.env.example`.
 
-### Deploy (Vercel + Neon)
+<details>
+<summary><strong>Deploy (Vercel + Neon)</strong></summary>
 
 `npm run build:vercel` writes `.vercel/output` ([Build Output API](https://vercel.com/docs/build-output-api)): the static client, the API bundled into one Vercel Function, the routes and a daily cron. `vercel.json` runs it as the build command.
 
@@ -53,6 +80,8 @@ In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of 
 3. Apply the migrations and load the demo data once: `vercel env pull .env.production.local`, then `DATABASE_URL=… npm run db:migrate` and `DATABASE_URL=… node server/src/seed.ts --reset --allow-remote`.
 4. `vercel deploy --prod`.
 5. Later, when a commit adds a migration (`server/drizzle/`), run `npm run db:migrate` against Neon **before** pushing it: the build doesn't migrate, and the new code expects the new tables.
+
+</details>
 
 The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits logins (5 failures per email and IP, and 30 attempts per IP, in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
 
@@ -92,7 +121,7 @@ On a phone (390px), where the 2023 screens broke:
 
 | 2023 | 2026 | Why |
 | --- | --- | --- |
-| The API had no authentication: `/auth/users` returned every user **with their password hash**, and anyone could edit or delete tasks, notes and users. | Session cookie (`httpOnly`, `SameSite=Lax`), sessions stored in the database, passwords hashed with argon2id. A student only sees their own data, only staff manage students, and the hash never leaves the API. | It's the first thing a reviewer checks. 40+ tests try to break it: reading another student's notes, a student calling staff routes, looking for the hash in every response. |
+| The API had no authentication: `/auth/users` returned every user **with their password hash**, and anyone could edit or delete tasks, notes and users. | Session cookie (`httpOnly`, `SameSite=Lax`), sessions stored in the database, passwords hashed with argon2id. A student only sees their own data, only staff manage students, and the hash never leaves the API. | It's the first thing a reviewer checks. The API's 123 tests try to break it: reading another student's notes, a student calling staff routes, looking for the hash in every response. |
 | Anyone could sign up as staff. Editing a user saved the password exactly as received. | No public sign-up: staff accounts come from the seed, students are created by staff with a temporary password, and changing a password asks for the current one and logs out other devices. | Fewer ways in, and a real password flow. |
 | The task checkbox always started as "To do", so finished tasks looked unfinished. | The checkbox reads the saved state; ticking it is instant (optimistic) and rolls back if the API fails. | The bug from the original report, fixed and tested. |
 | Not responsive: every screen broke on a phone. | Mobile-first for students (390px), sidebar on desktop and a bottom bar on mobile, like apps students already use. | New students live on their phones. |

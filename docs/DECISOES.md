@@ -28,7 +28,7 @@ Cada decisão tem: o que escolhi, porquê, o que ficou de fora, e 2 ou 3 pergunt
 
 **Perguntas.**
 - *"Porque não Express, que toda a gente conhece?"* — Express funcionava. Hono deu-me tipos de ponta a ponta e testes sem servidor a correr; para um projeto novo em TypeScript foi menos código para o mesmo resultado.
-- *"Como testas as rotas?"* — Com Vitest e `app.request()`: cada ficheiro de teste cria uma base PGlite em memória, aplica as migrações e o seed, e faz pedidos reais à app (86 testes no servidor).
+- *"Como testas as rotas?"* — Com Vitest e `app.request()`: cada ficheiro de teste cria uma base PGlite em memória, aplica as migrações e o seed, e faz pedidos reais à app (123 testes no servidor, 214 no total do Vitest).
 
 ---
 
@@ -159,7 +159,7 @@ O custo é uma consulta à base por pedido, que aqui é irrelevante.
 **Perguntas.**
 - *"PGlite em dev e Neon em produção não dá surpresas?"* — O SQL e as migrações são os mesmos (Postgres nos dois). A diferença é só o driver, e os dois estão num ficheiro cada (`db/client.ts` e `db/postgres.ts`).
 - *"Porque não um servidor sempre ligado?"* — Para uma demo de portfólio com pouco tráfego, funções serverless custam zero e não há nada para manter. O custo é o arranque a frio (a primeira chamada demora mais) e menos ligações à base por instância, por isso o pool tem no máximo 3.
-- *"Como protegeste a demo pública?"* — Quatro coisas: (1) limite de 5 logins falhados por email+IP em 15 minutos, depois 429 com `Retry-After`; (2) as contas partilhadas (`staff@example.com` e `student@example.com`) não podem ser apagadas nem mudar de email ou password (403); (3) reposição diária dos dados; (4) `noindex`, para o site não aparecer em pesquisas.
+- *"Como protegeste a demo pública?"* — Quatro coisas: (1) limite de 5 logins falhados por email+IP e de 30 tentativas por IP em 15 minutos, depois 429 com `Retry-After`; (2) as contas partilhadas (`staff@example.com` e `student@example.com`) não podem ser apagadas nem mudar de email ou password (403); (3) reposição diária dos dados; (4) `noindex`, para o site não aparecer em pesquisas.
 
 ---
 
@@ -214,7 +214,7 @@ Uma demo com contas públicas não deve aparecer no Google. O `NOINDEX = true` e
 - a 404;
 - o axe (regras WCAG 2.1 A e AA) em todos os ecrãs principais, incluindo o dialog de criar aluno.
 
-**Cada teste começa com a demo reposta.** A API local passou a aceitar `CRON_SECRET` como na Vercel, e os testes chamam `/api/cron/reset-demo` antes de cada um. Correm um de cada vez porque partilham a base; são 20 testes em cerca de 25 segundos.
+**Cada teste começa com a demo reposta.** A API local passou a aceitar `CRON_SECRET` como na Vercel, e os testes chamam `/api/cron/reset-demo` antes de cada um. Correm um de cada vez porque partilham a base; são 28 testes (14 em cada Chromium), e os 15 da visita 3D correm num projeto à parte (ver 20).
 
 **O que já apanharam.** No telemóvel, o link do avatar tinha `aria-label="Your profile"` mas mostrava as iniciais: o nome acessível não incluía o texto visível (WCAG 2.5.3, quem usa controlo por voz diz o que vê). Passou a ter o nome em texto `sr-only`.
 
