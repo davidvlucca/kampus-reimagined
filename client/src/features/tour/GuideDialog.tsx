@@ -76,7 +76,7 @@ export function GuideDialog({
       >
         {finale && <FinaleStamp />}
         {/* No telemóvel o guia sai por cima do cartão (deitado não há altura: fica pequeno, dentro) */}
-        <div className={cn("flex items-end gap-3 short:items-center", finale && "pr-16 lg:pr-24")}>
+        <div className={cn("flex items-end gap-3 short:items-center", finale && "sm:pr-16 lg:pr-24")}>
           <GuidePortrait
             guide={stop.guide}
             face={face}
@@ -157,14 +157,14 @@ function FinaleStamp() {
     <span
       aria-hidden
       className={cn(
-        "pointer-events-none absolute -top-9 right-4 grid size-18 -rotate-12 place-content-center justify-items-center gap-0.5",
+        "pointer-events-none absolute -top-12 right-3 grid size-16 -rotate-12 place-content-center justify-items-center gap-0.5",
         "rounded-full border-2 border-dashed border-kampus-sky bg-kampus-navy text-kampus-sky shadow-pop",
         "transition duration-500 ease-out starting:scale-150 starting:-rotate-45 starting:opacity-0 motion-reduce:transition-none",
-        "short:top-2 short:right-3 short:size-14 lg:-top-10 lg:right-6 lg:size-22",
+        "sm:-top-9 sm:right-4 sm:size-18 short:top-2 short:right-3 short:size-14 lg:-top-10 lg:right-6 lg:size-22",
       )}
     >
-      <Check className="size-6 short:size-4 lg:size-7" strokeWidth={3} />
-      <span className="text-[0.625rem] leading-none font-semibold tracking-wider uppercase short:text-[0.5rem]">
+      <Check className="size-5 sm:size-6 short:size-4 lg:size-7" strokeWidth={3} />
+      <span className="text-[0.5625rem] leading-none font-semibold tracking-wider uppercase sm:text-[0.625rem] short:text-[0.5rem]">
         {TOTAL}/{TOTAL} stops
       </span>
     </span>
