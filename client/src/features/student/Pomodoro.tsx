@@ -158,7 +158,7 @@ export function Pomodoro() {
         <div className="flex flex-wrap items-center justify-between gap-4 lg:flex-col lg:justify-center">
           <div className="flex flex-col lg:items-center">
             <span className={cn("text-xs font-semibold tracking-widest uppercase", isFocus ? "text-kampus-blue" : "text-success")}>{MODE_LABEL[mode]}</span>
-            <span className="font-pixel text-[min(4.5rem,20vw)] leading-none text-kampus-navy tabular-nums" aria-label={`${MODE_LABEL[mode]}: ${formatClock(remaining)} left`} role="timer">
+            <span className="font-display text-[min(3.75rem,16vw)] leading-none font-semibold tracking-tight text-kampus-navy tabular-nums" aria-label={`${MODE_LABEL[mode]}: ${formatClock(remaining)} left`} role="timer">
               {formatClock(remaining)}
             </span>
             {status === "paused" && <span className="text-xs text-muted">Paused</span>}

@@ -143,7 +143,7 @@ As passwords usam argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 itera
 
 **Contexto.** Em 2023 usámos NextUI e lutámos contra ele (estilos inline, `!important`, modais por cima de modais). O original importava Poppins e VT323 para um toque "gamificado" mas não as usava.
 
-**Decisão.** Os tokens da identidade (os cinco azuis de 2023, o gradiente `#0E6BA8 → #0A2472`, Poppins, Inter e VT323) estão num só ficheiro CSS (`client/src/styles/index.css`). Os componentes (botões, campos, cartões, toasts, dialogs) são meus, em `client/src/components/ui/`. Para dialogs e toasts uso Radix, que trata do foco, do Esc e do ARIA. As fontes são servidas pela própria app (`@fontsource`), sem pedidos ao Google. A pixel font VT323 só aparece onde é um jogo (timer, contador da visita, 404); em texto corrido cansava e baixava a legibilidade.
+**Decisão.** Os tokens da identidade (os cinco azuis de 2023, o gradiente `#0E6BA8 → #0A2472`, Poppins e Inter) estão num só ficheiro CSS (`client/src/styles/index.css`). Os componentes (botões, campos, cartões, toasts, dialogs) são meus, em `client/src/components/ui/`. Para dialogs e toasts uso Radix, que trata do foco, do Esc e do ARIA. As fontes são servidas pela própria app (`@fontsource`), sem pedidos ao Google. A pixel font VT323 chegou a estar no timer, no contador da visita e no 404, mas saiu em novembro de 2026: destoava do resto e pesava mais uma família. Os números usam Poppins com algarismos de largura fixa (`tabular-nums`), para o relógio não tremer.
 
 **Alternativas consideradas.** Uma biblioteca de componentes completa, como o NextUI de 2023, que deu os problemas descritos acima.
 

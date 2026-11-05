@@ -3,7 +3,6 @@ import "@fontsource-variable/inter/wght.css";
 import "@fontsource/poppins/latin-500.css";
 import "@fontsource/poppins/latin-600.css";
 import "@fontsource/poppins/latin-700.css";
-import "@fontsource/vt323/latin-400.css";
 import "./styles/index.css";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";

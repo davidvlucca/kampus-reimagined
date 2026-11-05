@@ -51,7 +51,7 @@ export function TourHeader({ headerRef, index, stopName, onGo, webgl, is3D, onMo
       <span className="hidden lg:block">
         <Logo onDark />
       </span>
-      <p className="shrink-0 font-pixel text-2xl leading-none tracking-wide whitespace-nowrap text-kampus-sky max-[359px]:text-xl">
+      <p className="shrink-0 font-display text-sm leading-none font-semibold tracking-widest whitespace-nowrap text-kampus-sky tabular-nums">
         STOP {index + 1}/{TOTAL}
       </p>
       <p
