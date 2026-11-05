@@ -64,7 +64,7 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
     update.mutate(
       { id: task.id, done },
       {
-        onSuccess: () => toast({ title: done ? "Task done. Nice!" : "Task moved back to To do", tone: "success" }),
+        onSuccess: () => toast({ title: done ? "Task done. Nice!" : "Task back on your list", tone: "success" }),
         onError: (e) => toast({ title: "Couldn't update the task", description: errorMessage(e), tone: "error" }),
       },
     );
