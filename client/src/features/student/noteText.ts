@@ -23,3 +23,14 @@ export function noteChanges(seed: { title: string; body: string }, title: string
   if (body !== seed.body) changes.body = body;
   return changes;
 }
+
+const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+/** A pesquisa da lista: todas as palavras têm de aparecer no título ou no corpo (sem contar maiúsculas nem acentos). */
+export function matchesNote(note: { title: string; body: string }, query: string): boolean {
+  const haystack = fold(`${note.title}\n${note.body}`);
+  return fold(query)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => haystack.includes(word));
+}
