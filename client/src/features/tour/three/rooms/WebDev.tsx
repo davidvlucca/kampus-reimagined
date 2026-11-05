@@ -1,117 +1,91 @@
 import { Block, Shadow } from "../CampusModel.tsx";
-import { useMat } from "../dim.ts";
-import { BOX, COLORS } from "../materials.ts";
+import { COLORS } from "../materials.ts";
+import { AtPlan, Boxes, CORAL, DESK_TOP, F, LEAF, Plant, STEEL, WallPanel, YELLOW, type Box } from "./parts.tsx";
 
-// Móveis da sala "web-dev". Coordenadas locais: origem no centro da sala, chão em y = 0.08.
-// Sala de programação: ecrã grande com "código" na parede norte e duas filas de mesas com
-// portáteis, viradas para o ecrã. A porta (a sul, x ∈ [−1, 1]) fica livre.
+// Web Dev (71 m², 28 mesas), em coordenadas da planta: x 0–7,5, y 7–16,5. Ecrã de código na
+// parede norte, quadro com o plano da semana a sul e as mesas em três blocos, como na planta.
+// As 28 mesas são instâncias (uma chamada à GPU por cor), não 140 peças.
 
-const FLOOR = 0.08;
-const DESK_TOP = FLOOR + 0.75;
-const WALL_N = -2.42;
+// Canto noroeste de cada mesa (0,95 × 0,42 m); o aluno senta-se a sul, virado para o ecrã.
+const DESKS: [number, number][] = [
+  ...[8.75, 9.8, 10.85].flatMap((y) => [2.65, 3.8, 4.95, 6.1].map((x): [number, number] => [x, y])),
+  ...[12.9, 13.95].flatMap((y) => [0.45, 1.6, 2.75, 3.9, 5.05, 6.2].map((x): [number, number] => [x, y])),
+  ...[1.6, 2.75, 3.9, 5.05].map((x): [number, number] => [x, 15]),
+];
 
-/** Tampa de portátil aberta: caixa fina inclinada para trás (o ecrã fica virado para sul). */
-function LaptopLid({ x, z }: { x: number; z: number }) {
-  return (
-    <mesh
-      geometry={BOX}
-      material={useMat(COLORS.navy)}
-      position={[x, DESK_TOP + 0.12, z]}
-      rotation={[-0.3, 0, 0]}
-      scale={[0.36, 0.24, 0.02]}
-    />
-  );
-}
+const center = ([x, y]: [number, number]) => [x + 0.475, y + 0.21] as const;
 
-/** Cadeira simples: corpo assente no chão (assento a 0.45 m) e costas. Virada para norte. */
-function Chair({ x, z }: { x: number; z: number }) {
-  const seat = FLOOR + 0.45;
-  return (
-    <>
-      <Block
-        p={[x, FLOOR + 0.225, z]}
-        s={[0.4, 0.45, 0.4]}
-        color={COLORS.blue}
-      />
-      <Block
-        p={[x, seat + 0.17, z + 0.18]}
-        s={[0.4, 0.34, 0.05]}
-        color={COLORS.indigo}
-      />
-    </>
-  );
-}
-
-/** Uma fila: mesa comprida com dois pés laterais, três portáteis e três cadeiras. */
-function DeskRow({ z }: { z: number }) {
-  const seats = [-1.6, 0, 1.6];
-  return (
-    <>
-      <Shadow x={0} z={z} w={5} d={0.8} />
-      <Block
-        p={[0, DESK_TOP - 0.03, z]}
-        s={[4.8, 0.06, 0.62]}
-        color={COLORS.surface}
-      />
-      <Block
-        p={[-2.3, FLOOR + 0.36, z]}
-        s={[0.06, 0.72, 0.56]}
-        color="#94A3B8"
-      />
-      <Block
-        p={[2.3, FLOOR + 0.36, z]}
-        s={[0.06, 0.72, 0.56]}
-        color="#94A3B8"
-      />
-      {seats.map((x) => (
-        <group key={x}>
-          <LaptopLid x={x} z={z - 0.1} />
-          <Chair x={x} z={z + 0.55} />
-        </group>
-      ))}
-    </>
-  );
-}
+const TOPS: Box[] = DESKS.map((d) => {
+  const [x, z] = center(d);
+  return [[x, DESK_TOP - 0.03, z], [0.95, 0.06, 0.42]];
+});
+const LEGS: Box[] = DESKS.flatMap((d) => {
+  const [x, z] = center(d);
+  return [-0.42, 0.42].map((dx): Box => [[x + dx, F + 0.36, z], [0.05, 0.72, 0.36]]);
+});
+const LIDS: Box[] = DESKS.map((d) => {
+  const [x, z] = center(d);
+  return [[x, DESK_TOP + 0.12, z - 0.12], [0.34, 0.22, 0.03]];
+});
+const SEATS: Box[] = DESKS.map((d) => {
+  const [x, z] = center(d);
+  return [[x, F + 0.225, z + 0.5], [0.4, 0.45, 0.4]];
+});
+const BACKS: Box[] = DESKS.map((d) => {
+  const [x, z] = center(d);
+  return [[x, F + 0.62, z + 0.68], [0.4, 0.34, 0.05]];
+});
 
 // Linhas de "código": recuo, largura e cor de cada barra.
 const CODE: [number, number, string][] = [
-  [0, 1.1, COLORS.sky],
-  [0.25, 0.8, "#F28C6B"],
-  [0.5, 1.2, "#86EFAC"],
-  [0.5, 0.6, COLORS.sky],
-  [0.25, 0.9, "#FDE68A"],
-  [0, 0.5, COLORS.sky],
+  [0, 1.4, COLORS.sky],
+  [0.3, 1.0, CORAL],
+  [0.6, 1.6, LEAF],
+  [0.6, 0.8, COLORS.sky],
+  [0.3, 1.2, YELLOW],
+  [0, 0.7, COLORS.sky],
+];
+
+// Plano da semana: cinco colunas (dias) com blocos de cores.
+const WEEK: [number, number, string][] = [
+  [0, 0.3, COLORS.blue],
+  [0, 0.55, LEAF],
+  [1, 0.3, COLORS.blue],
+  [1, 0.55, YELLOW],
+  [2, 0.3, COLORS.blue],
+  [2, 0.55, CORAL],
+  [3, 0.3, COLORS.blue],
+  [3, 0.55, LEAF],
+  [4, 0.42, COLORS.indigo],
 ];
 
 export function WebDevRoom() {
-  const left = -1.2;
   return (
-    <>
-      {/* Ecrã grande na parede norte: preso no alto e inclinado para se ler com a câmara alta */}
-      <group position={[0, 1.68, WALL_N]} rotation={[-0.55, 0, 0]}>
-        <Block
-          p={[0, -0.56, 0.03]}
-          s={[2.8, 1.12, 0.06]}
-          color={COLORS.indigo}
-        />
-        <Block
-          p={[0, -0.56, 0.07]}
-          s={[2.64, 0.96, 0.03]}
-          color={COLORS.navy}
-        />
+    <AtPlan room="web-dev">
+      {/* Ecrã grande na parede norte, virado para as mesas */}
+      <WallPanel x={4.9} z={7.12} w={3.4} h={1.25} y={1.7} face="south" color={COLORS.indigo}>
+        <Block p={[0, -0.62, 0]} s={[3.2, 1.08, 0.02]} color={COLORS.navy} />
         {CODE.map(([indent, w, color], i) => (
-          <Block
-            key={i}
-            p={[left + indent + w / 2, -0.2 - i * 0.14, 0.09]}
-            s={[w, 0.07, 0.02]}
-            color={color}
-          />
+          <Block key={i} p={[-1.4 + indent + w / 2, -0.24 - i * 0.15, 0.02]} s={[w, 0.08, 0.02]} color={color} />
         ))}
-      </group>
+      </WallPanel>
 
-      {/* Duas filas de mesas viradas para o ecrã */}
-      <DeskRow z={-1.05} />
-      <DeskRow z={0.45} />
-    </>
+      {/* Quadro branco com o plano da semana, a sul */}
+      <WallPanel x={4.3} z={16.38} w={4.2} h={1.0} y={1.55} face="north" color={COLORS.surface}>
+        {WEEK.map(([day, y, color], i) => (
+          <Block key={i} p={[-1.6 + day * 0.8, -y, 0.01]} s={[0.6, 0.18, 0.02]} color={color} />
+        ))}
+      </WallPanel>
+
+      <Shadow x={4.1} z={9.95} w={4.8} d={2.6} />
+      <Shadow x={3.85} z={14.15} w={6.9} d={1.6} />
+      <Boxes items={TOPS} color={COLORS.surface} />
+      <Boxes items={LEGS} color={STEEL} />
+      <Boxes items={LIDS} color={COLORS.navy} />
+      <Boxes items={SEATS} color={COLORS.blue} />
+      <Boxes items={BACKS} color={COLORS.indigo} />
+
+      <Plant x={0.55} z={9.3} />
+    </AtPlan>
   );
 }

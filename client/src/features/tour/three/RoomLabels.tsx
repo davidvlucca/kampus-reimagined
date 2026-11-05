@@ -1,12 +1,14 @@
 import { useFrame } from "@react-three/fiber";
 import type { RefObject } from "react";
 import { Vector3 } from "three";
-import { ROOMS, WALL_H, type RoomId } from "./layout.ts";
+import { ROOFTOP, ROOMS, WALL_H, wx, wz, type RoomId } from "./layout.ts";
 
 // As etiquetas das salas são DOM normal por cima do canvas (texto nítido, sem fontes 3D).
 // Dentro do canvas, `LabelProjector` só calcula onde cada uma fica no ecrã a cada frame.
 
-const anchors = ROOMS.map((r) => new Vector3(r.x, WALL_H + 0.4, r.z + 1.1));
+// Só as paragens têm etiqueta. O terraço não se vê no mapa: a etiqueta fica por cima das escadas.
+const LABELED = [...ROOMS.filter((r) => r.label !== null), ROOFTOP];
+const anchors = LABELED.map((r) => (r === ROOFTOP ? new Vector3(wx(11.2), WALL_H + 2.6, wz(17)) : new Vector3(r.x, WALL_H + 0.4, r.z)));
 const v = new Vector3();
 
 export type LabelRefs = RefObject<(HTMLSpanElement | null)[]>;
@@ -33,7 +35,7 @@ export function LabelProjector({ labels }: { labels: LabelRefs }) {
 export function RoomLabels({ labels, show, highlight }: { labels: LabelRefs; show: boolean; highlight: RoomId | null }) {
   return (
     <div className={"pointer-events-none absolute inset-0 overflow-hidden transition-opacity " + (show ? "opacity-100" : "opacity-0")}>
-      {ROOMS.map((room, i) => (
+      {LABELED.map((room, i) => (
         <span
           key={room.id}
           ref={(el) => {
@@ -41,7 +43,7 @@ export function RoomLabels({ labels, show, highlight }: { labels: LabelRefs; sho
           }}
           style={{ visibility: "hidden" }}
           className={
-            "absolute top-0 left-0 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap shadow-sm select-none " +
+            "absolute top-0 left-0 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap shadow-sm select-none big:text-sm huge:text-base " +
             (highlight === room.id ? "bg-white text-kampus-navy" : "bg-kampus-navy/85 text-white")
           }
         >
