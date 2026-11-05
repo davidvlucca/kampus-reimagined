@@ -26,7 +26,7 @@ export function NotFoundPage() {
         </Link>
       </header>
       <main className="flex flex-1 flex-col items-center justify-center px-5 py-12 text-center">
-        <p className="animate-fade-up bg-kampus-gradient bg-clip-text font-pixel text-[8rem] leading-none text-transparent forced-colors:text-[CanvasText] sm:text-[11rem]">
+        <p className="animate-fade-up bg-kampus-gradient bg-clip-text font-display text-[7rem] leading-none font-bold tracking-tight text-transparent forced-colors:text-[CanvasText] sm:text-[9rem]">
           404
         </p>
         <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">This page took a wrong turn</h1>

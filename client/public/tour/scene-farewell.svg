@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7CC6EE"/>
-      <stop offset="0.6" stop-color="#BFE7FB"/>
-      <stop offset="1" stop-color="#E8F6FD"/>
+      <stop offset="0" stop-color="#8FD0F0"/>
+      <stop offset="0.55" stop-color="#FCE3CF"/>
+      <stop offset="1" stop-color="#FFF4D6"/>
     </linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#A6E1FA"/>
@@ -22,6 +22,23 @@
       <stop offset="0" stop-color="#E2E8F0"/>
       <stop offset="1" stop-color="#CBD5E1"/>
     </linearGradient>
+    <linearGradient id="hall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#FFF4D6"/>
+    </linearGradient>
+    <!-- pessoa a andar, vista de costas (camisola herda a cor do use) -->
+    <g id="walker">
+      <ellipse cx="0" cy="2" rx="30" ry="6" fill="#001C55" opacity="0.18"/>
+      <rect x="-17" y="-62" width="14" height="60" rx="6" fill="#001C55"/>
+      <rect x="3" y="-60" width="14" height="54" rx="6" fill="#001C55"/>
+      <rect x="-28" y="-130" width="56" height="78" rx="22"/>
+      <rect x="-36" y="-124" width="14" height="56" rx="7" transform="rotate(10 -29 -124)"/>
+      <rect x="22" y="-124" width="14" height="56" rx="7" transform="rotate(-10 29 -124)"/>
+      <rect x="-7" y="-142" width="14" height="14" fill="#C68B5E"/>
+      <circle cy="-156" r="21" fill="#3B2A20"/>
+      <ellipse cx="-20" cy="-152" rx="4" ry="6" fill="#C68B5E"/>
+      <ellipse cx="20" cy="-152" rx="4" ry="6" fill="#C68B5E"/>
+    </g>
     <g id="win">
       <rect width="96" height="74" rx="4" fill="url(#glass)"/>
       <path d="M8 66 L60 8 L80 8 L28 66 Z" fill="#FFFFFF" opacity="0.28"/>
@@ -39,8 +56,9 @@
 
   <!-- céu -->
   <rect width="1600" height="900" fill="url(#sky)"/>
-  <circle cx="1360" cy="130" r="64" fill="#FFF4D6"/>
-  <circle cx="1360" cy="130" r="96" fill="#FFF4D6" opacity="0.35"/>
+  <circle cx="1460" cy="160" r="150" fill="#FDE68A" opacity="0.25"/>
+  <circle cx="1460" cy="160" r="96" fill="#FFF4D6" opacity="0.5"/>
+  <circle cx="1460" cy="160" r="62" fill="#FFF1C2"/>
   <g fill="#FFFFFF" opacity="0.9">
     <ellipse cx="260" cy="120" rx="110" ry="30"/>
     <ellipse cx="320" cy="98" rx="70" ry="34"/>
@@ -49,7 +67,7 @@
   </g>
 
   <!-- edifícios ao fundo -->
-  <g fill="#9CC3DD" opacity="0.7">
+  <g fill="#C7B8C8" opacity="0.55">
     <rect x="60" y="300" width="180" height="340"/>
     <rect x="1380" y="260" width="170" height="380"/>
     <rect x="1250" y="340" width="120" height="300"/>
@@ -112,15 +130,20 @@
   <!-- pala da entrada -->
   <rect x="660" y="448" width="280" height="18" rx="4" fill="#001C55"/>
   <rect x="660" y="466" width="280" height="8" fill="#001C55" opacity="0.18"/>
-  <!-- portas de vidro -->
+  <!-- portas de vidro abertas: luz quente do átrio -->
   <rect x="722" y="474" width="156" height="166" fill="#0A2472"/>
-  <rect x="728" y="480" width="70" height="160" fill="#A6E1FA" opacity="0.9"/>
-  <rect x="802" y="480" width="70" height="160" fill="#A6E1FA" opacity="0.9"/>
-  <path d="M732 630 L790 490 L798 490 L798 520 L746 630 Z" fill="#FFFFFF" opacity="0.5"/>
-  <path d="M806 630 L864 490 L872 490 L872 520 L820 630 Z" fill="#FFFFFF" opacity="0.5"/>
-  <rect x="788" y="540" width="6" height="40" rx="3" fill="#001C55"/>
-  <rect x="806" y="540" width="6" height="40" rx="3" fill="#001C55"/>
+  <rect x="728" y="480" width="144" height="160" fill="url(#hall)"/>
+  <rect x="760" y="560" width="80" height="44" rx="4" fill="#0E6BA8"/>
+  <rect x="754" y="552" width="92" height="10" rx="3" fill="#D9B48F"/>
+  <rect x="788" y="500" width="24" height="12" rx="6" fill="#F28C6B" opacity="0.8"/>
+  <rect x="728" y="620" width="144" height="20" fill="#E2E8F0" opacity="0.8"/>
+  <rect x="728" y="480" width="26" height="160" fill="#A6E1FA" opacity="0.9"/>
+  <rect x="846" y="480" width="26" height="160" fill="#A6E1FA" opacity="0.9"/>
+  <rect x="744" y="540" width="6" height="40" rx="3" fill="#001C55"/>
+  <rect x="850" y="540" width="6" height="40" rx="3" fill="#001C55"/>
+  <path d="M728 640 L872 640 L940 700 L660 700 Z" fill="#FDE68A" opacity="0.35"/>
 
+  <g fill="#FDE68A" opacity="0.1"><rect x="300" y="210" width="400" height="430"/><rect x="900" y="250" width="420" height="390"/></g>
   <!-- base / passeio frente ao edifício -->
   <rect x="280" y="636" width="1060" height="16" fill="#CBD5E1"/>
   <!-- caminho -->
@@ -151,8 +174,8 @@
     <rect x="626" y="560" width="6" height="92"/>
     <rect x="968" y="560" width="6" height="92"/>
   </g>
-  <circle cx="629" cy="556" r="12" fill="#FFF4D6"/>
-  <circle cx="971" cy="556" r="12" fill="#FFF4D6"/>
+  <circle cx="629" cy="556" r="12" fill="#E2E8F0"/>
+  <circle cx="971" cy="556" r="12" fill="#E2E8F0"/>
 
   <!-- bicicletas estacionadas (direita) -->
   <g stroke="#0E6BA8" stroke-width="5" fill="none">
@@ -163,4 +186,10 @@
     <circle cx="1230" cy="694" r="22"/><circle cx="1290" cy="694" r="22"/>
     <path d="M1230 694 L1255 664 L1290 694 M1255 664 L1275 664"/>
   </g>
+
+  <!-- pessoas a entrar -->
+  <g fill="#0E6BA8"><use href="#walker" transform="translate(782 648) scale(0.5)"/></g>
+  <g fill="#F28C6B"><use href="#walker" transform="translate(842 688) scale(0.62)"/></g>
+  <rect x="829" y="612" width="26" height="30" rx="8" fill="#0A2472"/>
+  <g fill="#86EFAC"><use href="#walker" transform="translate(740 740) scale(0.76)"/></g>
 </svg>

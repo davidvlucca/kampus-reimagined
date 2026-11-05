@@ -55,7 +55,7 @@ async function openTour3D(page: Page) {
 
 test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende a seguinte e Back to map volta", async ({ page }) => {
   await openTour3D(page);
-  await expect(page.getByRole("region", { name: "Guide" })).toContainText("Welcome to Kampus!");
+  await expect(page.getByRole("region", { name: "Guide" })).toContainText("Hi, I'm Marta");
   // A Entrance só conta como vista quando a câmara lá chega (ver o teste do Back to map a meio do voo).
   await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
 
@@ -68,9 +68,9 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   await settled(page);
   await expectAccessible(page);
 
-  await page.getByRole("button", { name: "Go to stop 3: UX/UI room" }).click();
+  await page.getByRole("button", { name: "Go to stop 3: UX/UI classroom" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "room");
-  await expect(page.getByRole("region", { name: "Guide" })).toContainText("UX/UI room");
+  await expect(page.getByRole("region", { name: "Guide" })).toContainText("These walls hold your research");
   await expect(root(page)).toHaveAttribute("data-next-room", "data");
   // Dentro de uma sala acende a própria sala, não a seguinte.
   await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "ux-ui");
@@ -81,15 +81,15 @@ test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende
   await expectAccessible(page);
 
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("STOP 4/7")).toBeVisible();
-  await expect(root(page)).toHaveAttribute("data-next-room", "kitchen");
+  await expect(page.getByText("STOP 4/8")).toBeVisible();
+  await expect(root(page)).toHaveAttribute("data-next-room", "open-space");
 
   await expect(root(page)).toHaveAttribute("data-tour-interior", "data", FLIGHT);
 
   await page.getByRole("button", { name: "Back to map" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
   await expect(root(page)).toHaveAttribute("data-tour-interior", "");
-  await expect(page.getByRole("button", { name: "Continue to Kitchen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue to Open space and phone booths" })).toBeVisible();
 });
 
 test("teclado: Esc numa sala volta ao mapa sem perder o foco; Esc no mapa sai sem marcar a visita como saltada", async ({ page }) => {
@@ -133,7 +133,7 @@ test("sem WebGL: a visita 2D, sem descarregar o 3D e sem aviso", async ({ page }
   await loginAs(page, "student");
   await page.goto("/app/tour");
   await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
-  await expect(page.getByText("STOP 1/7")).toBeVisible();
+  await expect(page.getByText("STOP 1/8")).toBeVisible();
   await expect(page.getByRole("group", { name: "Tour view" })).toHaveCount(0);
   await expect(page.getByText("Showing the 2D tour")).toHaveCount(0);
   expect(chunks).toEqual([]);
@@ -149,7 +149,7 @@ test("se o WebGL se perder a meio, a visita continua em 2D com um aviso", async 
   });
   await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
   await expect(page.getByText("Showing the 2D tour").first()).toBeVisible();
-  await expect(page.getByText("STOP 1/7")).toBeVisible();
+  await expect(page.getByText("STOP 1/8")).toBeVisible();
 });
 
 test("trocar 3D → 2D → 3D: sem aviso e o botão continua lá", async ({ page }) => {
@@ -192,7 +192,7 @@ test("com 2D guardado, o 3D não é descarregado", async ({ page }) => {
   await loginAs(page, "student");
   await page.goto("/app/tour");
   await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
-  await expect(page.getByText("STOP 1/7")).toBeVisible();
+  await expect(page.getByText("STOP 1/8")).toBeVisible();
   expect(chunks).toEqual([]);
 });
 
@@ -207,7 +207,7 @@ test.describe("com reduced motion", () => {
     await loginAs(page, "student");
     await page.goto("/app/tour");
     await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
-    await expect(page.getByText("STOP 1/7")).toBeVisible();
+    await expect(page.getByText("STOP 1/8")).toBeVisible();
     expect(chunks).toEqual([]);
     await page.getByRole("button", { name: "3D tour" }).click();
     await expect(root(page)).toHaveAttribute("data-tour-mode", "3d");
@@ -227,7 +227,7 @@ test("no mapa, clicar numa sala no 3D entra nela", async ({ page }) => {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await expect.poll(() => page.evaluate(() => document.body.style.cursor)).toBe("pointer");
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.getByText("STOP 3/7")).toBeVisible();
+  await expect(page.getByText("STOP 3/8")).toBeVisible();
   await expect(root(page)).toHaveAttribute("data-tour-interior", "ux-ui", FLIGHT);
   // Dentro da sala, a ilustração tapa o 3D: o cursor da sala não fica preso.
   await page.mouse.move(box.x + box.width / 2 + 5, box.y + box.height / 2 + 5);
@@ -251,7 +251,7 @@ test("o Next numa sala sai para o mapa e volta a entrar na seguinte; dentro, a i
     });
   });
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(page.getByText("STOP 2/8")).toBeVisible();
   await expect(root(page)).toHaveAttribute("data-tour-interior", "web-dev", FLIGHT);
   const log = await page.evaluate(() => (window as unknown as { interiorLog: [string, number][] }).interiorLog);
   expect(log.map(([room]) => room)).toEqual(["", "web-dev"]);
@@ -263,22 +263,25 @@ test("Back to map a meio do voo não dá a sala seguinte como vista", async ({ p
   await openTour3D(page);
   await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(page.getByText("STOP 2/8")).toBeVisible();
   // A câmara ainda vai a caminho da Web Dev (sobe ao mapa e mergulha): não se entrou nela.
   await expect(root(page)).toHaveAttribute("data-tour-interior", "");
   await page.getByRole("button", { name: "Back to map" }).click();
   await expect(root(page)).toHaveAttribute("data-tour-view", "map");
   await expect(root(page)).toHaveAttribute("data-next-room", "web-dev");
-  await expect(page.getByRole("button", { name: "Continue to Web Dev room" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue to Web Dev classroom" })).toBeVisible();
 });
 
 test("as etiquetas das salas no mapa têm o nome das paragens", async ({ page }) => {
   await openTour3D(page);
   await page.getByRole("button", { name: "Back to map" }).click();
   const labels = await page.locator("[data-lit-room] span").allTextContents();
-  const names = TOUR_STOPS.map((s) => s.name.replace(/ room$/, ""));
-  for (const label of labels) expect(names).toContain(label);
-  expect(labels).toContain("Data Analytics");
+  // A etiqueta é o início do nome da paragem ("Web Dev classroom" → "Web Dev").
+  for (const label of labels) expect(TOUR_STOPS.some((s) => s.name.startsWith(label)), label).toBe(true);
+  expect(labels).toContain("Data");
+  // O terraço não se vê no mapa, mas tem etiqueta (por cima das escadas); a reunião e o núcleo não são paragens.
+  expect(labels).toContain("Rooftop terrace");
+  expect(labels).toHaveLength(TOUR_STOPS.length - 1);
 });
 
 for (const viewport of [
@@ -311,10 +314,10 @@ for (const viewport of [
 test("o foco não cai no <body>: Back até à primeira paragem, ou uma pergunta quando a paragem muda", async ({ page }) => {
   await openTour3D(page);
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(page.getByText("STOP 2/8")).toBeVisible();
   await page.getByRole("button", { name: "Back", exact: true }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText("STOP 1/7")).toBeVisible();
+  await expect(page.getByText("STOP 1/8")).toBeVisible();
   // O Back ficou desativado: o foco passa para o Next.
   await expect(page.getByRole("button", { name: "Next" })).toBeFocused();
 
@@ -323,7 +326,7 @@ test("o foco não cai no <body>: Back até à primeira paragem, ou uma pergunta 
   const question = page.getByRole("group", { name: /Ask/ }).getByRole("button").first();
   await question.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(page.getByText("STOP 2/8")).toBeVisible();
   await expect(page.getByRole("region", { name: "Guide" })).toBeFocused();
 });
 
@@ -343,3 +346,55 @@ test("as etiquetas do mapa seguem a câmara depois de rodar o ecrã com ela para
   await page.setViewportSize({ width: 844, height: 390 });
   await expect.poll(onScreen, FLIGHT).toBe(true);
 });
+
+test("o terraço: a paragem 7 sobe ao rooftop, mostra a ilustração e, no mapa, a seguinte é a despedida", async ({ page }) => {
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Go to stop 7: Rooftop terrace" }).click();
+  await expect(page.getByText("STOP 7/8")).toBeVisible();
+  await expect(page.locator("[data-lit-room]")).toHaveAttribute("data-lit-room", "rooftop");
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "rooftop", FLIGHT);
+  await expect(page.getByRole("img", { name: TOUR_STOPS[6]!.sceneAlt })).toBeVisible();
+  await settled(page);
+  await expectAccessible(page);
+
+  await page.getByRole("button", { name: "Back to map" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+  // A despedida é na vista geral: acende a Entrance, onde a visita acaba.
+  await expect(root(page)).toHaveAttribute("data-next-room", "entrance");
+  await expect(page.getByRole("button", { name: "Continue to See you on day 1" })).toBeVisible();
+});
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+  { width: 2560, height: 1440 },
+]) {
+  test.describe(`num ecrã grande, ${viewport.width}×${viewport.height}`, () => {
+    test.use({ viewport });
+
+    test("o guia fica pequeno e encostado ao diálogo; o cenário 2D enche o ecrã", async ({ page }) => {
+      await openTour3D(page);
+      const portrait = page.locator("[data-guide-portrait]");
+      const card = page.getByRole("region", { name: "Guide" });
+      await expect(portrait).toBeVisible();
+      const p = (await portrait.boundingBox())!;
+      const c = (await card.boundingBox())!;
+      // No máximo ~360 px de altura, seja qual for o ecrã (crescia com ele e tapava o mapa).
+      expect(p.height).toBeLessThanOrEqual(370);
+      // Encostado à esquerda do cartão: sobrepõe-se pouco e não fica longe dele.
+      expect(p.x + p.width).toBeGreaterThan(c.x);
+      expect(p.x + p.width - c.x).toBeLessThan(p.width * 0.4);
+      expect(p.x).toBeLessThan(c.x);
+
+      await page.getByRole("button", { name: "2D tour" }).click();
+      await expect(root(page)).toHaveAttribute("data-tour-mode", "2d");
+      const scene = page.getByRole("img", { name: TOUR_STOPS[0]!.sceneAlt });
+      await expect(scene).toBeVisible();
+      const s = (await scene.boundingBox())!;
+      // A ilustração ocupa o ecrã todo, sem faixas vazias.
+      expect(s.width).toBeGreaterThanOrEqual(viewport.width - 1);
+      expect(s.height).toBeGreaterThanOrEqual(viewport.height - 1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    });
+  });
+}

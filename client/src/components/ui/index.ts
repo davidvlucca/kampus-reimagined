@@ -8,6 +8,7 @@ export { ConfirmDialog, Dialog } from "./Dialog.tsx";
 export { Input, Select, Textarea } from "./Field.tsx";
 export { IconButton } from "./IconButton.tsx";
 export { Logo } from "./Logo.tsx";
+export { Menu, type MenuItem } from "./Menu.tsx";
 export { PageHeader } from "./PageHeader.tsx";
 export { ProgressBar } from "./ProgressBar.tsx";
 export { FullPageSpinner, Spinner } from "./Spinner.tsx";

@@ -1,5 +1,5 @@
 import { Canvas, type GLProps } from "@react-three/fiber";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { WebGLRenderer } from "three";
 import { CameraRig, type Insets } from "./CameraRig.tsx";
 import { CampusModel } from "./CampusModel.tsx";
@@ -7,6 +7,7 @@ import { highlightRoom, roomOfStop, type RoomId } from "./layout.ts";
 import { COLORS, disposeShared } from "./materials.ts";
 import { LabelProjector, RoomLabels } from "./RoomLabels.tsx";
 import { FURNITURE } from "./rooms/index.tsx";
+import { RoofLevel } from "./rooms/Rooftop.tsx";
 
 export interface CampusMapProps {
   /** Paragem atual. */
@@ -38,6 +39,8 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onAr
   // a própria sala, sem pino: acender a seguinte parecia que o clique tinha ido parar a outra sala.
   const highlight = view === "room" ? cameraRoom : highlightRoom(nextIndex);
   const labels = useRef<(HTMLSpanElement | null)[]>([]);
+  // Com o terraço por cima, as etiquetas das salas lá de baixo ficavam a flutuar em cima dele.
+  const [roof, setRoof] = useState(false);
   // Ao desmontar, o R3F força a perda do contexto (meio segundo depois). Isso não é uma
   // falha: sem esta guarda aparecia o aviso "Showing the 2D tour" ao sair da visita.
   const alive = useRef(true);
@@ -93,10 +96,11 @@ function CampusMap({ index, view, nextIndex, insets, instant, onSelectStop, onAr
         <hemisphereLight args={["#FFFFFF", "#7FA6D6", 2.2]} />
         <directionalLight position={[6, 14, 8]} intensity={1.4} />
         <CampusModel highlight={highlight} focus={cameraRoom} pin={view === "map"} animate={!instant} onSelectStop={onSelectStop} furniture={FURNITURE} />
+        <RoofLevel shown={cameraRoom === "rooftop"} animate={!instant} onPresent={setRoof} />
         <CameraRig room={cameraRoom} insets={insets} instant={instant} onSettled={onArrive} />
         <LabelProjector labels={labels} />
       </Canvas>
-      <RoomLabels labels={labels} show={view === "map"} highlight={highlight} />
+      <RoomLabels labels={labels} show={view === "map" && !roof} highlight={highlight} />
     </div>
   );
 }

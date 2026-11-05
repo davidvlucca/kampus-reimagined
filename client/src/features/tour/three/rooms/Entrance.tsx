@@ -1,94 +1,62 @@
-import { Block, Cylinder, Shadow } from "../CampusModel.tsx";
+import { Block, Shadow } from "../CampusModel.tsx";
 import { useMat } from "../dim.ts";
 import { COLORS, CYLINDER } from "../materials.ts";
+import { AtPlan, Boxes, CORAL, DARK, F, Plant, WOOD, type Box } from "./parts.tsx";
 
-// Móveis da sala "entrance". Coordenadas locais: origem no centro da sala, chão em y = 0.08.
-// O corredor do meio (|x| < 0.9) fica livre: é o caminho da porta da rua até à porta do corredor.
+// Entrance e receção (60 m²), em coordenadas da planta: x 0–7,5, y 20–28. A porta principal fica
+// na fachada oeste (y 24,45–25,75), virada para a rua pedonal; o caminho até ao corredor fica livre.
 
-const F = 0.08;
-const WOOD = "#D9B48F";
-const STEEL = "#94A3B8";
-const DARK = "#1E293B";
-const LEAF = "#86EFAC";
-const CORAL = "#F28C6B";
-
-/** Planta num vaso: vaso e duas camadas de folhas. */
-function Plant({ x, z }: { x: number; z: number }) {
-  return (
-    <>
-      <Cylinder p={[x, F + 0.17, z]} r={0.17} h={0.34} color={COLORS.indigo} />
-      <Cylinder p={[x, F + 0.55, z]} r={0.3} h={0.42} color={LEAF} />
-      <Cylinder p={[x, F + 0.91, z]} r={0.19} h={0.3} color={LEAF} />
-    </>
-  );
+/** Roda de bicicleta: um cilindro fino deitado de lado (eixo ao longo de x local). */
+function Wheel({ x }: { x: number }) {
+  return <mesh geometry={CYLINDER} material={useMat(DARK)} position={[x, 0.26, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[0.44, 0.04, 0.44]} />;
 }
 
-/** Roda de bicicleta: um cilindro fino deitado de lado (eixo ao longo de z). */
-function Wheel({ x, z }: { x: number; z: number }) {
-  return <mesh geometry={CYLINDER} material={useMat(DARK)} position={[x, 0.22, z]} rotation={[Math.PI / 2, 0, 0]} scale={[0.44, 0.04, 0.44]} />;
-}
-
-/** Bicicleta encostada à fachada, ao longo de x. Fica na base da maqueta (y = 0), fora da sala. */
-function Bike({ x, z, color }: { x: number; z: number; color: string }) {
-  const rear = x - 0.3;
-  const front = x + 0.3;
+/** Bicicleta estacionada na rua, ao comprido da fachada (norte-sul). Fica fora do edifício. */
+function Bike({ px, py, color }: { px: number; py: number; color: string }) {
   return (
-    <>
-      <Wheel x={rear} z={z} />
-      <Wheel x={front} z={z} />
+    <group position={[px, 0.04, py]} rotation={[0, Math.PI / 2, 0]}>
+      <Wheel x={-0.3} />
+      <Wheel x={0.3} />
       {/* Quadro: tubo de cima, tubo do selim e garfo */}
-      <Block p={[x + 0.05, 0.5, z]} s={[0.46, 0.05, 0.05]} color={color} />
-      <Block p={[rear + 0.12, 0.42, z]} s={[0.05, 0.4, 0.05]} color={color} />
-      <Block p={[front - 0.02, 0.44, z]} s={[0.05, 0.44, 0.05]} color={color} />
-      <Block p={[front - 0.02, 0.67, z]} s={[0.04, 0.04, 0.3]} color={DARK} />
-    </>
+      <Block p={[0.05, 0.54, 0]} s={[0.46, 0.05, 0.05]} color={color} />
+      <Block p={[-0.18, 0.46, 0]} s={[0.05, 0.4, 0.05]} color={color} />
+      <Block p={[0.28, 0.48, 0]} s={[0.05, 0.44, 0.05]} color={color} />
+      <Block p={[0.28, 0.71, 0]} s={[0.04, 0.04, 0.3]} color={DARK} />
+    </group>
   );
 }
 
-/** Torniquete de um lado do corredor: dois pilaretes com uma barra entre eles. */
-function Gate({ side }: { side: 1 | -1 }) {
-  const z = 1.25;
-  return (
-    <>
-      <Block p={[side * 1.02, F + 0.45, z]} s={[0.16, 0.9, 0.4]} color={COLORS.navy} />
-      <Block p={[side * 1.78, F + 0.45, z]} s={[0.16, 0.9, 0.4]} color={COLORS.navy} />
-      <Block p={[side * 1.4, F + 0.72, z]} s={[0.6, 0.07, 0.07]} color={STEEL} />
-    </>
-  );
-}
+// Cacifos ao longo da parede oeste, a norte da porta: 2 alturas × 5.
+const LOCKERS: Box[] = [0, 1, 2, 3, 4].flatMap((i) => [0.25, 0.75].map((y): Box => [[0.28, F + y, 20.6 + i * 0.62], [0.42, 0.46, 0.58]]));
 
 export function EntranceRoom() {
   return (
-    <>
-      {/* Receção em L encostada à parede oeste */}
-      <Shadow x={-1.6} z={-0.3} w={0.8} d={1.9} />
-      <Block p={[-1.6, F + 0.43, -0.25]} s={[0.5, 0.86, 1.6]} color={COLORS.surface} />
-      <Block p={[-2.135, F + 0.43, -1.3]} s={[1.57, 0.86, 0.5]} color={COLORS.surface} />
-      <Block p={[-1.58, F + 0.88, -0.22]} s={[0.56, 0.04, 1.6]} color={COLORS.indigo} />
-      <Block p={[-2.12, F + 0.88, -1.3]} s={[1.6, 0.04, 0.56]} color={COLORS.indigo} />
-      {/* Monitor virado para quem está atrás do balcão */}
-      <Cylinder p={[-1.66, F + 0.97, -0.3]} r={0.03} h={0.14} color={DARK} />
-      <Block p={[-1.66, F + 1.2, -0.3]} s={[0.04, 0.34, 0.6]} color={COLORS.navy} />
-      {/* Cadeira da receção */}
-      <Block p={[-2.35, F + 0.23, -0.3]} s={[0.42, 0.46, 0.42]} color={COLORS.blue} />
-      <Block p={[-2.6, F + 0.68, -0.3]} s={[0.06, 0.44, 0.42]} color={COLORS.blue} />
+    <AtPlan room="entrance">
+      {/* Balcão da receção em L, com o vidro azul-céu por cima */}
+      <Shadow x={5} z={22.2} w={3} d={2.2} />
+      <Block p={[4.95, F + 0.45, 21.6]} s={[2.7, 0.9, 0.6]} color={COLORS.indigo} />
+      <Block p={[6.0, F + 0.45, 22.55]} s={[0.6, 0.9, 1.3]} color={COLORS.indigo} />
+      <Block p={[4.85, F + 0.92, 21.42]} s={[2.3, 0.04, 0.14]} color={COLORS.sky} />
+      {/* Monitor e cadeira de quem está atrás do balcão */}
+      <Block p={[4.9, F + 1.1, 21.75]} s={[0.55, 0.34, 0.04]} color={COLORS.navy} />
+      <Block p={[4.9, F + 0.23, 21.0]} s={[0.42, 0.46, 0.42]} color={COLORS.blue} />
 
-      {/* Torniquetes junto à porta da rua, um de cada lado do corredor */}
-      <Gate side={-1} />
-      <Gate side={1} />
+      <Boxes items={LOCKERS} color={COLORS.blue} />
       {/* Tapete da porta */}
-      <Block p={[0, F + 0.005, 2.0]} s={[1.0, 0.01, 0.5]} color={COLORS.blue} />
+      <Block p={[0.75, F + 0.005, 25.1]} s={[0.9, 0.01, 1.1]} color={COLORS.blue} />
 
-      {/* Banco corrido na parede este */}
-      <Shadow x={2.62} z={-0.4} w={0.7} d={1.8} />
-      <Block p={[2.7, F + 0.2, -0.4]} s={[0.34, 0.4, 1.4]} color={COLORS.navy} />
-      <Block p={[2.7, F + 0.43, -0.4]} s={[0.42, 0.06, 1.6]} color={WOOD} />
+      {/* Banco de madeira ao longo da fachada sul */}
+      <Shadow x={2.7} z={27.5} w={3.6} d={0.7} />
+      <Block p={[2.7, F + 0.2, 27.5]} s={[3.2, 0.4, 0.4]} color={COLORS.navy} />
+      <Block p={[2.7, F + 0.43, 27.5]} s={[3.4, 0.06, 0.5]} color={WOOD} />
 
-      <Plant x={2.55} z={-2.05} />
+      <Plant x={0.6} z={27.3} size={1.2} />
+      <Plant x={6.9} z={27.35} size={1.2} />
+      <Plant x={5.1} z={27.4} />
 
-      {/* Bicicletas lá fora, à direita da porta da rua */}
-      <Bike x={1.65} z={2.72} color={COLORS.blue} />
-      <Bike x={2.05} z={2.96} color={CORAL} />
-    </>
+      {/* Bicicletas lá fora, na rua pedonal */}
+      <Bike px={-1.4} py={22.4} color={COLORS.blue} />
+      <Bike px={-1.0} py={23.2} color={CORAL} />
+    </AtPlan>
   );
 }

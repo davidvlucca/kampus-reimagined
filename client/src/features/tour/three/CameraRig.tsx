@@ -1,7 +1,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import type { PerspectiveCamera } from "three";
-import { PLAN, ROOM_D, ROOM_W, roomById, WALL_H, type RoomId } from "./layout.ts";
+import { PLAN, ROOF_Y, roomById, WALL_H, type RoomId } from "./layout.ts";
 
 const FLY_S = 0.9;
 /** O mergulho para dentro de uma sala é mais lento: acaba devagar, enquanto a ilustração aparece. */
@@ -18,8 +18,10 @@ export interface Insets {
 
 interface Pose {
   tx: number;
+  /** Altura do alvo: 0 no rés-do-chão, a do terraço no rooftop (a câmara sobe com ele). */
+  ty: number;
   tz: number;
-  /** 0 = câmara a sul a olhar para norte; -90° = a oeste a olhar para este (telemóvel ao alto). */
+  /** 0 = câmara a sul a olhar para norte (telemóvel ao alto); -90° = a oeste a olhar para este. */
   azimuth: number;
   elevation: number;
   distance: number;
@@ -34,18 +36,18 @@ function poseFor(room: RoomId | null, width: number, height: number, insets: Ins
   const bandW = Math.max(width - insets.left - insets.right, width * 0.3);
   const bandH = Math.max(height - insets.top - insets.bottom, height * 0.3);
   // A orientação vem do ecrã (não do canvas, que muda de altura entre o mapa e a sala):
-  // assim a planta não roda a meio da visita.
+  // assim a planta não roda a meio da visita. O edifício é comprido de norte a sul: ao alto vê-se
+  // de sul (o rio à frente); deitado, de oeste (a rua e a porta principal à frente, o rio à direita).
   const portrait = window.innerHeight > window.innerWidth * 1.1;
-  const azimuth = portrait ? -90 * DEG : 0;
+  const azimuth = portrait ? 0 : -90 * DEG;
   const shiftX = width / 2 - (insets.left + bandW / 2);
   const shiftY = height / 2 - (insets.top + bandH / 2);
 
-  const target = room ? roomById(room) : { x: 0, z: 0 };
-  const w = room ? ROOM_W : PLAN.width;
-  const d = room ? ROOM_D : PLAN.depth;
-  // Medidas como a câmara as vê: ao alto, a planta está rodada 90°.
-  const across = portrait ? d : w;
-  const along = portrait ? w : d;
+  const target = room ? roomById(room) : { x: 0, z: 0, w: PLAN.width, d: PLAN.depth };
+  const ty = room === "rooftop" ? ROOF_Y : 0;
+  // Medidas como a câmara as vê: deitado, a planta está rodada 90°.
+  const across = portrait ? target.w : target.d;
+  const along = portrait ? target.d : target.w;
   // Dentro de uma sala a câmara desce mais rente (como quem entra pela porta).
   const elevation = (room ? 44 : 52) * DEG;
 
@@ -56,13 +58,14 @@ function poseFor(room: RoomId | null, width: number, height: number, insets: Ins
   const margin = room ? 0.5 : 1.14;
   const distance = Math.max(across / 2 / tanH, tall / 2 / tanV) * margin + (along / 2) * Math.cos(elevation);
 
-  return { tx: target.x, tz: target.z, azimuth, elevation, distance, shiftX, shiftY };
+  return { tx: target.x, ty, tz: target.z, azimuth, elevation, distance, shiftX, shiftY };
 }
 
 function lerpPose(a: Pose, b: Pose, k: number): Pose {
   const l = (x: number, y: number) => x + (y - x) * k;
   return {
     tx: l(a.tx, b.tx),
+    ty: l(a.ty, b.ty),
     tz: l(a.tz, b.tz),
     azimuth: l(a.azimuth, b.azimuth),
     elevation: l(a.elevation, b.elevation),
@@ -74,8 +77,8 @@ function lerpPose(a: Pose, b: Pose, k: number): Pose {
 
 function applyPose(camera: PerspectiveCamera, p: Pose, width: number, height: number) {
   const ground = p.distance * Math.cos(p.elevation);
-  camera.position.set(p.tx + ground * Math.sin(p.azimuth), p.distance * Math.sin(p.elevation), p.tz + ground * Math.cos(p.azimuth));
-  camera.lookAt(p.tx, 0, p.tz);
+  camera.position.set(p.tx + ground * Math.sin(p.azimuth), p.ty + p.distance * Math.sin(p.elevation), p.tz + ground * Math.cos(p.azimuth));
+  camera.lookAt(p.tx, p.ty, p.tz);
   camera.setViewOffset(width, height, p.shiftX, p.shiftY, width, height);
   camera.updateProjectionMatrix();
 }

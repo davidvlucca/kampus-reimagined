@@ -138,7 +138,7 @@ New, small ideas: a **Week 1 progress** bar on the student dashboard, **Copy ema
 
 ## Stack
 
-- **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react, three.js with React Three Fiber (only on the tour page, loaded on demand). Fonts served locally: Poppins (headings), Inter (text), VT323 (the pixel touch, used only in the timer, the tour counter and the 404).
+- **Client:** Vite, React 19, TypeScript (strict), Tailwind CSS v4, React Router, TanStack Query, Radix (dialogs, toasts), lucide-react, three.js with React Three Fiber (only on the tour page, loaded on demand). Fonts served locally: Poppins (headings and numbers) and Inter (text).
 - **Server:** Node, Hono, Drizzle ORM, Postgres (PGlite locally, Neon in production), argon2id (hash-wasm), Zod. Deployed on Vercel.
 - **Shared:** Zod schemas and types used by both sides, the tour content and the deadline logic.
 - **Quality:** Vitest, ESLint, Playwright (end-to-end tests, screenshots and the video), axe for accessibility. GitHub Actions runs lint, types, unit and end-to-end tests on every push.

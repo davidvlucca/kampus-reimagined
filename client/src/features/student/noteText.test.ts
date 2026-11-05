@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { excerpt, noteChanges } from "./noteText.ts";
+import { excerpt, matchesNote, noteChanges } from "./noteText.ts";
 
 const seed = { title: "Day 1", body: "Doors open at 8:30." };
 
@@ -32,5 +32,23 @@ describe("excerpt", () => {
     expect(excerpt("## Day 1\n1. Doors open\n2) Lunch\n* [x] Laptop\n> Quote")).toBe("Day 1 Doors open Lunch Laptop Quote");
     // A meio da linha fica como está.
     expect(excerpt("Room 2-14 is #3 on the list")).toBe("Room 2-14 is #3 on the list");
+  });
+});
+
+describe("matchesNote", () => {
+  const note = { title: "Questions for the TA", body: "Where do we hand in the daily exercises? Ask Inês." };
+
+  it("procura no título e no corpo, sem contar maiúsculas", () => {
+    expect(matchesNote(note, "questions")).toBe(true);
+    expect(matchesNote(note, "DAILY")).toBe(true);
+  });
+
+  it("todas as palavras têm de aparecer, por qualquer ordem", () => {
+    expect(matchesNote(note, "exercises ta")).toBe(true);
+    expect(matchesNote(note, "exercises lunch")).toBe(false);
+  });
+
+  it("ignora os acentos e os espaços a mais", () => {
+    expect(matchesNote(note, "  ines  ")).toBe(true);
   });
 });

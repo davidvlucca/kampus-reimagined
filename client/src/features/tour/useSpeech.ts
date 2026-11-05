@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pickVoice } from "./pickVoice.ts";
 
 const supported = typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 
-/** Leitura em voz alta com a Web Speech API (voz en-US quando existir). */
+/** Leitura em voz alta com a Web Speech API, com a voz inglesa mais natural que o sistema tiver. */
 export function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
   // Só a fala atual pode mudar o estado (o cancel de uma antiga dispara onend mais tarde).
@@ -19,8 +20,7 @@ export function useSpeech() {
     if (!supported) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find((v) => v.lang === "en-US") ?? voices.find((v) => v.lang.startsWith("en"));
+    const voice = pickVoice(window.speechSynthesis.getVoices());
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? "en-US";
     const end = () => {
@@ -36,13 +36,13 @@ export function useSpeech() {
     window.speechSynthesis.speak(utterance);
   }, []);
 
+  // O Chrome carrega as vozes depois do arranque: pedi-las cedo deixa a lista pronta para o primeiro clique.
   // Ao sair da visita, cala-se.
-  useEffect(
-    () => () => {
-      if (supported) window.speechSynthesis.cancel();
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!supported) return;
+    window.speechSynthesis.getVoices();
+    return () => window.speechSynthesis.cancel();
+  }, []);
 
   return { supported, speaking, speak, stop };
 }
