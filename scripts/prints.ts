@@ -32,7 +32,7 @@ const PUBLIC: Shot[] = [
 const STUDENT: Shot[] = [
   { name: "visita-virtual", path: "/app/tour", waitFor: "Welcome to Kampus" },
   { name: "dashboard-aluno", path: "/app", waitFor: "Hi Diana!" },
-  { name: "tarefas", path: "/app/tasks", waitFor: "Read the welcome guide" },
+  { name: "tarefas", path: "/app/tasks", waitFor: "Sign the learning agreement" },
   {
     name: "notas",
     // Desktop: lista + editor da primeira nota. Mobile: a lista.

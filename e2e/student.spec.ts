@@ -48,13 +48,17 @@ test("marcar uma tarefa como feita fica guardado depois de recarregar (o bug de 
   await expect(task).not.toBeChecked();
   await expectAccessible(page);
 
-  // click() e não check(): a caixa muda de forma otimista logo a seguir ao clique.
+  // click() e não check(): a caixa muda de forma otimista e a linha passa logo para "Done" (fechado).
   await task.click();
-  await expect(task).toBeChecked();
   // O Radix duplica o texto do toast para o leitor de ecrã: basta o primeiro.
   await expect(page.getByText("Task done. Nice!").first()).toBeVisible();
+  const showDone = page.getByRole("button", { name: /^Done/ });
+  await expect(showDone).toHaveAttribute("aria-expanded", "false");
+  await showDone.click();
+  await expect(task).toBeChecked();
 
   await page.reload();
+  await page.getByRole("button", { name: /^Done/ }).click();
   await expect(page.getByRole("checkbox", { name: /Join the cohort chat and say hi/ })).toBeChecked();
 });
 
