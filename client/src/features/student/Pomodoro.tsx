@@ -9,8 +9,6 @@ type Status = "idle" | "running" | "paused";
 const MIN_MINUTES = 1;
 const MAX_MINUTES = 60;
 const MODE_LABEL: Record<Mode, string> = { focus: "Focus", break: "Break" };
-const RADIUS = 88;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function formatClock(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -124,9 +122,6 @@ export function Pomodoro() {
     return () => window.clearInterval(id);
   }, [status, toast]);
 
-  const total = minutes[mode] * 60_000;
-  const progress = total > 0 ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0;
-
   const start = () => {
     targetRef.current = Date.now() + remaining;
     setStatus("running");
@@ -157,29 +152,32 @@ export function Pomodoro() {
   return (
     <Card>
       <CardHeader title="Pomodoro" description="Work in short focused bursts." icon={<Timer aria-hidden />} />
-      <CardBody className="flex flex-col items-center gap-5">
-        {/* Até 13rem, mas nunca mais largo do que o cartão (320px com texto a 200%). */}
-        <div className="relative grid aspect-square w-full max-w-52 place-items-center">
-          <svg viewBox="0 0 200 200" className="absolute inset-0 size-full -rotate-90" aria-hidden>
-            <circle cx="100" cy="100" r={RADIUS} fill="none" strokeWidth="10" className="stroke-line" />
-            <circle
-              cx="100"
-              cy="100"
-              r={RADIUS}
-              fill="none"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={CIRCUMFERENCE}
-              strokeDashoffset={CIRCUMFERENCE * (1 - progress)}
-              className={cn("motion-safe:transition-[stroke-dashoffset] motion-safe:duration-300", isFocus ? "stroke-kampus-blue" : "stroke-success")}
-            />
-          </svg>
-          <div className="relative flex flex-col items-center">
-            <span className={cn("text-sm font-semibold tracking-wide uppercase", isFocus ? "text-kampus-blue" : "text-success")}>{MODE_LABEL[mode]}</span>
+      <CardBody className="flex flex-col gap-5">
+        {/* Sem o anel de antes: o relógio grande chega. Numa coluna estreita (lg) fica centrado;
+            mais largo, o relógio à esquerda e os botões à direita. */}
+        <div className="flex flex-wrap items-center justify-between gap-4 lg:flex-col lg:justify-center">
+          <div className="flex flex-col lg:items-center">
+            <span className={cn("text-xs font-semibold tracking-widest uppercase", isFocus ? "text-kampus-blue" : "text-success")}>{MODE_LABEL[mode]}</span>
             <span className="font-pixel text-[min(4.5rem,20vw)] leading-none text-kampus-navy tabular-nums" aria-label={`${MODE_LABEL[mode]}: ${formatClock(remaining)} left`} role="timer">
               {formatClock(remaining)}
             </span>
             {status === "paused" && <span className="text-xs text-muted">Paused</span>}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            {status === "running" ? (
+              <Button onClick={pause} icon={<Pause aria-hidden className="size-4" />}>
+                Pause
+              </Button>
+            ) : (
+              <Button onClick={start} icon={<Play aria-hidden className="size-4" />}>
+                {status === "paused" ? "Resume" : "Start"}
+              </Button>
+            )}
+            {/* No telemóvel só o ícone (o relógio e os dois botões não cabiam na mesma linha); o nome fica para o leitor de ecrã. */}
+            <Button variant="secondary" onClick={reset} icon={<RotateCcw aria-hidden className="size-4" />} title="Reset" className="max-sm:w-11 max-sm:px-0">
+              <span className="max-sm:sr-only">Reset</span>
+            </Button>
           </div>
         </div>
 
@@ -188,25 +186,10 @@ export function Pomodoro() {
           {announcement}
         </p>
 
-        <div className="flex flex-wrap justify-center gap-2">
-          {status === "running" ? (
-            <Button onClick={pause} icon={<Pause aria-hidden className="size-4" />}>
-              Pause
-            </Button>
-          ) : (
-            <Button onClick={start} icon={<Play aria-hidden className="size-4" />}>
-              {status === "paused" ? "Resume" : "Start"}
-            </Button>
-          )}
-          <Button variant="secondary" onClick={reset} icon={<RotateCcw aria-hidden className="size-4" />}>
-            Reset
-          </Button>
-        </div>
-
         {status === "idle" && (
-          <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
+          <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3">
             {(["focus", "break"] as const).map((which) => (
-              <div key={which} className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface p-3">
+              <div key={which} className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface px-2 py-3">
                 <span className="text-sm font-medium text-kampus-navy">{MODE_LABEL[which]}</span>
                 <div className="flex flex-wrap items-center justify-center gap-1">
                   <IconButton
@@ -220,7 +203,7 @@ export function Pomodoro() {
                     disabled={minutes[which] <= MIN_MINUTES}
                     onClick={() => adjust(which, -1)}
                   />
-                  <span className="w-14 text-center text-sm font-semibold text-text tabular-nums" aria-live="polite">
+                  <span className="w-12 text-center text-sm font-semibold text-text tabular-nums" aria-live="polite">
                     {minutes[which]} min
                   </span>
                   <IconButton

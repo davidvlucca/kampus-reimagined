@@ -241,7 +241,7 @@ Com o par email+IP, um atacante bloqueia-se a si próprio.
 - a 404;
 - o axe (regras WCAG 2.1 A e AA) em todos os ecrãs principais, incluindo o dialog de criar aluno.
 
-Cada teste começa com a demo reposta: a API local passou a aceitar `CRON_SECRET` como na Vercel, e os testes chamam `/api/cron/reset-demo` antes de cada um. Correm um de cada vez porque partilham a base; são 28 testes (14 em cada Chromium), e os 15 da visita 3D correm num projeto à parte (ver 20).
+Cada teste começa com a demo reposta: a API local passou a aceitar `CRON_SECRET` como na Vercel, e os testes chamam `/api/cron/reset-demo` antes de cada um. Correm um de cada vez porque partilham a base; são 30 testes (15 em cada Chromium), e os 15 da visita 3D correm num projeto à parte (ver 20).
 
 **CI.** `.github/workflows/ci.yml` corre em cada push e pull request: lint, tipos, Vitest, o build da Vercel (`npm run build:vercel`, o mesmo do deploy) e o orçamento do bundle (`scripts/check-bundle.ts`) num job, em Node 22 como a função, e os testes E2E noutro, em paralelo. Não precisa de segredos (tudo corre com PGlite). Se os E2E falharem, o relatório e os traces do Playwright ficam como artefacto durante 7 dias.
 

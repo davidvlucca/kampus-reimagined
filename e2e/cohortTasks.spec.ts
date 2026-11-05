@@ -40,8 +40,10 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   // Espera pela resposta da API (a caixa muda logo, de forma otimista).
   const saved = student.waitForResponse((r) => r.url().includes("/api/tasks/") && r.request().method() === "PATCH");
   await task.click();
-  await expect(task).toBeChecked();
   expect((await saved).ok()).toBe(true);
+  // Feita, passa para o grupo "Done", que começa fechado.
+  await student.getByRole("button", { name: /^Done/ }).click();
+  await expect(task).toBeChecked();
   await expectAccessible(student);
 
   // A API recusa editar a tarefa da turma.
@@ -63,6 +65,8 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   // O título do cartão (não o toast, que também tem o título).
   await expect(staff.getByRole("heading", { name: TITLE })).toHaveCount(0);
   await student.reload();
+  // Com o "Done" aberto: fechado, a caixa nunca estaria lá e o teste passava sempre.
+  await student.getByRole("button", { name: /^Done/ }).click();
   await expect(student.getByRole("checkbox", { name: new RegExp(TITLE) })).toHaveCount(0);
 
   await staff.context().close();

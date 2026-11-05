@@ -17,8 +17,8 @@ function assignedByText(staff: StaffRef | null): string {
 }
 
 /**
- * Uma linha que sai da lista com o foco lá dentro (marcada como feita em "To do" ou no
- * dashboard, apagada) deixava o foco no <body>. Passa para a caixa da linha seguinte ou da
+ * Uma linha que sai da lista com o foco lá dentro (marcada como feita, que passa para "Done",
+ * ou apagada) deixava o foco no <body>. Passa para a caixa da linha seguinte ou da
  * anterior e, com a lista vazia, para a ação do estado vazio dentro de `[data-task-list]`.
  */
 function useKeepFocusInList(rowRef: RefObject<HTMLLIElement | null>) {
@@ -60,21 +60,20 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
   const isCohort = task.source === "cohort";
   useKeepFocusInList(rowRef);
 
+  // mutateAsync e não os callbacks do mutate: a linha muda de grupo (ou sai do dashboard) e
+  // desmonta antes da resposta, e os callbacks de um componente desmontado já não correm.
   const toggle = (done: boolean) =>
-    update.mutate(
-      { id: task.id, done },
-      {
-        onSuccess: () => toast({ title: done ? "Task done. Nice!" : "Task moved back to To do", tone: "success" }),
-        onError: (e) => toast({ title: "Couldn't update the task", description: errorMessage(e), tone: "error" }),
-      },
+    update.mutateAsync({ id: task.id, done }).then(
+      () => toast({ title: done ? "Task done. Nice!" : "Task back on your list", tone: "success" }),
+      (e: unknown) => toast({ title: "Couldn't update the task", description: errorMessage(e), tone: "error" }),
     );
 
   return (
     // flex-wrap: com texto a 200% num ecrã de 320px o título ficava com 0px entre a caixa e o menu;
     // assim passa para a linha de baixo com a largura toda.
     <li ref={rowRef} className="flex flex-wrap items-center gap-3 py-3">
-      {/* O rótulo (escondido) é o título; o padding alarga a zona de clique da caixa para 40px. */}
-      <Checkbox checked={task.done} onChange={(e) => toggle(e.target.checked)} label={task.title} hideLabel className="-m-2 shrink-0 p-2" />
+      {/* O rótulo (escondido) é o título; o padding alarga a zona de clique da caixa para 44px. */}
+      <Checkbox checked={task.done} onChange={(e) => toggle(e.target.checked)} label={task.title} hideLabel className="-m-2.5 shrink-0 p-2.5" />
       <div className="flex min-w-[min(100%,8rem)] flex-1 flex-col gap-1">
         <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
           {/* Escondido do leitor de ecrã: já o lê como rótulo da caixa. */}

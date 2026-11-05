@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, deadlineStatus, isDateKey, localDateKey } from "./dates.ts";
+import { addDays, deadlineStatus, dueGroup, isDateKey, localDateKey } from "./dates.ts";
 
 // Datas construídas com o construtor local (ano, mês, dia, hora): o teste mede
 // o comportamento na data local, seja qual for o fuso da máquina.
@@ -74,5 +74,28 @@ describe("isDateKey", () => {
     expect(isDateKey("0026-11-03")).toBe(true);
     expect(isDateKey("2027-02-29")).toBe(false);
     expect(isDateKey("2026-11-3")).toBe(false);
+  });
+});
+
+describe("dueGroup", () => {
+  const now = at(2026, 11, 5, 23, 30);
+
+  it("separa atrasadas, hoje, os 7 dias seguintes e depois", () => {
+    expect(dueGroup("2026-11-04", now)).toBe("overdue");
+    expect(dueGroup("2026-11-05", now)).toBe("today");
+    expect(dueGroup("2026-11-06", now)).toBe("week");
+    expect(dueGroup("2026-11-12", now)).toBe("week");
+    expect(dueGroup("2026-11-13", now)).toBe("later");
+  });
+
+  it("sem prazo ou com uma data inválida fica em 'none'", () => {
+    expect(dueGroup(null, now)).toBe("none");
+    expect(dueGroup("2026-02-31", now)).toBe("none");
+    expect(dueGroup("amanhã", now)).toBe("none");
+  });
+
+  it("hoje é a data local, também à meia-noite", () => {
+    expect(dueGroup("2026-11-05", at(2026, 11, 5, 0, 0))).toBe("today");
+    expect(dueGroup("2026-11-05", at(2026, 11, 6, 0, 0))).toBe("overdue");
   });
 });
