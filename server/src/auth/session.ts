@@ -15,15 +15,68 @@ export interface SessionConfig {
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
-/** Cria a sessão na BD e devolve o token que vai no cookie. */
-export async function createSession(db: Db, userId: string, config: SessionConfig) {
+/**
+ * Cria a sessão do login, mas só se as credenciais verificadas ainda forem as atuais. O argon2
+ * corre antes e fora de qualquer transação (é lento); aqui só se bloqueia a linha do
+ * utilizador e se confirma que o hash e o email não mudaram entretanto. Sem isto, uma
+ * mudança ou reposição de password a meio de um login deixava entrar com a password antiga
+ * (as sessões já tinham sido apagadas e esta era criada depois). Devolve null se mudaram.
+ */
+export async function createSessionIfCurrent(
+  db: Db,
+  verified: { id: string; passwordHash: string; email: string },
+  config: SessionConfig,
+) {
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + config.ttlDays * 24 * 60 * 60 * 1000);
-  await db.insert(sessions).values({ id: sha256(token), userId, expiresAt });
-  // Limpeza oportunista: as sessões expiradas já não deixam entrar, só ocupam espaço.
+  const created = await db.transaction(async (tx) => {
+    const current = await lockUser(tx, verified.id);
+    if (!current || current.passwordHash !== verified.passwordHash || current.email !== verified.email) return false;
+    await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, verified.id));
+    await tx.insert(sessions).values({ id: sha256(token), userId: verified.id, expiresAt });
+    return true;
+  });
+  if (!created) return null;
+  // Limpeza oportunista, fora da transação: as sessões expiradas já não deixam entrar, só ocupam espaço.
   await db.delete(sessions).where(lt(sessions.expiresAt, now));
   return { token, expiresAt };
+}
+
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/**
+ * Bloqueia a linha do utilizador até ao fim da transação (select ... for update). Quem muda
+ * credenciais e quem cria sessões passa por aqui, por isso um espera pelo outro.
+ */
+export async function lockUser(tx: Tx, userId: string) {
+  const [row] = await tx
+    .select({ passwordHash: users.passwordHash, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .for("update");
+  return row;
+}
+
+/**
+ * Muda a password e termina as outras sessões numa só transação, com a linha bloqueada: ou
+ * acontecem as duas ou nenhuma. Confirma que o hash ainda é o que foi verificado (outra
+ * mudança pode ter ganho a corrida) e que a sessão de quem pede ainda existe (uma reposição
+ * pelo staff pode tê-la apagado).
+ */
+export async function replacePassword(
+  db: Db,
+  input: { userId: string; verifiedHash: string; newHash: string; keepSessionId: string },
+): Promise<"ok" | "stale" | "no-session"> {
+  return db.transaction(async (tx) => {
+    const current = await lockUser(tx, input.userId);
+    if (!current || current.passwordHash !== input.verifiedHash) return "stale";
+    const [own] = await tx.select({ id: sessions.id }).from(sessions).where(eq(sessions.id, input.keepSessionId));
+    if (!own) return "no-session";
+    await tx.update(users).set({ passwordHash: input.newHash, updatedAt: new Date() }).where(eq(users.id, input.userId));
+    await tx.delete(sessions).where(and(eq(sessions.userId, input.userId), ne(sessions.id, input.keepSessionId)));
+    return "ok";
+  });
 }
 
 export function setSessionCookie(c: Context, token: string, expiresAt: Date, config: SessionConfig) {
@@ -62,9 +115,4 @@ export async function readSession(
 
 export async function deleteSession(db: Db, sessionId: string) {
   await db.delete(sessions).where(eq(sessions.id, sessionId));
-}
-
-/** Depois de mudar a password, termina todas as outras sessões do utilizador. */
-export async function deleteOtherSessions(db: Db, userId: string, keepSessionId: string) {
-  await db.delete(sessions).where(and(eq(sessions.userId, userId), ne(sessions.id, keepSessionId)));
 }

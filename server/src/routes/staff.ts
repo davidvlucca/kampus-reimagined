@@ -14,6 +14,7 @@ import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, ne, or, sql, type SQ
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { hashPassword } from "../auth/password.ts";
+import { lockUser } from "../auth/session.ts";
 import type { Db } from "../db/client.ts";
 import { assignmentCompletions, assignments, cohorts, notes, sessions, tasks, users } from "../db/schema.ts";
 import type { AppEnv } from "../lib/env.ts";
@@ -237,27 +238,34 @@ export const staffRoutes = new Hono<AppEnv>()
 
     // Só toca em alunos: um staff com este id responde 404, como um id que não existe.
     const passwordHash = input.password !== undefined ? await hashPassword(input.password) : undefined;
+    const changesCredentials = passwordHash !== undefined || input.email !== undefined;
     let row: { id: string } | undefined;
     try {
-      [row] = await db
-        .update(users)
-        .set({
-          ...(input.firstName !== undefined && { firstName: input.firstName }),
-          ...(input.lastName !== undefined && { lastName: input.lastName }),
-          ...(input.email !== undefined && { email: input.email }),
-          ...(input.cohortId !== undefined && { cohortId: input.cohortId }),
-          ...(passwordHash !== undefined && { passwordHash }),
-          updatedAt: new Date(),
-        })
-        .where(and(eq(users.id, id), isStudent))
-        .returning({ id: users.id });
+      // Uma transação com a linha bloqueada, como no login: a troca e o fim das sessões vão
+      // juntos, e um login a meio espera por ela e depois vê o hash novo (ver createSessionIfCurrent).
+      row = await db.transaction(async (tx) => {
+        await lockUser(tx, id);
+        const [updated] = await tx
+          .update(users)
+          .set({
+            ...(input.firstName !== undefined && { firstName: input.firstName }),
+            ...(input.lastName !== undefined && { lastName: input.lastName }),
+            ...(input.email !== undefined && { email: input.email }),
+            ...(input.cohortId !== undefined && { cohortId: input.cohortId }),
+            ...(passwordHash !== undefined && { passwordHash }),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(users.id, id), isStudent))
+          .returning({ id: users.id });
+        // Nova password ou novo email: as sessões abertas do aluno deixam de valer.
+        if (updated && changesCredentials) await tx.delete(sessions).where(eq(sessions.userId, id));
+        return updated;
+      });
     } catch (error) {
       if (isUniqueViolation(error)) return c.json(EMAIL_TAKEN, 409);
       throw error;
     }
     if (!row) return c.json(NOT_FOUND, 404);
-    // Nova password ou novo email: as sessões abertas do aluno deixam de valer.
-    if (passwordHash !== undefined || input.email !== undefined) await db.delete(sessions).where(eq(sessions.userId, id));
     const [student] = await listStudents(db, eq(users.id, id));
     return c.json({ student });
   })
