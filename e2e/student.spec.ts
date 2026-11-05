@@ -125,7 +125,7 @@ test.describe("visita com animações", () => {
     await page.addInitScript(() => localStorage.setItem("kampus.tourMode", "2d"));
     await loginAs(page, "student");
     await page.goto("/app/tour");
-    const question = page.getByRole("button", { name: "Where do I get my student card?" });
+    const question = page.getByRole("button", { name: "What if I'm late on the first day?" });
     await expect(question).toBeVisible({ timeout: 15_000 });
     await question.focus();
     await page.keyboard.press("Enter");
@@ -133,7 +133,7 @@ test.describe("visita com animações", () => {
     // A meio da escrita da resposta o botão continua visível e com o foco.
     await expect(question).toBeFocused();
     await expect(question).toBeVisible();
-    await expect(page.getByText(/At reception, on your first morning/).filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByText(/Come in anyway and tell reception/).filter({ visible: true }).first()).toBeVisible();
     await expect(question).toBeFocused();
   });
 });
