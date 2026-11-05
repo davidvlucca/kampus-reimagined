@@ -321,6 +321,7 @@ const activityIcon: Record<ActivityKind, ReactNode> = {
   login: <LogIn aria-hidden />,
   tour_completed: <Flag aria-hidden />,
   student_created: <UserPlus aria-hidden />,
+  task_completed: <ClipboardList aria-hidden />,
 };
 
 // Cor por tipo: os logins ficam discretos, as visitas acabadas e os alunos novos sobressaem.
@@ -328,6 +329,7 @@ const activityTone: Record<ActivityKind, string> = {
   login: "bg-surface text-muted",
   tour_completed: "bg-success-soft text-success",
   student_created: "bg-kampus-blue-soft text-kampus-blue",
+  task_completed: "bg-kampus-blue-soft text-kampus-blue",
 };
 
 type LoginDay = "today" | "yesterday" | "earlier";
@@ -371,6 +373,7 @@ function activityText(item: ActivityItem): string {
   const name = fullName(item.student);
   if (item.kind === "login") return `${name} logged in`;
   if (item.kind === "tour_completed") return `${name} completed the campus tour`;
+  if (item.kind === "task_completed") return `${name} completed ${item.assignment?.title ?? "a cohort task"}`;
   return `${name} was added`;
 }
 
