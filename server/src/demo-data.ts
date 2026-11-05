@@ -44,10 +44,12 @@ const STAFF = [
   },
 ];
 
+// Cada turma num momento diferente, para a demo mostrar os três estados: a semana zero
+// (Web Dev arranca daqui a 4 dias), uma turma a decorrer e uma que ainda está longe.
 const COHORTS = [
-  { key: "web", name: "Web Dev Oct 2026", setup: "Install Node.js and VS Code" },
-  { key: "ux", name: "UX/UI Oct 2026", setup: "Install Figma and join the team file" },
-  { key: "data", name: "Data Analytics Oct 2026", setup: "Install Python and Jupyter" },
+  { key: "web", name: "Web Dev Oct 2026", setup: "Install Node.js and VS Code", startsIn: 4 },
+  { key: "ux", name: "UX/UI Oct 2026", setup: "Install Figma and join the team file", startsIn: -7 },
+  { key: "data", name: "Data Analytics Oct 2026", setup: "Install Python and Jupyter", startsIn: 18 },
 ] as const;
 type CohortKey = (typeof COHORTS)[number]["key"];
 
@@ -98,7 +100,7 @@ export async function seedDatabase(db: Db, options: SeedOptions = {}) {
 
   const cohortRows = await db
     .insert(cohorts)
-    .values(COHORTS.map((c) => ({ name: c.name, startsOn: addDays(today, -7) })))
+    .values(COHORTS.map((c) => ({ name: c.name, startsOn: addDays(today, c.startsIn) })))
     .returning();
   const cohortId = (key: CohortKey) => cohortRows.find((r) => r.name === COHORTS.find((c) => c.key === key)!.name)!.id;
 

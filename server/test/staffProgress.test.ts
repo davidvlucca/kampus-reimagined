@@ -28,11 +28,14 @@ beforeAll(async () => {
 afterAll(() => t.close());
 
 describe("GET /api/staff/cohorts", () => {
-  it("dá as turmas com a data de início, pela data e depois pelo nome", async () => {
+  it("dá as turmas com a data de início, da que começou primeiro para a última", async () => {
     const res = await t.request<{ cohorts: StaffCohort[] }>("GET", "/api/staff/cohorts", { cookie: staff });
     expect(res.status).toBe(200);
-    expect(res.json.cohorts.map((c) => c.name)).toEqual(["Data Analytics Oct 2026", "UX/UI Oct 2026", "Web Dev Oct 2026"]);
-    expect(res.json.cohorts.every((c) => c.startsOn === "2026-10-26")).toBe(true);
+    expect(res.json.cohorts.map((c) => [c.name, c.startsOn])).toEqual([
+      ["UX/UI Oct 2026", "2026-10-26"],
+      ["Web Dev Oct 2026", "2026-11-06"],
+      ["Data Analytics Oct 2026", "2026-11-20"],
+    ]);
     // Só os três campos: nada da tabela sai sem passar pelo mapeamento.
     expect(Object.keys(res.json.cohorts[0]!).sort()).toEqual(["id", "name", "startsOn"]);
   });
