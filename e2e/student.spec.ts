@@ -106,7 +106,7 @@ test("uma rota que não existe mostra a página 404", async ({ page }) => {
 
 for (const [path, heading] of [
   ["/app/notes", "Notes"],
-  ["/app/contacts", "Staff contacts"],
+  ["/app/contacts", "Your team"],
   ["/app/profile", "Your profile"],
 ] as const) {
   test(`${path} passa no axe`, async ({ page }) => {
