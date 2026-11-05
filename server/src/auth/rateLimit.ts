@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import type { Context } from "hono";
 import type { Db } from "../db/client.ts";
 import { loginAttempts } from "../db/schema.ts";
 
@@ -32,6 +33,15 @@ export function attemptKey(email: string, ip: string): string {
 /** Chave do limite por IP. O prefixo não tem "|", por isso nunca coincide com uma de email+IP. */
 export function ipAttemptKey(ip: string): string {
   return sha256(`ip:${ip}`);
+}
+
+/**
+ * Chave das confirmações da password atual (mudar password) de uma conta, seja qual for o IP.
+ * Quem chega aqui já tem sessão nesta conta, por isso o limite por conta não deixa ninguém
+ * bloquear a conta de outro. Prefixo próprio: não coincide com as chaves do login.
+ */
+export function reauthAttemptKey(userId: string): string {
+  return sha256(`reauth:${userId}`);
 }
 
 /** Chave dos logins certos de um IP (a partir da chave do IP, com outro prefixo). */
@@ -105,4 +115,11 @@ export async function claimLoginAttempt(db: Db, keys: { account: string; ip: str
       await db.update(loginAttempts).set({ key: successKey }).where(eq(loginAttempts.id, idOf(keys.ip)));
     },
   };
+}
+
+/** O 429 do login, com `Retry-After`. A confirmação da password atual responde igual. */
+export function tooManyAttempts(c: Context, wait: number) {
+  const minutes = Math.ceil(wait / 60);
+  c.header("Retry-After", String(wait));
+  return c.json({ error: `Too many login attempts. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.` }, 429);
 }
