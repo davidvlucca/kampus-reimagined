@@ -60,13 +60,12 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
   const isCohort = task.source === "cohort";
   useKeepFocusInList(rowRef);
 
+  // mutateAsync e não os callbacks do mutate: a linha muda de grupo (ou sai do dashboard) e
+  // desmonta antes da resposta, e os callbacks de um componente desmontado já não correm.
   const toggle = (done: boolean) =>
-    update.mutate(
-      { id: task.id, done },
-      {
-        onSuccess: () => toast({ title: done ? "Task done. Nice!" : "Task back on your list", tone: "success" }),
-        onError: (e) => toast({ title: "Couldn't update the task", description: errorMessage(e), tone: "error" }),
-      },
+    update.mutateAsync({ id: task.id, done }).then(
+      () => toast({ title: done ? "Task done. Nice!" : "Task back on your list", tone: "success" }),
+      (e: unknown) => toast({ title: "Couldn't update the task", description: errorMessage(e), tone: "error" }),
     );
 
   return (
