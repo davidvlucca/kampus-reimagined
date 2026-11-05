@@ -30,15 +30,15 @@ async function studentFlow(page: Page) {
   await page.keyboard.press("Enter");
   await pause(page, 1000);
   // Uma pergunta ao guia: a resposta escreve-se e a Marta muda de expressão.
-  await page.getByRole("button", { name: "Where do I get my student card?" }).click();
+  await page.getByRole("button", { name: "Who do I ask if something is wrong?" }).click();
   await pause(page, 3500);
   // Next: a câmara voa para a Web Dev.
   await page.getByRole("button", { name: "Next" }).click();
   await pause(page, 3000);
-  // De volta à planta: a sala seguinte está acesa. Depois, direto para a Kitchen.
+  // De volta à planta: a sala seguinte está acesa. Depois, direto para a cozinha.
   await page.getByRole("button", { name: "Back to map" }).click();
   await pause(page, 2500);
-  await page.getByRole("button", { name: "Go to stop 5: Kitchen" }).click();
+  await page.getByRole("button", { name: "Go to stop 6: Kitchen and lounge" }).click();
   await pause(page, 3000);
   await page.keyboard.press("Escape");
   await pause(page, 1000);
