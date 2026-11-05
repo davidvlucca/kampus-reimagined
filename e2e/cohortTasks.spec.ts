@@ -25,8 +25,7 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   await dialog.getByRole("button", { name: "Add task" }).click();
   await expect(dialog).toBeHidden();
 
-  // A página passa para a turma da tarefa nova (abre na turma que começa a seguir).
-  await expect(staff).toHaveURL(/[?&]cohort=/);
+  // A página mostra a turma da tarefa nova (na demo é a Web Dev, que já é a que arranca a seguir).
   const card = staff.getByRole("article", { name: TITLE });
   await expect(card).toContainText("0/8");
 
@@ -57,7 +56,8 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   await staff.reload();
   const updated = staff.getByRole("article", { name: TITLE });
   await expect(updated).toContainText("1/8");
-  const remind = updated.getByRole("link", { name: `Email the 7 who haven't done it: "${TITLE}"` });
+  // O Chrome mete um espaço antes do texto sr-only (posição absoluta conta como bloco no nome).
+  const remind = updated.getByRole("link", { name: new RegExp(`^Email the 7 who haven't done it ?: "${TITLE}"$`) });
   await expect(remind).toHaveAttribute("href", /^mailto:\?bcc=/);
   expect(await remind.getAttribute("href")).not.toContain("student%40example.com");
   await updated.getByRole("button", { name: `See who has done "${TITLE}"` }).click();
