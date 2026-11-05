@@ -23,7 +23,9 @@ export function formatDate(value: string, opts: { short?: boolean; now?: Date } 
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const date = parseDate(iso);
   if (!date) return "";
-  const seconds = Math.round((date.getTime() - now.getTime()) / 1000);
+  // Só serve para coisas que já aconteceram: com o relógio do browser atrasado em relação
+  // ao do servidor, um login de agora saía como "in 3 days".
+  const seconds = Math.min(0, Math.round((date.getTime() - now.getTime()) / 1000));
   const units: [Intl.RelativeTimeFormatUnit, number][] = [
     ["day", 86400],
     ["hour", 3600],

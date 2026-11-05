@@ -36,6 +36,14 @@ describe("formatDate", () => {
   });
 });
 
+describe("timeAgo", () => {
+  const now = new Date(2026, 10, 2, 12);
+  it("uma data no futuro (relógio do browser atrasado) dá 'just now', nunca 'in 3 days'", () => {
+    expect(timeAgo(new Date(2026, 10, 5, 12).toISOString(), now)).toBe("just now");
+    expect(timeAgo(new Date(2026, 10, 2, 9).toISOString(), now)).toBe("3 hours ago");
+  });
+});
+
 describe("editedAt", () => {
   const now = new Date(2026, 10, 3, 12);
 
