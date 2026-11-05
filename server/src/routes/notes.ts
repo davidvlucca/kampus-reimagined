@@ -1,4 +1,4 @@
-import { createNoteSchema, LIMITS, limitMessage, updateNoteSchema, type Note } from "@kampus/shared";
+import { createNoteSchema, deleteNoteQuerySchema, LIMITS, limitMessage, NEW_NOTE_TITLE, updateNoteSchema, type KeptNoteResponse, type Note } from "@kampus/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
@@ -55,12 +55,22 @@ export const noteRoutes = new Hono<AppEnv>()
     if (!row) return c.json(NOT_FOUND, 404);
     return c.json({ note: toNote(row) });
   })
-  .delete("/:id", uuidParam(NOT_FOUND), async (c) => {
+  .delete("/:id", uuidParam(NOT_FOUND), validate("query", deleteNoteQuerySchema), async (c) => {
     const id = c.req.param("id");
-    const [row] = await c.var.db
-      .delete(notes)
-      .where(and(eq(notes.id, id), eq(notes.userId, c.var.user.id)))
-      .returning({ id: notes.id });
-    if (!row) return c.json(NOT_FOUND, 404);
-    return c.body(null, 204);
+    const mine = and(eq(notes.id, id), eq(notes.userId, c.var.user.id));
+    // `onlyIfEmpty`: a limpeza automática de outro separador não pode apagar o que este guardou.
+    // A condição vai no próprio DELETE (sem ler antes), para não haver corrida com um PATCH.
+    // Intocada = o título e o corpo do "New note" e nunca editada (updated_at = created_at).
+    const onlyIfEmpty = c.req.valid("query").onlyIfEmpty === "1";
+    const where = onlyIfEmpty
+      ? and(mine, eq(notes.title, NEW_NOTE_TITLE), eq(notes.body, ""), eq(notes.updatedAt, notes.createdAt))
+      : mine;
+    const [row] = await c.var.db.delete(notes).where(where).returning({ id: notes.id });
+    if (row) return c.body(null, 204);
+    if (onlyIfEmpty) {
+      // Não apagou: ou já tem texto (fica, e devolve-se como está) ou não existe/é de outro aluno.
+      const [kept] = await c.var.db.select().from(notes).where(mine).limit(1);
+      if (kept) return c.json({ deleted: false, note: toNote(kept) } satisfies KeptNoteResponse);
+    }
+    return c.json(NOT_FOUND, 404);
   });

@@ -216,6 +216,21 @@ export const updateNoteSchema = createNoteSchema
   .refine((v) => Object.keys(v).length > 0, "Nothing to update");
 export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
 
+/** O título com que o "New note" cria a nota (o servidor usa-o para saber se ficou intocada). */
+export const NEW_NOTE_TITLE = "Untitled note";
+
+/**
+ * `DELETE /api/notes/:id?onlyIfEmpty=1`: a limpeza automática de uma nota nova que ficou vazia.
+ * Só apaga se a nota estiver como foi criada; se outro separador já lhe escreveu, fica.
+ */
+export const deleteNoteQuerySchema = z.object({ onlyIfEmpty: z.literal("1").optional() });
+
+/** Resposta 200 do DELETE condicional quando a nota não estava vazia e ficou. */
+export interface KeptNoteResponse {
+  deleted: false;
+  note: Note;
+}
+
 export interface Note {
   id: string;
   title: string;
