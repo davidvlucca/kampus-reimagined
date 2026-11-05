@@ -2,7 +2,7 @@ import { loginSchema, type WrongPortalError } from "@kampus/shared";
 import { Hono } from "hono";
 import { requireUser } from "../auth/middleware.ts";
 import { burnPasswordCheck, verifyPassword } from "../auth/password.ts";
-import { attemptKey, claimLoginAttempt, ipAttemptKey } from "../auth/rateLimit.ts";
+import { attemptKey, claimLoginAttempt, ipAttemptKey, tooManyAttempts } from "../auth/rateLimit.ts";
 import { clearSessionCookie, createSessionIfCurrent, deleteSession, readSession, setSessionCookie } from "../auth/session.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { findUserByEmail, loadPublicUser } from "../lib/users.ts";
@@ -18,12 +18,7 @@ export const authRoutes = new Hono<AppEnv>()
     // 0. Limites: 5 falhas por email+IP e 30 falhas por IP em 15 minutos. Vêm antes de tudo,
     //    mesmo de uma password certa. A tentativa fica gravada já aqui (ver claimLoginAttempt).
     const claim = await claimLoginAttempt(db, { account: attemptKey(email, c.var.clientIp), ip: ipAttemptKey(c.var.clientIp) });
-    const wait = claim.wait;
-    if (wait > 0) {
-      const minutes = Math.ceil(wait / 60);
-      c.header("Retry-After", String(wait));
-      return c.json({ error: `Too many login attempts. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.` }, 429);
-    }
+    if (claim.wait > 0) return tooManyAttempts(c, claim.wait);
 
     // 1. Password primeiro. Email inexistente e password errada dão a MESMA resposta,
     //    para não revelar que emails têm conta nem de que tipo são.

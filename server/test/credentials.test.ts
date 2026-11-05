@@ -1,7 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { reauthAttemptKey } from "../src/auth/rateLimit.ts";
 import { createSessionIfCurrent } from "../src/auth/session.ts";
-import { sessions, users } from "../src/db/schema.ts";
+import { loginAttempts, sessions, users } from "../src/db/schema.ts";
 import { setup, STAFF } from "./helpers.ts";
 
 // Um gancho logo a seguir ao argon2 do login: deixa provocar, sempre no mesmo ponto, uma
@@ -176,5 +177,42 @@ describe("mudar a password e terminar as sessões é uma só transação", () =>
     });
     expect(res.status).toBe(401);
     expect(await passwordHashOf(id)).toBe(before);
+  });
+});
+
+describe("confirmar a password atual tem o limite do login", () => {
+  const changePassword = (cookie: string, currentPassword: string) =>
+    t.request<{ error: string }>("POST", "/api/me/password", { cookie, body: { currentPassword, newPassword: "NewPassword1" } });
+  const reauthRows = async (userId: string) =>
+    (await t.db.select().from(loginAttempts).where(eq(loginAttempts.key, reauthAttemptKey(userId)))).length;
+
+  it("5 falhas dão 400; a 6.ª dá o 429 do login antes do argon2, mesmo com a password certa", async () => {
+    const email = "pedro.faria@example.com";
+    const id = await t.userId(email);
+    const cookie = await t.login(email, "student");
+    const before = hooks.verifyCalls;
+    for (let i = 0; i < 5; i++) expect((await changePassword(cookie, "wrong")).status).toBe(400);
+    expect(hooks.verifyCalls - before).toBe(5);
+    expect(await reauthRows(id)).toBe(5);
+
+    const blocked = await changePassword(cookie, "wrong");
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(blocked.json).toEqual({ error: expect.stringMatching(/^Too many login attempts\. Try again in \d+ minutes?\.$/) });
+    expect((await changePassword(cookie, "Kampus123")).status).toBe(429);
+    // Nenhum dos barrados chegou ao argon2, nem ficou gravado.
+    expect(hooks.verifyCalls - before).toBe(5);
+    expect(await reauthRows(id)).toBe(5);
+    expect((await loginRequest(email, "NewPassword1")).status).toBe(401);
+  });
+
+  it("uma confirmação certa não conta e apaga as falhas anteriores dessa conta", async () => {
+    const email = "rita.moreira@example.com";
+    const id = await t.userId(email);
+    const cookie = await t.login(email, "student");
+    for (let i = 0; i < 4; i++) expect((await changePassword(cookie, "wrong")).status).toBe(400);
+    expect((await changePassword(cookie, "Kampus123")).status).toBe(204);
+    expect(await reauthRows(id)).toBe(0);
+    for (let i = 0; i < 4; i++) expect((await changePassword(cookie, "wrong")).status).toBe(400);
   });
 });
