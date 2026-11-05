@@ -25,8 +25,10 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   await dialog.getByRole("button", { name: "Add task" }).click();
   await expect(dialog).toBeHidden();
 
-  const card = staff.getByRole("article").or(staff.locator("li")).filter({ hasText: TITLE }).first();
-  await expect(card).toContainText("0 of 8 done");
+  // A página passa para a turma da tarefa nova (abre na turma que começa a seguir).
+  await expect(staff).toHaveURL(/[?&]cohort=/);
+  const card = staff.getByRole("article", { name: TITLE });
+  await expect(card).toContainText("0/8");
 
   // Aluno (Web Dev): vê a tarefa com o autor, sem editar nem apagar, e marca-a.
   const student = await (await browser.newContext()).newPage();
@@ -51,12 +53,18 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   const id = list.tasks.find((t) => t.title === TITLE)!.id;
   expect((await student.request.patch(`/api/tasks/${id}`, { data: { title: "Hacked" } })).status()).toBe(403);
 
-  // Staff: o progresso mudou e a Diana aparece como feita.
+  // Staff: o progresso mudou, a Diana aparece como feita e sai do email de lembrete.
   await staff.reload();
-  const updated = staff.getByRole("article").or(staff.locator("li")).filter({ hasText: TITLE }).first();
-  await expect(updated).toContainText("1 of 8 done");
+  const updated = staff.getByRole("article", { name: TITLE });
+  await expect(updated).toContainText("1/8");
+  const remind = updated.getByRole("link", { name: `Email the 7 who haven't done it: "${TITLE}"` });
+  await expect(remind).toHaveAttribute("href", /^mailto:\?bcc=/);
+  expect(await remind.getAttribute("href")).not.toContain("student%40example.com");
   await updated.getByRole("button", { name: `See who has done "${TITLE}"` }).click();
-  await expect(updated.getByRole("listitem").filter({ hasText: "Diana Costa" })).toContainText("Done");
+  await expect(staff.getByRole("heading", { name: `7 haven't done "${TITLE}"` })).toBeVisible();
+  await staff.getByRole("button", { name: "1 student did it" }).click();
+  const doneList = staff.getByRole("list", { name: `Students who have done "${TITLE}"` });
+  await expect(doneList.getByRole("listitem").filter({ hasText: "Diana Costa" })).toContainText("Done");
   await expectAccessible(staff);
 
   // Apagar tira-a da lista do aluno.

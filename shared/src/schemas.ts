@@ -291,14 +291,33 @@ export interface StudentRow {
   taskCount: number;
   doneTaskCount: number;
   noteCount: number;
+  /**
+   * As tarefas da turma ATUAL que o aluno já marcou, com a hora. O estado ("Behind", "Ready")
+   * e o "on time" calculam-se no browser, com a data local (ver o ADR 8).
+   */
+  completions: CohortTaskCompletion[];
 }
 
-export type ActivityKind = "login" | "tour_completed" | "student_created";
+export interface CohortTaskCompletion {
+  assignmentId: string;
+  completedAt: string;
+}
+
+/** Turma vista pelo staff (`GET /api/staff/cohorts`): com a data de início, para a semana e a linha do tempo. */
+export interface StaffCohort extends Cohort {
+  startsOn: string;
+}
+
+export type ActivityKind = "login" | "tour_completed" | "student_created" | "task_completed";
 
 export interface ActivityItem {
   kind: ActivityKind;
   at: string;
   student: { id: string; firstName: string; lastName: string };
+  /** A turma atual do aluno (null se não tiver). */
+  cohort: Cohort | null;
+  /** Só em "task_completed": a tarefa da turma que o aluno marcou. */
+  assignment?: { id: string; title: string };
 }
 
 export interface StaffOverview {

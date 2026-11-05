@@ -7,6 +7,8 @@ import {
   studentQuerySchema,
   updateStudentSchema,
   type ActivityItem,
+  type CohortTaskCompletion,
+  type StaffCohort,
   type StaffOverview,
   type StudentRow,
 } from "@kampus/shared";
@@ -29,7 +31,7 @@ const NOT_FOUND = { error: "Student not found." };
 const TOO_MANY = { error: limitMessage(LIMITS.students, "students") };
 const EMAIL_TAKEN = { error: "This email already has an account.", fields: { email: "Already in use" } };
 
-/** Atividade recente: quantos eventos (visitas, alunos novos) e de quanto tempo os logins. */
+/** Atividade recente: quantos eventos (visitas, tarefas feitas, alunos novos) e de quanto tempo os logins. */
 const RECENT_EVENTS = 10;
 const RECENT_LOGINS_MS = 48 * 60 * 60 * 1000;
 
@@ -88,6 +90,22 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
     .where(and(isStudent, where))
     .orderBy(asc(users.lastName), asc(users.firstName));
 
+  // As conclusões numa só consulta (não uma por aluno), com o mesmo filtro da lista e só as
+  // tarefas da turma atual: as da turma antiga ficam guardadas, mas não contam (ver o ADR 18).
+  const completionRows = await db
+    .select({ userId: assignmentCompletions.userId, assignmentId: assignmentCompletions.assignmentId, completedAt: assignmentCompletions.completedAt })
+    .from(assignmentCompletions)
+    .innerJoin(assignments, eq(assignments.id, assignmentCompletions.assignmentId))
+    .innerJoin(users, and(eq(users.id, assignmentCompletions.userId), eq(users.cohortId, assignments.cohortId)))
+    .where(and(isStudent, where))
+    .orderBy(asc(assignmentCompletions.completedAt), asc(assignmentCompletions.assignmentId));
+  const completions = new Map<string, CohortTaskCompletion[]>();
+  for (const r of completionRows) {
+    const list = completions.get(r.userId) ?? [];
+    list.push({ assignmentId: r.assignmentId, completedAt: r.completedAt.toISOString() });
+    completions.set(r.userId, list);
+  }
+
   return rows.map((r) => ({
     id: r.id,
     firstName: r.firstName,
@@ -100,6 +118,7 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
     taskCount: (r.taskCount ?? 0) + (r.cohortTaskCount ?? 0),
     doneTaskCount: (r.doneTaskCount ?? 0) + (r.cohortDoneCount ?? 0),
     noteCount: r.noteCount ?? 0,
+    completions: completions.get(r.id) ?? [],
   }));
 }
 
@@ -112,6 +131,13 @@ export const cohortRoutes = new Hono<AppEnv>()
 
 export const staffRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("staff"))
+  // As turmas com a data de início (a semana do dashboard e a linha do tempo das tarefas).
+  // À parte de /api/cohorts, que dá o mesmo `Cohort` das outras respostas.
+  .get("/cohorts", async (c) => {
+    const rows = await c.var.db.select().from(cohorts).orderBy(asc(cohorts.startsOn), asc(cohorts.name));
+    const list: StaffCohort[] = rows.map((r) => ({ ...toCohort(r), startsOn: r.startsOn }));
+    return c.json({ cohorts: list });
+  })
   .get("/overview", async (c) => {
     const db = c.var.db;
 
@@ -134,24 +160,60 @@ export const staffRoutes = new Hono<AppEnv>()
       .where(and(isStudent, isNull(users.tourCompletedAt)))
       .orderBy(asc(users.lastName), asc(users.firstName));
 
-    // "Atividade recente" sem tabela de eventos, a partir de três colunas: as 10 visitas
-    // concluídas e alunos criados mais recentes, mais os logins das últimas 48 horas. Os logins
-    // vêm à parte (o client junta-os numa linha por dia): numa manhã de aulas eram os 10 mais
-    // recentes e escondiam o resto. Cada aluno só tem o último login, por isso são no máximo
-    // tantos quantos alunos.
-    const student = { id: users.id, firstName: users.firstName, lastName: users.lastName };
+    // "Atividade recente" sem tabela de eventos, a partir de colunas que já existem: as 10
+    // visitas concluídas, tarefas da turma marcadas e alunos criados mais recentes, mais os
+    // logins das últimas 48 horas. Os logins vêm à parte (o client junta-os numa linha por dia):
+    // numa manhã de aulas eram os 10 mais recentes e escondiam o resto. Cada aluno só tem o
+    // último login, por isso são no máximo tantos quantos alunos.
+    const student = { id: users.id, firstName: users.firstName, lastName: users.lastName, cohortId: cohorts.id, cohortName: cohorts.name };
     const loginsSince = new Date(Date.now() - RECENT_LOGINS_MS);
-    const [logins, tours, created] = await Promise.all([
-      db.select({ ...student, at: users.lastLoginAt }).from(users).where(and(isStudent, gte(users.lastLoginAt, loginsSince))).orderBy(desc(users.lastLoginAt)),
-      db.select({ ...student, at: users.tourCompletedAt }).from(users).where(and(isStudent, isNotNull(users.tourCompletedAt))).orderBy(desc(users.tourCompletedAt)).limit(RECENT_EVENTS),
-      db.select({ ...student, at: users.createdAt }).from(users).where(isStudent).orderBy(desc(users.createdAt)).limit(RECENT_EVENTS),
+    const [logins, tours, created, done] = await Promise.all([
+      db
+        .select({ ...student, at: users.lastLoginAt })
+        .from(users)
+        .leftJoin(cohorts, eq(cohorts.id, users.cohortId))
+        .where(and(isStudent, gte(users.lastLoginAt, loginsSince)))
+        .orderBy(desc(users.lastLoginAt)),
+      db
+        .select({ ...student, at: users.tourCompletedAt })
+        .from(users)
+        .leftJoin(cohorts, eq(cohorts.id, users.cohortId))
+        .where(and(isStudent, isNotNull(users.tourCompletedAt)))
+        .orderBy(desc(users.tourCompletedAt))
+        .limit(RECENT_EVENTS),
+      db
+        .select({ ...student, at: users.createdAt })
+        .from(users)
+        .leftJoin(cohorts, eq(cohorts.id, users.cohortId))
+        .where(isStudent)
+        .orderBy(desc(users.createdAt))
+        .limit(RECENT_EVENTS),
+      // Só as tarefas da turma atual do aluno, como nas contagens.
+      db
+        .select({ ...student, at: assignmentCompletions.completedAt, assignmentId: assignments.id, assignmentTitle: assignments.title })
+        .from(assignmentCompletions)
+        .innerJoin(assignments, eq(assignments.id, assignmentCompletions.assignmentId))
+        .innerJoin(users, and(eq(users.id, assignmentCompletions.userId), eq(users.cohortId, assignments.cohortId), isStudent))
+        .innerJoin(cohorts, eq(cohorts.id, assignments.cohortId))
+        .orderBy(desc(assignmentCompletions.completedAt))
+        .limit(RECENT_EVENTS),
     ]);
-    const toItems = (kind: ActivityItem["kind"], rows: { id: string; firstName: string; lastName: string; at: Date | null }[]) =>
-      rows.flatMap((r) =>
-        r.at ? [{ kind, at: r.at.toISOString(), student: { id: r.id, firstName: r.firstName, lastName: r.lastName } }] : [],
-      );
+    type EventRow = { id: string; firstName: string; lastName: string; cohortId: string | null; cohortName: string | null; at: Date | null };
+    const toItem = (kind: ActivityItem["kind"], r: EventRow): ActivityItem[] =>
+      r.at
+        ? [
+            {
+              kind,
+              at: r.at.toISOString(),
+              student: { id: r.id, firstName: r.firstName, lastName: r.lastName },
+              cohort: r.cohortId && r.cohortName ? { id: r.cohortId, name: r.cohortName } : null,
+            },
+          ]
+        : [];
+    const toItems = (kind: ActivityItem["kind"], rows: EventRow[]) => rows.flatMap((r) => toItem(kind, r));
+    const completedItems = done.flatMap((r) => toItem("task_completed", r).map((item) => ({ ...item, assignment: { id: r.assignmentId, title: r.assignmentTitle } })));
     const byNewest = (a: ActivityItem, b: ActivityItem) => b.at.localeCompare(a.at);
-    const events = [...toItems("tour_completed", tours), ...toItems("student_created", created)].sort(byNewest).slice(0, RECENT_EVENTS);
+    const events = [...toItems("tour_completed", tours), ...completedItems, ...toItems("student_created", created)].sort(byNewest).slice(0, RECENT_EVENTS);
     const recentActivity = [...toItems("login", logins), ...events].sort(byNewest);
 
     const overview: StaffOverview = {

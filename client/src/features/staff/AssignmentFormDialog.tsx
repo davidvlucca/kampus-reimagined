@@ -46,12 +46,15 @@ export function AssignmentFormDialog({
   onOpenChange,
   assignment,
   defaultCohortId = "",
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assignment: Assignment | null;
   /** Ao criar, começa com a turma do filtro da página. */
   defaultCohortId?: string;
+  /** Depois de criar: a página mostra a turma da tarefa nova (pode ser outra). */
+  onCreated?: (assignment: Assignment) => void;
 }) {
   const isEdit = assignment !== null;
   const toast = useToast();
@@ -87,6 +90,7 @@ export function AssignmentFormDialog({
           if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
           const created = await createAssignment.mutateAsync(parsed.data);
           toast({ title: "Task added", description: `Everyone in ${created.cohort.name} can see it now.`, tone: "success" });
+          onCreated?.(created);
         } else {
           // Só envia o que mudou.
           const changes: UpdateAssignmentInput = {};

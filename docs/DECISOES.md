@@ -282,6 +282,12 @@ Cada teste começa com a demo reposta: a API local passou a aceitar `CRON_SECRET
   - os totais do staff contam só quem está hoje na turma;
   - apagar um aluno apaga as conclusões dele, mas não as tarefas da turma.
 
+**O staff vê quem precisa de um empurrão, sem tabelas novas.**
+- *Contexto.* O redesenho do dashboard, dos alunos e das tarefas da turma pede estados por aluno, "tarefas a tempo" e uma linha do tempo a contar do primeiro dia. O preview da Vercel usa a mesma base Neon da produção, por isso não podia haver migrações.
+- *Decisão.* Tudo sai das tabelas que já existem, com três acrescentos só de leitura: `GET /api/staff/cohorts` (as turmas com `startsOn`), as conclusões de cada aluno na lista de alunos (`completions`, só as da turma atual, numa consulta para a lista toda) e as tarefas da turma marcadas na atividade recente (`task_completed`, a partir do `completed_at`). Os estados calculam-se no browser, com a data local (ver 8), por esta ordem: **Not signed in** (nunca entrou), **Behind** (pelo menos uma tarefa da turma com o prazo antes de hoje e por fazer), **Ready** (fez todas, e a turma tem pelo menos uma) e **On track** (o resto). "Need a nudge" são os dois primeiros. "Tasks on time" conta as conclusões até ao dia do prazo (data local) entre as tarefas com o prazo antes de hoje, vezes os alunos de hoje na turma. A semana zero são os 14 dias antes do início.
+- *Lembretes.* São links `mailto:` montados no browser, para o aluno ou em BCC para vários, com as tarefas em falta e assinados por quem está no staff. O servidor não envia emails nem guarda nada. O "Import CSV" valida as linhas no browser com o mesmo Zod da API e chama o POST de criar aluno uma vez por linha.
+- *Consequências.* Um mailto com muitos endereços pode passar o limite do programa de email (perto dos 2000 caracteres em alguns); para uma turma chega. Os prints usam o seed, onde as turmas já começaram, por isso a semana zero só aparece com turmas reais.
+
 ---
 
 ## 19. A visita mais visual novel: perguntas e expressões
