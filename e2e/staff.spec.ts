@@ -29,11 +29,28 @@ test("o staff entra com um clique, cria um aluno e apaga-o", async ({ page }) =>
 
   const row = page.getByText("test.student@example.com").filter({ visible: true });
   await expect(row).toBeVisible();
+  // Nunca entrou: aparece no topo, com um lembrete por email já escrito (mailto, sem envio pelo servidor).
+  const remind = page.getByRole("link", { name: "Remind Test Student" }).filter({ visible: true });
+  await expect(remind).toHaveAttribute("href", /^mailto:test\.student%40example\.com\?subject=/);
   await expectAccessible(page);
 
   await page.getByRole("button", { name: /Delete Test Student/ }).filter({ visible: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete student" }).click();
   await expect(row).toBeHidden();
+});
+
+test("o cartão da turma leva aos alunos que precisam de um empurrão", async ({ page }) => {
+  await loginAs(page, "staff");
+  await page.goto("/staff");
+  await page.getByRole("link", { name: /need(s)? a nudge in Web Dev Oct 2026/ }).click();
+  await expect(page).toHaveURL(/\/staff\/students\?cohort=.+&status=nudge$/);
+  // "nudge" acende os dois filtros que o compõem.
+  const filters = page.getByRole("group", { name: "Filter by status" });
+  await expect(filters.getByRole("button", { name: /^Not signed in/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(filters.getByRole("button", { name: /^Behind/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(filters.getByRole("button", { name: /^On track/ })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("link", { name: /^Remind the \d+ who needs? a nudge$/ })).toHaveAttribute("href", /^mailto:\?bcc=/);
+  await expectAccessible(page);
 });
 
 test("/staff/profile passa no axe", async ({ page }) => {

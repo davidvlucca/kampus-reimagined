@@ -138,7 +138,7 @@ function CohortCard({ summary: s }: { summary: CohortSummary }) {
           </div>
         </div>
 
-        <dl className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <Metric
             label="Signed in"
             value={pctText(percent(s.signedIn, s.students))}
@@ -168,7 +168,7 @@ function CohortCard({ summary: s }: { summary: CohortSummary }) {
             barLabel={`${name}: campus tour done`}
             caption={`${s.tourDone} of ${plural(s.students, "student")}`}
           />
-        </dl>
+        </div>
 
         <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-2">
           {s.needNudge > 0 ? (
@@ -198,10 +198,10 @@ const pctText = (value: number | null) => (value === null ? "None yet" : `${valu
 function Metric({ label, value, progress, barLabel, caption }: { label: string; value: string; progress: [number, number]; barLabel: string; caption: string }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <dt className="text-sm text-text">{label}</dt>
-        <dd className="font-display text-lg font-semibold text-kampus-navy tabular-nums">{value}</dd>
-      </div>
+      <p className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <span className="text-sm text-text">{label}</span>
+        <span className="font-display text-lg font-semibold text-kampus-navy tabular-nums">{value}</span>
+      </p>
       <ProgressBar value={progress[0]} max={progress[1]} label={barLabel} className="h-2" />
       <p className="text-xs text-muted">{caption}</p>
     </div>

@@ -342,7 +342,8 @@ function TimelineItem({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {missing.length > 0 && (
               <MailLink href={href} size="sm" icon="send" variant={selected ? "primary" : "secondary"}>
-                Email the {missing.length} who haven't done it
+                Email the {missing.length} who {missing.length === 1 ? "hasn't" : "haven't"} done it
+                <span className="sr-only">: {named}</span>
               </MailLink>
             )}
             {a.students > 0 && (
@@ -393,7 +394,7 @@ function WhoPanel({
         {task.dueDate ? `${relativeDay(task.dueDate, cohort.startsOn)} · Due ${dayLabel(task.dueDate)}` : "No due date"}
       </p>
       <h2 ref={ref} tabIndex={-1} className="mt-1 text-lg font-semibold break-words outline-none">
-        {missing.length === 0 ? `Everyone has done "${task.title}"` : `${missing.length} haven't done "${task.title}"`}
+        {missing.length === 0 ? `Everyone has done "${task.title}"` : `${missing.length} ${missing.length === 1 ? "hasn't" : "haven't"} done "${task.title}"`}
       </h2>
 
       {missing.length > 0 && (
