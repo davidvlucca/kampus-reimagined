@@ -157,7 +157,7 @@ As passwords usam argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 itera
 
 **Contexto.** A visita é o que distingue o Kampus, por isso mantive o formato de 2023 (cenário, guia, caixa de diálogo, "Play audio" e "Next"). As imagens de 2023 (cenários e retratos) tinham sido tiradas do Google Images, sem autor nem licença, e o áudio eram 7 ficheiros WAV (~10 MB, presos ao texto antigo).
 
-**Decisão.** Corrigi o resto: funciona no telemóvel, tem barra de progresso com as 7 paragens, teclado (← → Enter Esc) e o texto é anunciado a leitores de ecrã. O áudio passou para a Web Speech API do browser: zero bytes e lê sempre o texto atual. As imagens saíram do projeto e da história do git. Os cenários e os guias são agora ilustrações SVG feitas para esta versão: cerca de 10 KB cada (os JPG tinham ~1,5 MB), nítidos em qualquer ecrã e na paleta da marca.
+**Decisão.** Corrigi o resto: funciona no telemóvel, tem barra de progresso com as paragens (hoje 8), teclado (← → Enter Esc) e o texto é anunciado a leitores de ecrã. O áudio passou para a Web Speech API do browser: zero bytes e lê sempre o texto atual. As imagens saíram do projeto e da história do git. Os cenários e os guias são agora ilustrações SVG feitas para esta versão: cerca de 10 KB cada (os JPG tinham ~1,5 MB), nítidos em qualquer ecrã e na paleta da marca.
 
 **Alternativas consideradas.** Manter as imagens originais: não eram minhas, e num portfólio público isso é um risco e um mau sinal. Os prints de 2023 em `docs/antes/` mostram-nas desfocadas.
 
@@ -295,7 +295,7 @@ Cada teste começa com a demo reposta: a API local passou a aceitar `CRON_SECRET
 **Contexto.** Quis aproximar a visita de um visual novel: o aluno pode fazer perguntas ao guia e o guia reage com expressões.
 
 **Decisão.**
-- **Perguntas ao guia.** Em cada sala há duas perguntas que o aluno pode fazer ("What time do classes start?", "Is the coffee really free?"). A resposta substitui a fala, escreve-se letra a letra e o guia muda de expressão; voltar a carregar na mesma pergunta regressa à fala da sala, e as já feitas ficam com um visto. Os botões são um grupo com `aria-pressed`, e o texto para leitores de ecrã anuncia "Marta Lopes · Program Manager answers: …".
+- **Perguntas ao guia.** Em cada sala há duas ou três perguntas que o aluno pode fazer ("What if I'm late on the first day?", "When should I ask for help?"). A resposta substitui a fala, escreve-se letra a letra e o guia muda de expressão; voltar a carregar na mesma pergunta regressa à fala da sala, e as já feitas ficam com um visto. Os botões são um grupo com `aria-pressed`, e o texto para leitores de ecrã anuncia "Marta Lopes · Program Manager answers: …".
 - **Só aparecem no fim da fala.** É como nos visual novels: primeiro lê-se, depois escolhe-se. O espaço fica reservado (invisível) para a caixa não saltar, e também se reserva a altura da resposta mais longa da sala. Depois de aparecerem, ficam visíveis até se mudar de sala.
 - **Expressões.** Cada guia tem quatro caras: sorriso, piscar de olho, curiosa e a falar. As três novas não foram desenhadas à mão: `scripts/guide-moods.ts` gera-as a partir do SVG base, trocando a boca, o olho direito ou a sobrancelha. Enquanto o texto se escreve, a boca alterna entre a expressão e "a falar" a cada 140 ms; com `prefers-reduced-motion` o texto aparece de uma vez e a boca não mexe. As quatro imagens ficam empilhadas e só uma é visível, porque trocar o `src` de uma só imagem fazia piscar.
 
