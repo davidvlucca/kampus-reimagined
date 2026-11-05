@@ -6,9 +6,11 @@ import { ROOFTOP, ROOMS, WALL_H, wx, wz, type RoomId } from "./layout.ts";
 // As etiquetas das salas são DOM normal por cima do canvas (texto nítido, sem fontes 3D).
 // Dentro do canvas, `LabelProjector` só calcula onde cada uma fica no ecrã a cada frame.
 
-// Só as paragens têm etiqueta. O terraço não se vê no mapa: a etiqueta fica por cima das escadas.
+// Só as paragens têm etiqueta. O terraço não se vê no mapa: a etiqueta fica por cima das escadas
+// (e do pino) e sobe mais uma altura de etiqueta, numa fila própria; à altura das outras tapava-as
+// no telemóvel deitado.
 const LABELED = [...ROOMS.filter((r) => r.label !== null), ROOFTOP];
-const anchors = LABELED.map((r) => (r === ROOFTOP ? new Vector3(wx(11.2), WALL_H + 2.6, wz(17)) : new Vector3(r.x, WALL_H + 0.4, r.z)));
+const anchors = LABELED.map((r) => (r === ROOFTOP ? new Vector3(wx(11.2), WALL_H + 3.3, wz(17)) : new Vector3(r.x, WALL_H + 0.4, r.z)));
 const v = new Vector3();
 
 export type LabelRefs = RefObject<(HTMLSpanElement | null)[]>;
@@ -24,7 +26,8 @@ export function LabelProjector({ labels }: { labels: LabelRefs }) {
       v.copy(anchor).project(camera);
       const x = ((v.x + 1) / 2) * size.width;
       const y = ((1 - v.y) / 2) * size.height;
-      el.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      const lift = LABELED[i] === ROOFTOP ? -160 : -50;
+      el.style.transform = `translate(-50%, ${lift}%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       el.style.visibility = "visible";
     });
   });
@@ -43,7 +46,7 @@ export function RoomLabels({ labels, show, highlight }: { labels: LabelRefs; sho
           }}
           style={{ visibility: "hidden" }}
           className={
-            "absolute top-0 left-0 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap shadow-sm select-none big:text-sm huge:text-base " +
+            "absolute top-0 left-0 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap shadow-sm select-none short:px-2 short:text-[0.6875rem] big:text-sm huge:text-base " +
             (highlight === room.id ? "bg-white text-kampus-navy" : "bg-kampus-navy/85 text-white")
           }
         >
