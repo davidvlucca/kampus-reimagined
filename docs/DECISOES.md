@@ -97,6 +97,11 @@ As passwords usam argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 itera
 
 **Consequências.** O `csrf()` é redundante com o `SameSite=Lax`, de propósito: é defesa em profundidade, porque browsers antigos e subdomínios podem contornar o SameSite. É uma linha de código e está testado. No original havia dois `cors()` e o `ORIGIN` só funcionava para pedidos simples; agora há uma só configuração.
 
+**Notas: a cache não decide o que se apaga.**
+- *Contexto.* O "New note" cria logo a nota, e o editor apaga-a ao sair se ficou intocada. Uma revisão de código mostrou que essa decisão vinha da cache do separador: se o separador A criava a nota e o B lhe escrevia e guardava, A ainda a via vazia e apagava o texto de B. Os rascunhos por guardar (no `sessionStorage`) também eram guardados só pelo id da nota: se a sessão de A caía e B entrava no mesmo separador, B via o rascunho de A e podia copiá-lo para a conta dele com "Save as a new note".
+- *Decisão.* A limpeza automática usa `DELETE /api/notes/:id?onlyIfEmpty=1`, com a condição no próprio DELETE: só apaga se a nota tiver o título e o corpo do "New note" e nunca tiver sido editada (`updated_at = created_at`). Responde 204 se apagou, 200 `{ deleted: false, note }` se a nota ficou e 404 se não existe ou é de outro aluno. O client só a tira da cache depois do 204 (ou 404); com o 200, mostra a nota que o servidor devolveu. O Delete pedido pelo aluno continua sem condição. Os rascunhos passam a ter o id do utilizador na chave, e o "Log out" apaga os do utilizador que saiu.
+- *Consequências.* Uma nota editada e depois esvaziada já não é limpa automaticamente (fica na lista, o aluno apaga-a à mão): é o preço de não haver corrida com outro separador. Os rascunhos com a chave antiga (só o id da nota) são ignorados e desaparecem quando o separador fecha. Há testes no servidor para cada resposta do DELETE condicional e testes da chave dos rascunhos no client.
+
 ---
 
 ## 7. Respostas 404 (e não 403) para dados de outro aluno
