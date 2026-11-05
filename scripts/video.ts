@@ -50,7 +50,7 @@ async function studentFlow(page: Page) {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   await nav.getByRole("link", { name: "Tasks" }).click();
   await pause(page, 1200);
-  await page.getByPlaceholder(/student card/i).fill("Pick up my student card");
+  await page.getByLabel("New task").fill("Pick up my student card");
   await page.getByRole("button", { name: "Add task" }).click();
   await pause(page, 1200);
   await page.getByRole("checkbox", { name: "Join the cohort chat and say hi" }).click();
