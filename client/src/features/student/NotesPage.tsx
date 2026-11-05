@@ -1,10 +1,10 @@
-import type { Note } from "@kampus/shared";
+import { NEW_NOTE_TITLE, type Note } from "@kampus/shared";
 import { ArrowLeft, FileQuestion, History, NotebookPen, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { ApiRequestError, errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
-import { useCreateNote, useDeleteNote, useNote, useNotes, useUpdateNote } from "../../api/hooks.ts";
+import { useCreateNote, useDeleteNote, useDiscardEmptyNote, useNote, useNotes, useUpdateNote } from "../../api/hooks.ts";
 import { Button, buttonClasses, Card, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Skeleton, SkeletonList, Textarea, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { editedAt } from "../../lib/format.ts";
@@ -12,7 +12,6 @@ import { useSubmitLock } from "../../lib/submitLock.ts";
 import { clearDraft, loadDraft, saveDraft } from "./noteDraft.ts";
 import { excerpt, noteChanges } from "./noteText.ts";
 
-const NEW_NOTE_TITLE = "Untitled note";
 const BODY_MAX = 10_000;
 // A partir daqui mostra-se a contagem: o maxLength cortava o texto sem aviso nenhum.
 const BODY_WARN_AT = 9_000;
@@ -225,6 +224,7 @@ function NoteForm({ note }: { note: Note }) {
   const location = useLocation();
   const update = useUpdateNote();
   const remove = useDeleteNote();
+  const discardEmpty = useDiscardEmptyNote();
   // `seed`: os valores com que o formulário começou (ou foi reposto). O "Unsaved changes" e o
   // que se envia ao guardar comparam com eles, não com a nota em cache, que pode mudar por baixo.
   // Um rascunho deste separador (sessão expirada, recarregar) volta ao formulário, se ainda for diferente.
@@ -269,19 +269,21 @@ function NoteForm({ note }: { note: Note }) {
 
   // "New note" cria logo a nota (é o que dá o URL). Se o aluno sai sem lhe mexer, apaga-se,
   // senão juntavam-se notas "Untitled note" vazias. Só as criadas aqui, e só sem nada por guardar.
+  // A cache deste separador pode estar atrasada (outro separador já lhe escreveu): por isso o
+  // DELETE é condicional e é o servidor que decide se ainda está vazia.
   const untouched = focusTitle && !dirty && seed.title === NEW_NOTE_TITLE && seed.body === "" && note.title === NEW_NOTE_TITLE && note.body === "";
-  const leaveRef = useRef({ untouched, remove: remove.mutate });
+  const leaveRef = useRef({ untouched, discard: discardEmpty.mutate });
   useEffect(() => {
-    leaveRef.current = { untouched, remove: remove.mutate };
+    leaveRef.current = { untouched, discard: discardEmpty.mutate };
   });
   useEffect(() => {
     const id = note.id;
     openEditors.add(id);
     return () => {
       openEditors.delete(id);
-      const { untouched: empty, remove: removeNote } = leaveRef.current;
+      const { untouched: empty, discard } = leaveRef.current;
       // Adiado: no StrictMode o efeito desmonta e volta a montar logo (isso não é sair da nota).
-      if (empty && !leavingAfterDelete.current) window.setTimeout(() => !openEditors.has(id) && removeNote(id), 0);
+      if (empty && !leavingAfterDelete.current) window.setTimeout(() => !openEditors.has(id) && discard(id), 0);
     };
   }, [note.id]);
 

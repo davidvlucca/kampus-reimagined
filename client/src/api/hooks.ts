@@ -9,6 +9,7 @@ import type {
   CreateNoteInput,
   CreateStudentInput,
   CreateTaskInput,
+  KeptNoteResponse,
   LoginInput,
   Note,
   PublicUser,
@@ -222,6 +223,28 @@ export function useDeleteNote() {
       qc.setQueryData<Note[]>(keys.notes, (list) => list?.filter((n) => n.id !== id));
       return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
     },
+  });
+}
+
+/**
+ * A limpeza automática de uma nota nova vazia (ver o NoteForm). O servidor só a apaga se ainda
+ * estiver como foi criada: se outro separador já lhe escreveu, fica e vem na resposta. Só se tira
+ * da cache depois de o servidor confirmar, para a lista nunca esconder uma nota que ficou.
+ */
+export function useDiscardEmptyNote() {
+  const qc = useQueryClient();
+  const drop = (id: string) => {
+    qc.setQueryData<Note[]>(keys.notes, (list) => list?.filter((n) => n.id !== id));
+    return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
+  };
+  return useMutation({
+    mutationFn: (id: string) => api<KeptNoteResponse | undefined>(`/notes/${id}?onlyIfEmpty=1`, { method: "DELETE" }),
+    onSuccess: (kept, id) => {
+      if (!kept) return drop(id);
+      qc.setQueryData(keys.note(id), kept.note);
+      return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
+    },
+    onError: (error, id) => (isNotFound(error) ? drop(id) : undefined),
   });
 }
 
