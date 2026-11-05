@@ -58,6 +58,26 @@ test("marcar uma tarefa como feita fica guardado depois de recarregar (o bug de 
   await expect(page.getByRole("checkbox", { name: /Join the cohort chat and say hi/ })).toBeChecked();
 });
 
+test("no dashboard, a visita por fazer é a última linha e uma tarefa nova entra pelo campo rápido", async ({ page }) => {
+  await loginAs(page, "student");
+  await page.goto("/app");
+  const card = page.locator("[data-task-list]");
+  await expect(card.getByText("Take the campus tour")).toBeVisible();
+  await expect(card.getByRole("link", { name: "Start the tour" })).toHaveAttribute("href", "/app/tour");
+  await expect(page.getByText(/1 of 8\s+steps done/)).toBeVisible();
+  await expectAccessible(page);
+
+  // Vazio: o erro aparece e a tarefa não é criada.
+  await page.getByRole("button", { name: "Add task" }).click();
+  await expect(page.getByText("Give your task a title")).toBeVisible();
+
+  await page.getByRole("textbox", { name: "New task" }).fill("Pick up my student card");
+  await page.getByRole("button", { name: "Add task" }).click();
+  await expect(page.getByText("Task added").first()).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "New task" })).toHaveValue("");
+  await expect(page.getByText(/1 of 9\s+steps done/)).toBeVisible();
+});
+
 test("um aluno que abre a área de staff volta para a sua", async ({ page }) => {
   await loginAs(page, "student");
   await page.goto("/staff/students");
