@@ -17,6 +17,12 @@ describe("expressões dos guias", () => {
   });
 });
 
+describe("cenários da visita", () => {
+  it("o cenário de cada paragem está publicado em client/public/tour", () => {
+    for (const stop of TOUR_STOPS) expect(existsSync(`client/public${stop.scene}`), stop.scene).toBe(true);
+  });
+});
+
 describe("perguntas da visita", () => {
   const questions = TOUR_STOPS.flatMap((s) => s.questions);
 

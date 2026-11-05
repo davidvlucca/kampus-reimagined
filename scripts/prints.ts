@@ -30,7 +30,7 @@ const PUBLIC: Shot[] = [
 ];
 
 const STUDENT: Shot[] = [
-  { name: "visita-virtual", path: "/app/tour", waitFor: "Welcome to Kampus" },
+  { name: "visita-virtual", path: "/app/tour", waitFor: "I'm Marta, the Program Manager" },
   { name: "dashboard-aluno", path: "/app", waitFor: "Hi Diana!" },
   { name: "tarefas", path: "/app/tasks", waitFor: "Sign the learning agreement" },
   {

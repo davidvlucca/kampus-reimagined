@@ -12,24 +12,24 @@ test("um clique no Welcome abre a demo de aluno e a visita, que se faz até ao f
 
   await page.getByRole("button", { name: "Explore as a student" }).click();
   await expect(page).toHaveURL(/\/app\/tour$/);
-  await expect(page.getByText("STOP 1/7")).toBeVisible();
+  await expect(page.getByText("STOP 1/8")).toBeVisible();
   await expectAccessible(page);
 
   // Perguntas ao guia: a resposta substitui a fala da paragem.
   const guide = page.getByRole("region", { name: "Guide" });
-  await page.getByRole("button", { name: "What time do classes start?" }).click();
-  await expect(page.getByRole("button", { name: "What time do classes start?" })).toHaveAttribute("aria-pressed", "true");
-  await expect(guide.locator("p:not(.sr-only):not(.invisible)").filter({ hasText: "Classes run from 9:00 to 18:00" })).toBeVisible();
-  await expect(guide.locator("p:not(.sr-only):not(.invisible)").filter({ hasText: "Let's walk around together" })).toHaveCount(0);
+  await page.getByRole("button", { name: "What if I'm late on the first day?" }).click();
+  await expect(page.getByRole("button", { name: "What if I'm late on the first day?" })).toHaveAttribute("aria-pressed", "true");
+  await expect(guide.locator("p:not(.sr-only):not(.invisible)").filter({ hasText: "Come in anyway and tell reception" })).toBeVisible();
+  await expect(guide.locator("p:not(.sr-only):not(.invisible)").filter({ hasText: "go straight to the reception desk" })).toHaveCount(0);
   await expectAccessible(page);
 
   // Teclado: → avança uma paragem.
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByText("STOP 2/7")).toBeVisible();
+  await expect(page.getByText("STOP 2/8")).toBeVisible();
 
-  for (let stop = 3; stop <= 7; stop++) {
+  for (let stop = 3; stop <= 8; stop++) {
     await page.getByRole("button", { name: "Next" }).click();
-    await expect(page.getByText(`STOP ${stop}/7`)).toBeVisible();
+    await expect(page.getByText(`STOP ${stop}/8`)).toBeVisible();
   }
   await page.getByRole("button", { name: "Go to my dashboard" }).click();
   await expect(page).toHaveURL(/\/app$/);

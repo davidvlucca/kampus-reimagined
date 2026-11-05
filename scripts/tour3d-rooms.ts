@@ -1,5 +1,5 @@
 // Prints de trabalho das salas da visita 3D (não vão para o README).
-// Uso: node scripts/tour3d-rooms.ts [sala…] [--size=LxA]   ex.: node scripts/tour3d-rooms.ts web-dev kitchen
+// Uso: node scripts/tour3d-rooms.ts [sala…] [--size=LxA]   ex.: node scripts/tour3d-rooms.ts web-dev rooftop
 // Escreve test-results/rooms/<sala>-desktop.png e -mobile.png. Sem salas: todas.
 import { mkdirSync, rmSync } from "node:fs";
 import { chromium } from "@playwright/test";
@@ -8,7 +8,7 @@ import { TOUR_STOPS } from "../shared/src/tour.ts";
 import { startStack } from "./stack.ts";
 
 const OUT = "test-results/rooms";
-const ROOMS = ["entrance", "web-dev", "ux-ui", "data", "kitchen", "lounge"];
+const ROOMS = ["entrance", "web-dev", "ux-ui", "data", "open-space", "kitchen", "rooftop"];
 const wanted = process.argv.slice(2).filter((a) => ROOMS.includes(a));
 // --size=1512x760 troca o tamanho do print de desktop (ex.: um portátil com o browser aberto).
 const size = process.argv.find((a) => a.startsWith("--size="))?.slice(7).split("x").map(Number);
