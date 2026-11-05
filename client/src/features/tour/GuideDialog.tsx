@@ -30,9 +30,10 @@ interface Props {
   controls: ReactNode;
 }
 
-// O guia grande do desktop tem a altura que cabe no ecrã; o cartão começa onde acaba a cara
-// (a imagem é quadrada e a cara fica a meio), para nunca a tapar entre 1280 e 1920 px.
-const portraitSize = "lg:[--portrait:min(58dvh,520px)]";
+// No desktop o guia fica encostado à esquerda do cartão, com o ombro por baixo dele, e no máximo
+// 360 px de altura: crescia com o ecrã e num monitor de 1440p tapava o mapa e o diálogo. O diálogo
+// tem zoom de 1,25 e 1,5 nos ecrãs grandes, por isso o tamanho aqui vem dividido pelo zoom.
+const portraitSize = "lg:[--portrait:min(40dvh,360px)] big:[--portrait:min(32dvh,288px)] huge:[--portrait:min(26.6dvh,240px)]";
 
 /** O guia e a caixa de diálogo: a fala, as perguntas e os controlos. */
 export function GuideDialog({
@@ -60,7 +61,8 @@ export function GuideDialog({
       <GuidePortrait
         guide={stop.guide}
         face={face}
-        className={cn(portraitSize, "absolute -bottom-8 left-[calc(var(--portrait)*-0.08)] hidden h-(--portrait) lg:grid")}
+        desktop
+        className={cn(portraitSize, "absolute -bottom-8 left-0 hidden h-(--portrait) lg:grid")}
         imgClassName="h-full w-auto"
       />
       <section
@@ -71,7 +73,7 @@ export function GuideDialog({
           "pointer-events-auto relative rounded-[var(--radius-card)] bg-kampus-navy/95 p-5 shadow-pop ring-1 ring-white/15",
           "short:min-h-0 short:overflow-y-auto short:p-3.5",
           portraitSize,
-          "lg:ml-[calc(var(--portrait)*0.64)] lg:max-w-[52rem] lg:p-7 lg:backdrop-blur",
+          "lg:ml-[calc(var(--portrait)*0.72)] lg:max-w-[52rem] lg:p-7 lg:backdrop-blur",
         )}
       >
         {finale && <FinaleStamp />}
