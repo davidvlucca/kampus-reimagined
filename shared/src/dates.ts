@@ -69,6 +69,21 @@ export function deadlineStatus(dueDate: string, now: Date = new Date()): Deadlin
   return days < 0 ? { kind: "overdue", days, unit, label: `Overdue by ${text}` } : { kind: "upcoming", days, unit, label: `Due in ${text}` };
 }
 
+/** O grupo da lista de tarefas pelo prazo (a página de tarefas agrupa as que faltam fazer). */
+export type DueGroup = "overdue" | "today" | "week" | "later" | "none";
+
+/** "This week" são os 7 dias depois de hoje e não o resto da semana ISO: ao domingo ficava vazio. */
+export const WEEK_GROUP_DAYS = 7;
+
+/** O grupo de um prazo; sem prazo ou com uma data inválida fica em "none" (o badge também não mostra nada). */
+export function dueGroup(dueDate: string | null, now: Date = new Date()): DueGroup {
+  if (!dueDate || !isDateKey(dueDate)) return "none";
+  const days = daysBetween(localDateKey(now), dueDate);
+  if (days < 0) return "overdue";
+  if (days === 0) return "today";
+  return days <= WEEK_GROUP_DAYS ? "week" : "later";
+}
+
 /** Soma dias a uma data YYYY-MM-DD (útil no seed e nos formulários). */
 export function addDays(key: string, amount: number): string {
   const [y, m, d] = key.split("-").map(Number);
