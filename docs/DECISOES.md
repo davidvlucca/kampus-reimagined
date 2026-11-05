@@ -78,6 +78,7 @@ As passwords usam argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 itera
 - O custo é uma consulta à base por pedido, que aqui é irrelevante.
 - O hash da password nunca sai da API: os utilizadores passam todos por uma função `toPublicUser()` que lista os campos um a um, e há um teste que procura o hash em todas as respostas.
 - O login não revela se o email existe. Email inexistente e password errada dão a mesma resposta 401, e quando o email não existe verifico a password contra um hash falso para o tempo de resposta ser parecido. Só depois de a password estar certa é que digo "esta conta é de aluno, entra pelo login de aluno" (403). Há um teste que compara as duas respostas.
+- Mudar a password não pode perder uma corrida com um login. O argon2 do login demora, e uma mudança ou reposição a meio apagava as sessões antes de o login criar a dele, que nascia válida com a password antiga. Por isso quem mexe nas credenciais (a mudança pelo próprio e a reposição pelo staff) troca o hash e apaga as sessões numa só transação, com a linha do utilizador bloqueada (`select ... for update`), e o login cria a sessão noutra transação que bloqueia a mesma linha e confirma que o hash e o email ainda são os que verificou; se não forem, é um 401 de password errada. O argon2 fica fora das transações, que só duram umas queries. Sem colunas novas: o próprio hash serve de versão.
 
 ---
 
@@ -96,6 +97,11 @@ As passwords usam argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 itera
 **Alternativas consideradas.** Redux ou só `useEffect`: o estado que tenho é quase todo "dados do servidor", e o TanStack Query trata disso (cache, recarregar, erros) sem eu escrever esse código. O estado local de formulários fica em `useState`.
 
 **Consequências.** O `csrf()` é redundante com o `SameSite=Lax`, de propósito: é defesa em profundidade, porque browsers antigos e subdomínios podem contornar o SameSite. É uma linha de código e está testado. No original havia dois `cors()` e o `ORIGIN` só funcionava para pedidos simples; agora há uma só configuração.
+
+**Notas: a cache não decide o que se apaga.**
+- *Contexto.* O "New note" cria logo a nota, e o editor apaga-a ao sair se ficou intocada. Uma revisão de código mostrou que essa decisão vinha da cache do separador: se o separador A criava a nota e o B lhe escrevia e guardava, A ainda a via vazia e apagava o texto de B. Os rascunhos por guardar (no `sessionStorage`) também eram guardados só pelo id da nota: se a sessão de A caía e B entrava no mesmo separador, B via o rascunho de A e podia copiá-lo para a conta dele com "Save as a new note".
+- *Decisão.* A limpeza automática usa `DELETE /api/notes/:id?onlyIfEmpty=1`, com a condição no próprio DELETE: só apaga se a nota tiver o título e o corpo do "New note" e nunca tiver sido editada (`updated_at = created_at`). Responde 204 se apagou, 200 `{ deleted: false, note }` se a nota ficou e 404 se não existe ou é de outro aluno. O client só a tira da cache depois do 204 (ou 404); com o 200, mostra a nota que o servidor devolveu. O Delete pedido pelo aluno continua sem condição. Os rascunhos passam a ter o id do utilizador na chave, e o "Log out" apaga os do utilizador que saiu.
+- *Consequências.* Uma nota editada e depois esvaziada já não é limpa automaticamente (fica na lista, o aluno apaga-a à mão): é o preço de não haver corrida com outro separador. Os rascunhos com a chave antiga (só o id da nota) são ignorados e desaparecem quando o separador fecha. Há testes no servidor para cada resposta do DELETE condicional e testes da chave dos rascunhos no client.
 
 ---
 
@@ -193,6 +199,7 @@ Com o par email+IP, um atacante bloqueia-se a si próprio.
 **Consequências.**
 - O IP vem, na Vercel, do `x-forwarded-for`, que a Vercel reescreve com o IP real (o cliente não o consegue falsificar). Fora da Vercel vem do socket: confiar nesse header sem um proxy à frente deixava qualquer um inventar IPs.
 - Guardo um hash e não o email para não guardar dados pessoais que não fazem falta: só preciso de saber se é o mesmo par.
+- Confirmar a password atual (para a mudar) também é um argon2, e com uma sessão roubada dava para testar passwords sem limite. Passa pelo mesmo mecanismo antes do argon2: 5 falhas por conta (chave `reauth:` com o id, seja qual for o IP) e as mesmas 30 falhas por IP do login, com o mesmo 429. Por conta e não por email+IP porque só quem tem sessão nessa conta lá chega, por isso não dá para bloquear a conta de outro. Uma confirmação certa não conta e apaga as falhas, como no login.
 
 ---
 
