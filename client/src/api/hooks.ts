@@ -24,6 +24,7 @@ import type {
   UpdateTaskInput,
 } from "@kampus/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { clearUserDrafts } from "../features/student/noteDraft.ts";
 import { api, isNotFound, unexpectedResponse } from "./client.ts";
 
 // Um 404 numa mutation quer dizer que a linha já não existe (apagada noutro separador ou
@@ -85,6 +86,9 @@ export function useLogout() {
     mutationFn: () => api<undefined>("/auth/logout", { method: "POST" }),
     // Só com sucesso: se o pedido falhar (offline), a sessão continua válida no servidor.
     onSuccess: () => {
+      // Os rascunhos de notas de quem saiu não ficam no separador para o próximo utilizador.
+      const me = qc.getQueryData<PublicUser | null>(keys.me);
+      if (me) clearUserDrafts(me.id);
       qc.clear();
       qc.setQueryData(keys.signedOut, true);
       qc.setQueryData(keys.me, null);

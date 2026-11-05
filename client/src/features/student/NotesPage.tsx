@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { flushSync } from "react-dom";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { ApiRequestError, errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
-import { useCreateNote, useDeleteNote, useDiscardEmptyNote, useNote, useNotes, useUpdateNote } from "../../api/hooks.ts";
+import { useCreateNote, useCurrentUser, useDeleteNote, useDiscardEmptyNote, useNote, useNotes, useUpdateNote } from "../../api/hooks.ts";
 import { Button, buttonClasses, Card, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Skeleton, SkeletonList, Textarea, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { editedAt } from "../../lib/format.ts";
@@ -179,17 +179,18 @@ function limitMessage(length: number): string {
 
 /** A nota já não existe, mas há texto por guardar dela neste separador: oferece-o como nota nova. */
 function OrphanDraft({ noteId }: { noteId: string }) {
+  const userId = useCurrentUser().id;
   const navigate = useNavigate();
   const toast = useToast();
   const create = useCreateNote();
   const lock = useSubmitLock();
-  const [draft, setDraft] = useState(() => loadDraft(noteId));
+  const [draft, setDraft] = useState(() => loadDraft(userId, noteId));
   if (!draft) return null;
   const saveAsNew = () =>
     void lock(() =>
       create.mutateAsync({ title: draft.title.trim() || NEW_NOTE_TITLE, body: draft.body }).then(
         (note) => {
-          clearDraft(noteId);
+          clearDraft(userId, noteId);
           toast({ title: "Saved as a new note", tone: "success" });
           navigate(`/app/notes/${note.id}`, { replace: true });
         },
@@ -207,7 +208,7 @@ function OrphanDraft({ noteId }: { noteId: string }) {
           variant="ghost"
           size="sm"
           onClick={() => {
-            clearDraft(noteId);
+            clearDraft(userId, noteId);
             setDraft(null);
           }}
         >
@@ -219,6 +220,7 @@ function OrphanDraft({ noteId }: { noteId: string }) {
 }
 
 function NoteForm({ note }: { note: Note }) {
+  const userId = useCurrentUser().id;
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -229,7 +231,7 @@ function NoteForm({ note }: { note: Note }) {
   // que se envia ao guardar comparam com eles, não com a nota em cache, que pode mudar por baixo.
   // Um rascunho deste separador (sessão expirada, recarregar) volta ao formulário, se ainda for diferente.
   const [draft] = useState(() => {
-    const saved = loadDraft(note.id);
+    const saved = loadDraft(userId, note.id);
     return saved && (saved.title !== note.title || saved.body !== note.body) ? saved : null;
   });
   const [restored, setRestored] = useState(draft !== null);
@@ -255,9 +257,9 @@ function NoteForm({ note }: { note: Note }) {
 
   // O rascunho acompanha o que está por guardar; sem nada por guardar, sai.
   useEffect(() => {
-    if (dirty) saveDraft(note.id, { title, body, seed });
-    else clearDraft(note.id);
-  }, [dirty, note.id, title, body, seed]);
+    if (dirty) saveDraft(userId, note.id, { title, body, seed });
+    else clearDraft(userId, note.id);
+  }, [dirty, userId, note.id, title, body, seed]);
 
   // O separador com o nome da nota (todas as notas eram "Notes · Kampus").
   useEffect(() => {
@@ -348,7 +350,7 @@ function NoteForm({ note }: { note: Note }) {
 
   // Volta ao que está guardado (e esquece o rascunho).
   const discardRestored = () => {
-    clearDraft(note.id);
+    clearDraft(userId, note.id);
     setSeed({ title: note.title, body: note.body });
     setTitle(note.title);
     setBody(note.body);
@@ -420,7 +422,7 @@ function NoteForm({ note }: { note: Note }) {
         onConfirm={async () => {
           try {
             await remove.mutateAsync(note.id);
-            clearDraft(note.id);
+            clearDraft(userId, note.id);
             toast({ title: "Note deleted", tone: "success" });
             leavingAfterDelete.current = true;
             navigate("/app/notes", { replace: true });
@@ -444,7 +446,7 @@ function NoteForm({ note }: { note: Note }) {
         confirmLabel="Discard changes"
         cancelLabel="Keep editing"
         onConfirm={() => {
-          clearDraft(note.id);
+          clearDraft(userId, note.id);
           blocker.proceed?.();
         }}
       />
