@@ -1,4 +1,4 @@
-import { NEW_NOTE_TITLE, type Note } from "@kampus/shared";
+import { cleanNoteBody, NEW_NOTE_TITLE, type Note } from "@kampus/shared";
 import { AlertCircle, ArrowLeft, CheckCircle2, Ellipsis, FileQuestion, History, LoaderCircle, NotebookPen, Plus, Save, Search, SearchX, Trash2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
@@ -484,7 +484,7 @@ function NoteForm({ note }: { note: Note }) {
     if (field === "title") {
       setTitle(value);
       if (titleError && value.trim()) setTitleError(undefined);
-    } else setBody(value);
+    } else setBody(cleanNoteBody(value));
     if (restored) setRestored(false);
   };
 

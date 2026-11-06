@@ -22,7 +22,6 @@ describe("texto que o Postgres não aceita dá 400 com o campo, não 500", () =>
   it.each([
     ["POST", "/api/tasks", "student", { title: NUL }, "title"],
     ["POST", "/api/notes", "student", { title: NUL, body: "" }, "title"],
-    ["POST", "/api/notes", "student", { title: "Ok", body: NUL }, "body"],
     ["PATCH", "/api/me", "student", { firstName: NUL, lastName: "Costa" }, "firstName"],
     ["POST", "/api/staff/students", "staff", { ...newStudent, lastName: NUL }, "lastName"],
     ["POST", "/api/staff/assignments", "staff", { title: NUL }, "title"],

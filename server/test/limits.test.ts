@@ -39,12 +39,16 @@ describe("limites de linhas (a demo é pública: ninguém enche a base)", () => 
   it(`${LIMITS.notesPerStudent} notas no tamanho máximo cabem numa resposta da Vercel (4,5 MB)`, async () => {
     const other = await t.login(STUDENT_B, "student");
     // O pior caso aceite: cada carácter ocupa 3 bytes no JSON (U+0800, o 1.º de 3 bytes em UTF-8).
-    const body = "ࠀ".repeat(10_000);
-    const title = "ࠀ".repeat(120);
+    const body = "\u0800".repeat(10_000);
+    const title = "\u0800".repeat(120);
     expect(createNoteSchema.safeParse({ title, body }).success).toBe(true);
-    // Um carácter de controlo valia 6 bytes: a API recusa-o.
-    const bad = await t.request("POST", "/api/notes", { cookie: other, body: { title: "x", body: "\u0001".repeat(10) } });
-    expect(bad.status).toBe(400);
+    // Um carácter de controlo valia 6 bytes: a API tira-o.
+    const bad = await t.request<{ note: { id: string; body: string } }>("POST", "/api/notes", {
+      cookie: other,
+      body: { title: "x", body: "a\u0001".repeat(10) },
+    });
+    expect(bad.status).toBe(201);
+    expect(bad.json.note.body).toBe("a".repeat(10));
 
     const userId = await t.userId(STUDENT_B);
     const have = await count(notes, sql`${notes.userId} = ${userId}`);

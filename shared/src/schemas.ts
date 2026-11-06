@@ -19,11 +19,22 @@ const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CONTROL = /[\u0000-\u001F\u007F]/;
 /**
  * No corpo de uma nota: os mesmos, menos \t, \n e \r, e os surrogates soltos (com a flag u,
- * um emoji é um carácter só e não apanha). No JSON cada um destes ocupa 6 bytes (\u0001):
+ * um emoji é um carácter só e não apanha). No JSON quase todos ocupam 6 bytes (\u0001):
  * 100 notas cheias deles passavam o limite de resposta da Vercel e partiam a lista.
+ * São tirados em vez de recusados: uma nota antiga que os tenha continua editável,
+ * e um texto colado de um PDF não dá erro.
  */
 // eslint-disable-next-line no-control-regex -- é mesmo para apanhar caracteres de controlo
-const BODY_INVALID = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uD800-\uDFFF]/u;
+const BODY_INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uD800-\uDFFF]/gu;
+
+/**
+ * O corpo de uma nota como o servidor o grava. O editor usa-o ao escrever: se ficasse com
+ * o texto colado tal e qual, nunca batia certo com o gravado e o autosave não parava.
+ */
+export const cleanNoteBody = (v: string) =>
+  // \v e \f separam linhas (quebra suave do Word, mudança de página de um PDF): viram \n.
+  // eslint-disable-next-line no-control-regex -- é mesmo para apanhar caracteres de controlo
+  v.replace(/[\u000B\u000C]/g, "\n").replace(BODY_INVISIBLE, "");
 
 /**
  * Texto obrigatório de uma linha (títulos, nomes). Uma quebra de linha é recusada,
@@ -213,11 +224,11 @@ export interface AssignmentDetail extends Assignment {
 
 export const createNoteSchema = z.object({
   title: singleLine(120),
-  // O corpo pode ter várias linhas (e tabs) e ficar vazio; o resto dos caracteres de controlo não.
+  // O corpo pode ter várias linhas (e tabs) e ficar vazio; o resto dos caracteres de controlo sai.
   body: z
     .string()
-    .max(10_000, "Max 10 000 characters")
-    .refine((v) => !BODY_INVALID.test(v), NUL_MESSAGE),
+    .transform(cleanNoteBody)
+    .pipe(z.string().max(10_000, "Max 10 000 characters")),
 });
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 
