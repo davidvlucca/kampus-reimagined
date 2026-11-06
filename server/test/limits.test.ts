@@ -1,8 +1,8 @@
-import { type Cohort, LIMITS } from "@kampus/shared";
+import { type Cohort, createNoteSchema, LIMITS } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { assignments, notes, tasks, users } from "../src/db/schema.ts";
-import { setup, STAFF, STUDENT_A } from "./helpers.ts";
+import { setup, STAFF, STUDENT_A, STUDENT_B } from "./helpers.ts";
 
 let t: Awaited<ReturnType<typeof setup>>;
 let student: string;
@@ -34,6 +34,26 @@ describe("limites de linhas (a demo é pública: ninguém enche a base)", () => 
     expect(over.status).toBe(409);
     expect(over.json.error).toBe(`You've reached the limit of ${LIMITS.tasksPerStudent} tasks. Delete some to add more.`);
     expect(await count(tasks, sql`${tasks.userId} = ${userId}`)).toBe(LIMITS.tasksPerStudent);
+  });
+
+  it(`${LIMITS.notesPerStudent} notas no tamanho máximo cabem numa resposta da Vercel (4,5 MB)`, async () => {
+    const other = await t.login(STUDENT_B, "student");
+    // O pior caso aceite: cada carácter ocupa 3 bytes no JSON (U+0800, o 1.º de 3 bytes em UTF-8).
+    const body = "ࠀ".repeat(10_000);
+    const title = "ࠀ".repeat(120);
+    expect(createNoteSchema.safeParse({ title, body }).success).toBe(true);
+    // Um carácter de controlo valia 6 bytes: a API recusa-o.
+    const bad = await t.request("POST", "/api/notes", { cookie: other, body: { title: "x", body: "\u0001".repeat(10) } });
+    expect(bad.status).toBe(400);
+
+    const userId = await t.userId(STUDENT_B);
+    const have = await count(notes, sql`${notes.userId} = ${userId}`);
+    await t.db.insert(notes).values(Array.from({ length: LIMITS.notesPerStudent - have }, () => ({ userId, title, body })));
+    await t.db.update(notes).set({ title, body }).where(sql`${notes.userId} = ${userId}`);
+
+    const list = await t.request("GET", "/api/notes", { cookie: other });
+    expect(list.status).toBe(200);
+    expect(Buffer.byteLength(list.text)).toBeLessThan(4_500_000);
   });
 
   it(`e no máximo ${LIMITS.notesPerStudent} notas`, async () => {

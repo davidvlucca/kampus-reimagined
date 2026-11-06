@@ -17,6 +17,13 @@ const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
 // Caracteres de controlo, incluindo \n e \r: um título ou um nome é uma linha só.
 // eslint-disable-next-line no-control-regex -- é mesmo para apanhar caracteres de controlo
 const CONTROL = /[\u0000-\u001F\u007F]/;
+/**
+ * No corpo de uma nota: os mesmos, menos \t, \n e \r, e os surrogates soltos (com a flag u,
+ * um emoji é um carácter só e não apanha). No JSON cada um destes ocupa 6 bytes (\u0001):
+ * 100 notas cheias deles passavam o limite de resposta da Vercel e partiam a lista.
+ */
+// eslint-disable-next-line no-control-regex -- é mesmo para apanhar caracteres de controlo
+const BODY_INVALID = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uD800-\uDFFF]/u;
 
 /**
  * Texto obrigatório de uma linha (títulos, nomes). Uma quebra de linha é recusada,
@@ -206,8 +213,11 @@ export interface AssignmentDetail extends Assignment {
 
 export const createNoteSchema = z.object({
   title: singleLine(120),
-  // O corpo pode ter várias linhas e ficar vazio; só o NUL é recusado.
-  body: z.string().max(10_000, "Max 10 000 characters").refine(noNul, NUL_MESSAGE),
+  // O corpo pode ter várias linhas (e tabs) e ficar vazio; o resto dos caracteres de controlo não.
+  body: z
+    .string()
+    .max(10_000, "Max 10 000 characters")
+    .refine((v) => !BODY_INVALID.test(v), NUL_MESSAGE),
 });
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 

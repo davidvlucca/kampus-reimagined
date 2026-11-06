@@ -56,6 +56,15 @@ describe("texto livre", () => {
   it("o corpo da nota pode ter várias linhas", () => {
     expect(createNoteSchema.safeParse({ title: "Day 1", body: "Line 1\nLine 2\r\n\t- item" }).success).toBe(true);
   });
+
+  it("o corpo da nota recusa os outros caracteres de controlo e os surrogates soltos", () => {
+    // No JSON, cada um destes ocupa 6 bytes: 100 notas cheias passavam o limite de resposta da Vercel.
+    for (const bad of ["a\u0001b", "\u001F", "\u007F", "a\u000Bb", "\uD800", "x\uDFFFy"]) {
+      expect(fieldError(createNoteSchema.safeParse({ title: "Ok", body: bad }), "body")).toBe("Contains an invalid character");
+    }
+    // Um emoji é um par de surrogates certo: passa.
+    expect(createNoteSchema.safeParse({ title: "Ok", body: "Done 🎉" }).success).toBe(true);
+  });
 });
 
 describe("prazos", () => {
