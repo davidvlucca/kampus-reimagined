@@ -1,5 +1,6 @@
 import { NEW_NOTE_TITLE, type KeptNoteResponse, type Note } from "@kampus/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { notes } from "../src/db/schema.ts";
 import { setup, STUDENT_A, STUDENT_B } from "./helpers.ts";
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -91,5 +92,16 @@ describe("Delete pedido pelo aluno (sem onlyIfEmpty)", () => {
     const noteOfB = await newNote(b);
     expect((await t.request("DELETE", `/api/notes/${noteOfB.id}`, { cookie: a })).status).toBe(404);
     expect((await getNote(b, noteOfB.id)).status).toBe(200);
+  });
+});
+
+describe("notas antigas com caracteres de controlo (de antes de serem tirados)", () => {
+  it("continuam editáveis: o PATCH com o corpo inteiro grava-o já limpo", async () => {
+    const userId = await t.userId(STUDENT_A);
+    // Direto na base, como ficou guardada antes da regra.
+    const [old] = await t.db.insert(notes).values({ userId, title: "Old", body: "Line\u0001 one" }).returning();
+    const res = await t.request<{ note: Note }>("PATCH", `/api/notes/${old!.id}`, { cookie: a, body: { body: "Line\u0001 one, more" } });
+    expect(res.status).toBe(200);
+    expect(res.json.note.body).toBe("Line one, more");
   });
 });

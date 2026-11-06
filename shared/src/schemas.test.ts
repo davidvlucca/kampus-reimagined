@@ -22,7 +22,8 @@ describe("texto livre", () => {
     const nul = "a\u0000b";
     expect(fieldError(createTaskSchema.safeParse({ title: nul }), "title")).toBe("Contains an invalid character");
     expect(fieldError(createNoteSchema.safeParse({ title: nul, body: "" }), "title")).toBe("Contains an invalid character");
-    expect(fieldError(createNoteSchema.safeParse({ title: "Ok", body: nul }), "body")).toBe("Contains an invalid character");
+    // No corpo, o NUL sai (como os outros caracteres de controlo) em vez de dar erro.
+    expect(createNoteSchema.parse({ title: "Ok", body: nul }).body).toBe("ab");
     expect(fieldError(updateProfileSchema.safeParse({ firstName: nul, lastName: "Silva" }), "firstName")).toBeDefined();
     expect(fieldError(createStudentSchema.safeParse({ ...student, lastName: nul }), "lastName")).toBeDefined();
     expect(fieldError(createAssignmentSchema.safeParse({ cohortId: COHORT, title: nul }), "title")).toBeDefined();
@@ -55,6 +56,15 @@ describe("texto livre", () => {
 
   it("o corpo da nota pode ter várias linhas", () => {
     expect(createNoteSchema.safeParse({ title: "Day 1", body: "Line 1\nLine 2\r\n\t- item" }).success).toBe(true);
+  });
+
+  it("o corpo da nota perde os outros caracteres de controlo e os surrogates soltos", () => {
+    // No JSON, quase todos ocupam 6 bytes: 100 notas cheias passavam o limite de resposta da Vercel.
+    for (const [bad, clean] of [["a\u0001b", "ab"], ["\u001F", ""], ["\u007F", ""], ["a\u000Bb", "a\nb"], ["a\u000Cb", "a\nb"], ["\uD800", ""], ["x\uDFFFy", "xy"]]) {
+      expect(createNoteSchema.parse({ title: "Ok", body: bad }).body).toBe(clean);
+    }
+    // Um emoji é um par de surrogates certo: fica.
+    expect(createNoteSchema.parse({ title: "Ok", body: "Done 🎉" }).body).toBe("Done 🎉");
   });
 });
 
