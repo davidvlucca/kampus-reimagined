@@ -300,7 +300,8 @@ function NoteForm({ note }: { note: Note }) {
   const [restored, setRestored] = useState(draft !== null);
   const [seed, setSeedState] = useState<Seed>(draft?.seed ?? { title: note.title, body: note.body });
   const [title, setTitle] = useState(draft?.title ?? note.title);
-  const [body, setBody] = useState(draft?.body ?? note.body);
+  // Um rascunho de antes da limpeza dos caracteres de controlo: sem ela, nunca batia certo com o gravado.
+  const [body, setBody] = useState(draft ? cleanNoteBody(draft.body) : note.body);
   const [titleError, setTitleError] = useState<string | undefined>();
   const [saveError, setSaveError] = useState<string | null>(null);
   // O que o leitor de ecrã ouve: só "guardado" ou o erro, uma vez por gravação (não a cada tecla).
@@ -562,7 +563,16 @@ function NoteForm({ note }: { note: Note }) {
           label="Note"
           value={body}
           maxLength={BODY_MAX}
-          onChange={(e) => edit("body", e.target.value)}
+          onChange={(e) => {
+            const el = e.target;
+            const clean = cleanNoteBody(el.value);
+            edit("body", el.value);
+            // Colar a meio texto com caracteres que saem: o cursor ficava no fim. Volta para depois do colado.
+            if (clean !== el.value) {
+              const caret = cleanNoteBody(el.value.slice(0, el.selectionEnd)).length;
+              requestAnimationFrame(() => el.setSelectionRange(caret, caret));
+            }
+          }}
           onBlur={onBlurField}
           className="min-h-[50dvh] lg:min-h-[28rem]"
           hint={
