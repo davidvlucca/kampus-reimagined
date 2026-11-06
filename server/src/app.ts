@@ -41,7 +41,9 @@ export interface AppConfig {
 
 function clientIp(headers: Headers, trustProxy: boolean, socketAddress: () => string | undefined): string {
   if (trustProxy) {
-    const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    // O último valor, não o primeiro: é o que o proxy de confiança pôs. A Vercel reescreve o
+    // header (fica um só), mas se um dia juntar ao fim, o primeiro passava a ser do cliente.
+    const forwarded = headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
     if (forwarded) return forwarded;
   }
   try {

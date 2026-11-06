@@ -40,6 +40,15 @@ describe("limite de tentativas de login (5 falhas por email+IP em 15 min)", () =
     expect((await login("student@example.com", "Kampus123", ip)).status).toBe(429);
   });
 
+  it("conta o último IP do x-forwarded-for (o que o proxy juntou), não o primeiro que o cliente mandou", async () => {
+    // Se um proxy juntasse o IP real ao fim em vez de reescrever o header, o 1.º valor era do cliente
+    // e mudá-lo a cada pedido dava tentativas sem fim.
+    for (let i = 1; i <= 5; i++) {
+      expect((await login("rita.alves@example.com", "wrong", `198.51.100.${i}, 203.0.113.9`)).status).toBe(401);
+    }
+    expect((await login("rita.alves@example.com", "wrong", "198.51.100.6, 203.0.113.9")).status).toBe(429);
+  });
+
   it("o mesmo email noutro IP não fica bloqueado", async () => {
     expect((await login("student@example.com", "Kampus123", "198.51.100.7")).status).toBe(200);
   });
