@@ -6,10 +6,37 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
+import { migrationsPending } from "../server/src/db/migrations.ts";
+import { createPostgresDb } from "../server/src/db/postgres.ts";
 import { MISSING_ASSET, NOINDEX, NOINDEX_META, vercelRoutes } from "./vercel-routes.ts";
 
 const OUT = ".vercel/output";
 const FUNC = `${OUT}/functions/api.func`;
+
+// 0. Em produção, a base tem de ter as migrações deste código: publicado antes delas, as rotas
+// das tabelas novas davam 500. Falhar aqui (também se a base não responder) deixa no ar a versão
+// anterior. O build não migra: só confere. No CI e nos previews não há esta verificação.
+if (process.env.VERCEL_ENV === "production" && process.env.DATABASE_URL) {
+  const { db, close } = createPostgresDb(process.env.DATABASE_URL, { maxConnections: 1 });
+  let pending = true;
+  // Três tentativas: a Neon adormece sem uso e a primeira ligação pode passar dos 5 s do pool.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      pending = await migrationsPending(db);
+      break;
+    } catch (err) {
+      // Só a causa (a tabela das migrações não existe, a base não responde), sem a stack nem a query.
+      const cause = ((err as Error).cause ?? err) as Error & { code?: string; errors?: Error[] };
+      console.error(`Database check failed (attempt ${attempt}/3): ${cause.code ?? cause.name}: ${cause.message || cause.errors?.[0]?.message || ""}`);
+    }
+  }
+  await close();
+  if (pending) {
+    console.error("The database is behind this code's migrations (or couldn't be read). Run `npm run db:migrate` against it, then redeploy.");
+    process.exit(1);
+  }
+  console.log("Database migrations are up to date.");
+}
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(FUNC, { recursive: true });

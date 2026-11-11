@@ -1,15 +1,16 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
-import { createDb } from "../src/db/client.ts";
+import type { DbHandle } from "../src/db/client.ts";
 import { notes, users } from "../src/db/schema.ts";
 import { resetDemo, seedDatabase } from "../src/demo-data.ts";
+import { createTestDb, realPostgres } from "./helpers.ts";
 
 const SECRET = "test-cron-secret-with-at-least-32-chars";
-let handle: ReturnType<typeof createDb>;
+let handle: DbHandle;
 
 beforeAll(async () => {
-  handle = createDb({ pgliteDir: "memory" });
+  handle = await createTestDb();
   await handle.migrate();
   await seedDatabase(handle.db, { today: "2026-11-02" });
 });
@@ -60,6 +61,35 @@ describe("reposição diária da demo (Vercel Cron)", () => {
   it("duas reposições ao mesmo tempo não se misturam (ficam os dados de uma só)", async () => {
     const results = await Promise.all([resetDemo(handle.db), resetDemo(handle.db)]);
     expect(results).toEqual([expect.objectContaining({ students: 20 }), expect.objectContaining({ students: 20 })]);
+    expect(await count(users)).toBe(25);
+  });
+
+  // Em PGlite há uma só ligação: quem segura o lock bloqueava a própria base.
+  it.skipIf(!realPostgres)("dois pedidos ao cron em paralelo esperam pelo lock de quem já está a repor", async () => {
+    const app = appWith(SECRET);
+    const cron = async () => app.request("/api/cron/reset-demo", { headers: { authorization: `Bearer ${SECRET}` } });
+    let locked!: () => void;
+    const isLocked = new Promise<void>((resolve) => (locked = resolve));
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    // Outra ligação fica com o lock, como uma reposição a meio.
+    const holder = handle.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('kampus:reset-demo'))`);
+      locked();
+      await released;
+    });
+    await isLocked;
+    let finished = 0;
+    const requests = [cron(), cron()].map((p) => p.then((res) => (finished++, res)));
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(finished).toBe(0);
+    } finally {
+      // Sempre: com o lock preso, o close() no fim nunca chegava a apagar a base.
+      release();
+      await holder;
+    }
+    expect((await Promise.all(requests)).map((res) => res.status)).toEqual([200, 200]);
     expect(await count(users)).toBe(25);
   });
 });

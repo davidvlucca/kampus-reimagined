@@ -1,9 +1,10 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { reauthAttemptKey } from "../src/auth/rateLimit.ts";
-import { createSessionIfCurrent } from "../src/auth/session.ts";
+import { hashPassword } from "../src/auth/password.ts";
+import { createSessionIfCurrent, lockUser } from "../src/auth/session.ts";
 import { loginAttempts, sessions, users } from "../src/db/schema.ts";
-import { setup, STAFF } from "./helpers.ts";
+import { realPostgres, setup, STAFF } from "./helpers.ts";
 
 // Um gancho logo a seguir ao argon2 do login: deixa provocar, sempre no mesmo ponto, uma
 // mudança de password entre a verificação e a criação da sessão. Conta também as verificações.
@@ -214,5 +215,70 @@ describe("confirmar a password atual tem o limite do login", () => {
     expect((await changePassword(cookie, "Kampus123")).status).toBe(204);
     expect(await reauthRows(id)).toBe(0);
     for (let i = 0; i < 4; i++) expect((await changePassword(cookie, "wrong")).status).toBe(400);
+  });
+});
+
+describe("login e reposição pelo staff em paralelo (várias ligações)", () => {
+  // As falhas destes logins contam no IP "unknown" dos testes: limpas para nenhum 429 se meter.
+  beforeEach(() => t.db.delete(loginAttempts));
+  const cookieOf = (res: { headers: Headers }) => (res.headers.get("set-cookie") ?? "").split(";")[0]!;
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  it.skipIf(!realPostgres)("um login que chega ao lock com a troca a meio espera por ela e é recusado", async () => {
+    const email = "samuel.okafor@example.com";
+    const id = await t.userId(email);
+    const newHash = await hashPassword("ResetPass9");
+    let releasedAt: number | undefined;
+    let change: Promise<void> | undefined;
+    // Depois do argon2 do login, outra ligação bloqueia a linha e troca o hash, sem fazer commit.
+    hooks.afterVerify = async () => {
+      let locked!: () => void;
+      const isLocked = new Promise<void>((resolve) => (locked = resolve));
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => (release = resolve));
+      change = t.db.transaction(async (tx) => {
+        await lockUser(tx, id);
+        await tx.update(users).set({ passwordHash: newHash }).where(eq(users.id, id));
+        await tx.delete(sessions).where(eq(sessions.userId, id));
+        locked();
+        await released;
+      });
+      await isLocked;
+      setTimeout(() => {
+        releasedAt = Date.now();
+        release();
+      }, 200);
+    };
+    const res = await loginRequest(email);
+    // Só acaba depois do commit da troca (esperou pelo lock) e vê o hash novo.
+    expect(releasedAt).toBeDefined();
+    expect(res.status).toBe(401);
+    await change;
+    expect(await sessionCount(id)).toBe(0);
+    await t.login(email, "student", "ResetPass9");
+  });
+
+  it("logins com a password antiga ao mesmo tempo que a reposição: nenhuma sessão sobrevive", async () => {
+    const emails = ["sara.correia@example.com", "vera.antunes@example.com", "yara.haddad@example.com", "laura.fischer@example.com"];
+    for (const [round, email] of emails.entries()) {
+      await t.db.delete(loginAttempts);
+      const id = await t.userId(email);
+      // Logins espalhados no tempo (cada argon2 leva dezenas de ms) e a reposição cada vez mais
+      // tarde: uns acabam antes da troca, outros durante e outros depois.
+      const logins = Array.from({ length: 5 }, async (_, i) => {
+        await sleep(i * 25);
+        return loginRequest(email);
+      });
+      const reset = sleep(round * 40).then(() =>
+        t.request("PATCH", `/api/staff/students/${id}`, { cookie: staff, body: { password: `ResetPass${round}x` } }),
+      );
+      const [resetRes, ...loginRes] = await Promise.all([reset, ...logins]);
+      expect(resetRes.status).toBe(200);
+      for (const res of loginRes) {
+        expect([200, 401]).toContain(res.status);
+        if (res.status === 200) expect((await t.request("GET", "/api/auth/me", { cookie: cookieOf(res) })).json).toEqual({ user: null });
+      }
+      expect(await sessionCount(id)).toBe(0);
+    }
   });
 });

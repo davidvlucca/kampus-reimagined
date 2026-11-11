@@ -1,12 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 import { getConnInfo } from "@hono/node-server/conninfo";
-import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 import type { Db } from "./db/client.ts";
+import { migrationsPending } from "./db/migrations.ts";
 import type { SessionConfig } from "./auth/session.ts";
 import { resetDemo } from "./demo-data.ts";
 import type { AppEnv } from "./lib/env.ts";
@@ -104,7 +104,7 @@ export function createApp(config: AppConfig) {
       c.set("clientIp", clientIp(c.req.raw.headers, config.trustProxy ?? false, () => getConnInfo(c).remote.address));
       await next();
     })
-    // Vivo: responde sem tocar na base. Pronto: a base também responde.
+    // Vivo: responde sem tocar na base. Pronto: a base também responde e tem as migrações do código.
     .get("/health", (c) => {
       c.header("Cache-Control", "no-store");
       return c.json({ ok: true, version });
@@ -112,7 +112,11 @@ export function createApp(config: AppConfig) {
     .get("/health/ready", async (c) => {
       c.header("Cache-Control", "no-store");
       try {
-        await config.db.execute(sql`select 1`);
+        if (await migrationsPending(config.db)) {
+          // O código foi publicado antes de se aplicarem as migrações: as rotas das tabelas novas dão 500.
+          console.error("Health check failed: migrations pending", { route: "GET /api/health/ready" });
+          return c.json({ ok: false, reason: "migrations" }, 503);
+        }
         return c.json({ ok: true, version });
       } catch (err) {
         console.error("Health check failed", describeError(err, "GET /api/health/ready"));
