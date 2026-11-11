@@ -1,6 +1,8 @@
 # Corre em cada push e pull request: lint, tipos, testes (Vitest), o build da Vercel com o
 # orçamento do bundle e testes de ponta a ponta (Playwright + axe) numa cópia da app com
 # PGlite. Não precisa de segredos. Node 22, o mesmo da função na Vercel (nodejs22.x).
+# O job postgres repete os testes de concorrência (locks, limites de tentativas) num Postgres
+# a sério: o PGlite dos outros testes tem uma só ligação e nunca vê corridas entre ligações.
 name: CI
 
 on:
@@ -34,6 +36,35 @@ jobs:
       # outro passo de build: o typecheck acima já é o "npm run build -w server".
       - run: npm run build:vercel
       - run: node scripts/check-bundle.ts
+
+  postgres:
+    name: Concurrency tests (Postgres 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        # A versão que a Neon usa por omissão.
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Cada ficheiro de teste cria e apaga a sua própria base neste servidor.
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:pg
 
   e2e:
     name: End-to-end (Playwright + axe)

@@ -1,16 +1,18 @@
+import { LIMITS } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
-import { createDb } from "../src/db/client.ts";
-import { ipAttemptKey, ipSuccessKey } from "../src/auth/rateLimit.ts";
+import type { DbHandle } from "../src/db/client.ts";
+import { claimStaffHash, ipAttemptKey, ipSuccessKey, staffHashKey } from "../src/auth/rateLimit.ts";
 import { loginAttempts } from "../src/db/schema.ts";
 import { seedDatabase } from "../src/demo-data.ts";
+import { createTestDb } from "./helpers.ts";
 
-let handle: ReturnType<typeof createDb>;
+let handle: DbHandle;
 let app: ReturnType<typeof createApp>;
 
 beforeAll(async () => {
-  handle = createDb({ pgliteDir: "memory" });
+  handle = await createTestDb();
   await handle.migrate();
   await seedDatabase(handle.db, { today: "2026-11-02" });
   // Como na Vercel: o IP vem do x-forwarded-for.
@@ -149,5 +151,15 @@ describe("limite por IP (30 falhas em 15 min, seja qual for o email)", () => {
     // Do teste anterior: só as que passaram (<= 30) ficaram, não as 200.
     const rows = await handle.db.select().from(loginAttempts).where(sql`${loginAttempts.key} = ${ipAttemptKey("198.51.100.23")}`);
     expect(rows.length).toBeLessThanOrEqual(30);
+  });
+
+  it("o teto das passwords do staff também aguenta pedidos em paralelo: com 3 vagas, passam no máximo 3", async () => {
+    const ip = "198.51.100.30";
+    const key = staffHashKey(ip);
+    await handle.db.insert(loginAttempts).values(Array.from({ length: LIMITS.students * 2 - 3 }, () => ({ key, attemptedAt: new Date() })));
+    const waits = await Promise.all(Array.from({ length: 20 }, () => claimStaffHash(handle.db, ip)));
+    expect(waits.filter((w) => w === 0).length).toBeLessThanOrEqual(3);
+    const rows = await handle.db.select().from(loginAttempts).where(sql`${loginAttempts.key} = ${key}`);
+    expect(rows.length).toBeLessThanOrEqual(LIMITS.students * 2);
   });
 });

@@ -1,15 +1,52 @@
+import { randomBytes } from "node:crypto";
 import { DEMO_PASSWORD } from "@kampus/shared";
 import { eq } from "drizzle-orm";
+import pg from "pg";
 import { createApp } from "../src/app.ts";
-import { createDb } from "../src/db/client.ts";
+import { createDb, type DbHandle } from "../src/db/client.ts";
 import { users } from "../src/db/schema.ts";
 import { seedDatabase } from "../src/demo-data.ts";
 
 const ORIGIN = "http://localhost:5173";
 
-/** Uma app com base PGlite só em memória, migrada e com o seed de demo. */
+/** Com TEST_DATABASE_URL os testes correm num Postgres a sério (npm run test:pg). */
+export const realPostgres = Boolean(process.env.TEST_DATABASE_URL);
+
+async function admin(url: string, query: string) {
+  const client = new pg.Client({ connectionString: url });
+  await client.connect();
+  try {
+    await client.query(query);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * A base de um ficheiro de testes, ainda por migrar. Sem TEST_DATABASE_URL é PGlite em memória
+ * (uma só ligação). Com ele é uma base nova, só deste ficheiro, no Postgres indicado, com o pool
+ * de produção (várias ligações): é aí que os locks e as corridas se veem. Fechar apaga a base.
+ */
+export async function createTestDb(): Promise<DbHandle> {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) return createDb({ pgliteDir: "memory" });
+  const name = `kampus_test_${randomBytes(6).toString("hex")}`;
+  await admin(url, `create database ${name}`);
+  const dbUrl = new URL(url);
+  dbUrl.pathname = `/${name}`;
+  const handle = createDb({ databaseUrl: dbUrl.toString() });
+  return {
+    ...handle,
+    close: async () => {
+      await handle.close();
+      await admin(url, `drop database if exists ${name} with (force)`);
+    },
+  };
+}
+
+/** Uma app com a base de testes (ver createTestDb), migrada e com o seed de demo. */
 export async function setup() {
-  const handle = createDb({ pgliteDir: "memory" });
+  const handle = await createTestDb();
   await handle.migrate();
   await seedDatabase(handle.db, { today: "2026-11-02" });
   const app = createApp({
