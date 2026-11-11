@@ -1,4 +1,4 @@
-import { cleanNoteBody, NEW_NOTE_TITLE, type Note } from "@kampus/shared";
+import { cleanNoteBody, NEW_NOTE_TITLE, tabsToSpaces, type Note } from "@kampus/shared";
 import { AlertCircle, ArrowLeft, CheckCircle2, Ellipsis, FileQuestion, History, LoaderCircle, NotebookPen, Plus, Save, Search, SearchX, Trash2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
@@ -299,8 +299,9 @@ function NoteForm({ note }: { note: Note }) {
   // Guarda-se quando o aluno escreve, ou carrega em "Keep them".
   const [restored, setRestored] = useState(draft !== null);
   const [seed, setSeedState] = useState<Seed>(draft?.seed ?? { title: note.title, body: note.body });
-  const [title, setTitle] = useState(draft?.title ?? note.title);
-  // Um rascunho de antes da limpeza dos caracteres de controlo: sem ela, nunca batia certo com o gravado.
+  // Um rascunho de antes da limpeza (tabs no título, caracteres de controlo no corpo): sem ela,
+  // nunca batia certo com o gravado.
+  const [title, setTitle] = useState(draft ? tabsToSpaces(draft.title) : note.title);
   const [body, setBody] = useState(draft ? cleanNoteBody(draft.body) : note.body);
   const [titleError, setTitleError] = useState<string | undefined>();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -483,7 +484,9 @@ function NoteForm({ note }: { note: Note }) {
   // Escrever é aceitar o rascunho reposto (passa a guardar-se sozinho).
   const edit = (field: "title" | "body", value: string) => {
     if (field === "title") {
-      setTitle(value);
+      // Um tab colado de uma folha de cálculo: o servidor grava um espaço, e com o tab aqui o
+      // título nunca batia certo com o gravado ("Saving…" para sempre).
+      setTitle(tabsToSpaces(value));
       if (titleError && value.trim()) setTitleError(undefined);
     } else setBody(cleanNoteBody(value));
     if (restored) setRestored(false);
@@ -555,7 +558,15 @@ function NoteForm({ note }: { note: Note }) {
           value={title}
           maxLength={120}
           error={titleError}
-          onChange={(e) => edit("title", e.target.value)}
+          onChange={(e) => {
+            const el = e.target;
+            edit("title", el.value);
+            // Como no corpo: com um tab trocado, o cursor ia para o fim. O tamanho não muda.
+            if (el.value.includes("\t")) {
+              const caret = el.selectionEnd;
+              requestAnimationFrame(() => el.setSelectionRange(caret, caret));
+            }
+          }}
           onBlur={onBlurField}
           className="h-13 font-display text-xl font-semibold text-kampus-navy"
         />

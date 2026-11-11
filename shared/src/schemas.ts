@@ -37,6 +37,12 @@ export const cleanNoteBody = (v: string) =>
   v.replace(/[\u000B\u000C]/g, "\n").replace(BODY_INVISIBLE, "");
 
 /**
+ * Um tab num campo de uma linha vira espaço, como o servidor o grava. O editor das notas
+ * usa-o ao escrever o título, pela mesma razão do `cleanNoteBody`.
+ */
+export const tabsToSpaces = (v: string) => v.replace(/\t/g, " ");
+
+/**
  * Texto obrigatório de uma linha (títulos, nomes). Uma quebra de linha é recusada,
  * não convertida: os campos do client são de uma linha, por isso só chega por API.
  * Um tab chega por colar texto de uma folha de cálculo: vira espaço em vez de dar erro.
@@ -44,7 +50,7 @@ export const cleanNoteBody = (v: string) =>
 const singleLine = (max: number) =>
   z
     .string()
-    .transform((v) => v.replace(/\t/g, " "))
+    .transform(tabsToSpaces)
     .pipe(
       z
         .string()
