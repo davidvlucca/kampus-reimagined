@@ -79,7 +79,8 @@ In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of 
 2. Set `CRON_SECRET` (a random string of at least 32 characters, e.g. `openssl rand -hex 32`; a shorter one leaves the reset route disabled) and `CORS_ORIGIN` (the site URL) in the project's environment variables.
 3. Apply the migrations and load the demo data once: `vercel env pull .env.production.local`, then `DATABASE_URL=… npm run db:migrate` and `DATABASE_URL=… node server/src/seed.ts --reset --allow-remote`.
 4. `vercel deploy --prod`.
-5. Later, when a commit adds a migration (`server/drizzle/`), run `npm run db:migrate` against Neon **before** pushing it: the build doesn't migrate, and the new code expects the new tables.
+5. Cap query time in the database, once, from the Neon SQL editor: `ALTER ROLE CURRENT_USER SET statement_timeout = '10s';`. The pool only limits the time to connect (a client-side query timeout can hand a connection back with its transaction still open). A migration with a slower step has to start with `SET statement_timeout = 0`.
+6. Later, when a commit adds a migration (`server/drizzle/`), run `npm run db:migrate` against Neon **before** pushing it: the build doesn't migrate, and the new code expects the new tables.
 
 </details>
 
