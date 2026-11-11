@@ -114,6 +114,12 @@ describe("pool do Postgres", () => {
     error.mockRestore();
     await pool.end();
   });
+
+  it("desiste de ligar ao fim de 5 s (o Neon em baixo não pendura os pedidos até ao limite da função)", async () => {
+    const pool = createPool("postgres://user:pass@127.0.0.1:1/kampus");
+    expect(pool.options.connectionTimeoutMillis).toBe(5_000);
+    await pool.end();
+  });
 });
 
 describe("códigos de erro do Postgres", () => {
