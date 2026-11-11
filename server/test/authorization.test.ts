@@ -204,6 +204,10 @@ describe("visita e tarefas do aluno", () => {
     expect(done.json.task.done).toBe(true);
     expect(done.json.task.completedAt).not.toBeNull();
 
+    // Marcar outra vez (duplo clique, dois separadores) não muda a data em que foi feita.
+    const again = await t.request<{ task: Task }>("PATCH", `/api/tasks/${id}`, { cookie: a, body: { done: true } });
+    expect(again.json.task.completedAt).toBe(done.json.task.completedAt);
+
     const undone = await t.request<{ task: Task }>("PATCH", `/api/tasks/${id}`, { cookie: a, body: { done: false } });
     expect(undone.json.task.done).toBe(false);
     expect(undone.json.task.completedAt).toBeNull();

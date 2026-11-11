@@ -1,5 +1,5 @@
 import { COHORT_TASK_MESSAGE, createTaskSchema, LIMITS, limitMessage, TASK_FILTERS, updateTaskSchema, type Task, type TaskFilter } from "@kampus/shared";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireRole, requireUser } from "../auth/middleware.ts";
@@ -118,7 +118,11 @@ export const taskRoutes = new Hono<AppEnv>()
       .set({
         ...(input.title !== undefined && { title: input.title }),
         ...(input.dueDate !== undefined && { dueDate: input.dueDate }),
-        ...(input.done !== undefined && { done: input.done, completedAt: input.done ? now : null }),
+        ...(input.done !== undefined && {
+          done: input.done,
+          // Repetir `done: true` não mexe na data em que foi feita.
+          completedAt: input.done ? sql`coalesce(${tasks.completedAt}, ${now})` : null,
+        }),
         updatedAt: now,
       })
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
