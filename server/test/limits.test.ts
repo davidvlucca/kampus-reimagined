@@ -1,7 +1,8 @@
 import { type Cohort, createNoteSchema, LIMITS } from "@kampus/shared";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { assignments, notes, tasks, users } from "../src/db/schema.ts";
+import { staffHashKey } from "../src/auth/rateLimit.ts";
+import { assignments, loginAttempts, notes, tasks, users } from "../src/db/schema.ts";
 import { setup, STAFF, STUDENT_A, STUDENT_B } from "./helpers.ts";
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -17,7 +18,7 @@ beforeAll(async () => {
 });
 afterAll(() => t.close());
 
-const count = async (table: typeof tasks | typeof notes | typeof users | typeof assignments, where = sql`true`) => {
+const count = async (table: typeof tasks | typeof notes | typeof users | typeof assignments | typeof loginAttempts, where = sql`true`) => {
   const [row] = await t.db.select({ n: sql<number>`count(*)::int` }).from(table).where(where);
   return row!.n;
 };
@@ -96,5 +97,22 @@ describe("limites de linhas (a demo é pública: ninguém enche a base)", () => 
     const over = await t.request<{ error: string }>("POST", "/api/staff/assignments", { cookie: staff, body: { cohortId, title: "One too many" } });
     expect(over.status).toBe(409);
     expect(over.json.error).toMatch(/limit of 100 cohort tasks/);
+  });
+
+  it(`o staff define no máximo ${LIMITS.students * 2} passwords por IP em 15 min (cada uma é um argon2)`, async () => {
+    // Simula as que já foram feitas, menos uma (mais rápido do que 600 argon2). Nos testes o IP é "unknown".
+    const key = staffHashKey("unknown");
+    await t.db.insert(loginAttempts).values(Array.from({ length: LIMITS.students * 2 - 1 }, () => ({ key, attemptedAt: new Date() })));
+    const id = await t.userId("filler0@example.com");
+    const patch = (body: Record<string, string>) => t.request<{ error: string }>("PATCH", `/api/staff/students/${id}`, { cookie: staff, body });
+
+    expect((await patch({ password: "Another123" })).status).toBe(200);
+    const over = await patch({ password: "OneTooMany123" });
+    expect(over.status).toBe(429);
+    expect(Number(over.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(over.json.error).toMatch(/Too many new passwords/);
+    // A barrada não fica gravada, e o que não pede argon2 continua a passar.
+    expect(await count(loginAttempts, sql`${loginAttempts.key} = ${key}`)).toBe(LIMITS.students * 2);
+    expect((await patch({ firstName: "Renamed" })).status).toBe(200);
   });
 });
