@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { LIMITS } from "@kampus/shared";
 import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import type { Db } from "../db/client.ts";
@@ -20,6 +21,12 @@ const LOGIN_LIMITS = {
    * argon2 e uma sessão nova: um teto largo para um script, que uma sala nunca atinge.
    */
   ipSuccesses: { maxAttempts: 200, windowMs: WINDOW_MS },
+  /**
+   * Passwords que o staff define (criar aluno, mudar a password) a partir de um IP em 15 minutos.
+   * Cada uma é um argon2 e a conta de staff da demo é pública. Por IP e não por conta, para um
+   * script não bloquear os outros visitantes; cabem duas importações completas de alunos.
+   */
+  staffHashes: { maxAttempts: LIMITS.students * 2, windowMs: WINDOW_MS },
 } as const;
 
 type Limit = (typeof LOGIN_LIMITS)[keyof typeof LOGIN_LIMITS];
@@ -42,6 +49,11 @@ export function ipAttemptKey(ip: string): string {
  */
 export function reauthAttemptKey(userId: string): string {
   return sha256(`reauth:${userId}`);
+}
+
+/** Chave das passwords que o staff define a partir de um IP. Prefixo próprio, como as outras. */
+export function staffHashKey(ip: string): string {
+  return sha256(`hash:${ip}`);
 }
 
 /** Chave dos logins certos de um IP (a partir da chave do IP, com outro prefixo). */
@@ -117,9 +129,22 @@ export async function claimLoginAttempt(db: Db, keys: { account: string; ip: str
   };
 }
 
+/**
+ * Reserva um argon2 pedido pelo staff, antes de o fazer (grava primeiro e conta depois, como
+ * no login). Devolve 0 se pode avançar, ou os segundos de espera (429).
+ */
+export async function claimStaffHash(db: Db, ip: string, now = new Date()): Promise<number> {
+  const key = staffHashKey(ip);
+  const [row] = await db.insert(loginAttempts).values({ key, attemptedAt: now }).returning({ id: loginAttempts.id });
+  const wait = await waitFor(db, key, row!.id, LOGIN_LIMITS.staffHashes, now);
+  // Barrada: não chegou ao argon2, por isso não estende o bloqueio.
+  if (wait > 0) await db.delete(loginAttempts).where(eq(loginAttempts.id, row!.id));
+  return wait;
+}
+
 /** O 429 do login, com `Retry-After`. A confirmação da password atual responde igual. */
-export function tooManyAttempts(c: Context, wait: number) {
+export function tooManyAttempts(c: Context, wait: number, what = "login attempts") {
   const minutes = Math.ceil(wait / 60);
   c.header("Retry-After", String(wait));
-  return c.json({ error: `Too many login attempts. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.` }, 429);
+  return c.json({ error: `Too many ${what}. Try again in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.` }, 429);
 }

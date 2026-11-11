@@ -16,6 +16,7 @@ import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, ne, or, sql, type SQ
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { hashPassword } from "../auth/password.ts";
+import { claimStaffHash, tooManyAttempts } from "../auth/rateLimit.ts";
 import { lockUser } from "../auth/session.ts";
 import type { Db } from "../db/client.ts";
 import { assignmentCompletions, assignments, cohorts, notes, sessions, tasks, users } from "../db/schema.ts";
@@ -251,6 +252,8 @@ export const staffRoutes = new Hono<AppEnv>()
     if (await atLimit(db, users, isStudent, LIMITS.students)) return c.json(TOO_MANY, 409);
     if (await findUserByEmail(db, input.email)) return c.json(EMAIL_TAKEN, 409);
     if (!(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
+    const wait = await claimStaffHash(db, c.var.clientIp);
+    if (wait > 0) return tooManyAttempts(c, wait, "new passwords");
     const passwordHash = await hashPassword(input.password);
     let row: { id: string } | undefined;
     try {
@@ -299,6 +302,10 @@ export const staffRoutes = new Hono<AppEnv>()
     if (input.cohortId !== undefined && !(await cohortExists(db, input.cohortId))) return c.json(UNKNOWN_COHORT, 400);
 
     // Só toca em alunos: um staff com este id responde 404, como um id que não existe.
+    if (input.password !== undefined) {
+      const wait = await claimStaffHash(db, c.var.clientIp);
+      if (wait > 0) return tooManyAttempts(c, wait, "new passwords");
+    }
     const passwordHash = input.password !== undefined ? await hashPassword(input.password) : undefined;
     const changesCredentials = passwordHash !== undefined || input.email !== undefined;
     let row: { id: string } | undefined;

@@ -15,6 +15,11 @@ export function createPool(databaseUrl: string, maxConnections = 10) {
     max: maxConnections,
     // Fecha cedo as ligações paradas: o Neon (e o proxy dele) corta as que ficam muito tempo à espera.
     idleTimeoutMillis: 10_000,
+    // Sem isto, com o Neon em baixo, cada pedido ficava à espera de ligação até ao limite da função.
+    connectionTimeoutMillis: 5_000,
+    // Sem limite por query aqui, de propósito: o `query_timeout` do pg devolve ao pool uma ligação
+    // com a transação ainda aberta, e o `statement_timeout` como parâmetro de arranque é recusado
+    // pelo pooler do Neon. O limite põe-se na base: `ALTER ROLE … SET statement_timeout`.
   });
   // Uma ligação parada que o Neon fecha emite 'error' no pool. Sem este listener era uma
   // exceção não apanhada e o processo caía; assim o pool deita-a fora e abre outra quando for
