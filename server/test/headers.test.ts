@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { appVersion } from "../src/config.ts";
@@ -59,7 +60,21 @@ describe("/api/health", () => {
     expect(appVersion("  ")).toBe("dev");
   });
 
-  it("/api/health/ready corre um select 1 na base", async () => {
+  it("/api/health/ready dá 503 se falta aplicar uma migração do código (deploy antes de migrar a base)", async () => {
+    const fresh = await setup();
+    // Como uma base que ficou uma migração atrás do código.
+    await fresh.db.execute(sql`delete from drizzle.__drizzle_migrations where created_at = (select max(created_at) from drizzle.__drizzle_migrations)`);
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await fresh.request("GET", "/api/health/ready");
+    const logged = JSON.stringify(error.mock.calls);
+    error.mockRestore();
+    await fresh.close();
+    expect(res.status).toBe(503);
+    expect(res.json).toEqual({ ok: false, reason: "migrations" });
+    expect(logged).toContain("migrations pending");
+  });
+
+  it("/api/health/ready lê a base e confirma que tem as migrações do código", async () => {
     const res = await t.request<{ ok: boolean; version: string }>("GET", "/api/health/ready");
     expect(res.status).toBe(200);
     expect(res.json).toEqual({ ok: true, version: "dev" });
