@@ -153,6 +153,14 @@ scripts/  Playwright screenshots and video, guide expressions, Vercel build
 docs/     Before/after screenshots, video, technical decisions
 ```
 
+## How I built this
+
+The product and design direction are mine. I led the creative direction of the 2023 original, and in this rebuild I decided what to build, how it should look and feel, and what wasn't good enough. I sent back a redesign that drifted from the original identity and a first 3D campus that felt thin. Product calls were mine too, like counting deadlines by the student's local date, so a task due today never shows as overdue in another time zone.
+
+Most of the code was written by AI agents: Claude Code implemented it from my specs, and OpenAI's Codex reviewed the riskier changes (login, deploy, data) before they shipped. The commits are under my name.
+
+The engineering decisions, with the alternatives considered, are in [docs/DECISOES.md](docs/DECISOES.md). Every push runs lint, type checks and the full test suite in CI: unit, API, end-to-end with accessibility checks, and concurrency on a real Postgres.
+
 ## Credits
 
 **Kampus (2023)** was a team project at Ironhack's Web Development bootcamp and won **1st place**.
@@ -166,7 +174,7 @@ The 2023 code, with everyone's commits:
 - Back end: [glowinZero/project-3-backend](https://github.com/glowinZero/project-3-backend) (my fork: [davidvlucca/project-3-backend](https://github.com/davidvlucca/project-3-backend)). It started from Ironhack's REST API template, [bernardodemelo/m3-rest-api](https://github.com/bernardodemelo/m3-rest-api).
 - Runnable copies used for the "before" screenshots, with a report of the 2023 bugs: [kairoos-studio/kampus-front](https://github.com/kairoos-studio/kampus-front) and [kairoos-studio/kampus-back](https://github.com/kairoos-studio/kampus-back).
 
-**This version (2026)** was rebuilt from scratch by David Lucca with the help of AI (Claude Code), using the 2023 repositories as a reference for the features, the identity and the bugs to fix.
+**This version (2026)** was rebuilt from scratch by David Lucca, working with AI coding agents (see [How I built this](#how-i-built-this)), using the 2023 repositories as a reference for the features, the identity and the bugs to fix.
 
 **Images.** The 2023 tour used scenery and guide portraits found on Google Images, with no license. They are not in this repository: the tour scenes and guides are new SVG illustrations made for this version. In the 2023 screenshots in `docs/antes/`, those images and the stock photos of the old login and splash pages are blurred.
 
