@@ -16,7 +16,12 @@ const FUNC = `${OUT}/functions/api.func`;
 // 0. Em produção, a base tem de ter as migrações deste código: publicado antes delas, as rotas
 // das tabelas novas davam 500. Falhar aqui (também se a base não responder) deixa no ar a versão
 // anterior. O build não migra: só confere. No CI e nos previews não há esta verificação.
-if (process.env.VERCEL_ENV === "production" && process.env.DATABASE_URL) {
+if (process.env.VERCEL_ENV === "production") {
+  if (!process.env.DATABASE_URL) {
+    // Sem ela não há o que conferir, e a função também não arrancava.
+    console.error("DATABASE_URL is not set for the production build.");
+    process.exit(1);
+  }
   const { db, close } = createPostgresDb(process.env.DATABASE_URL, { maxConnections: 1 });
   let pending = true;
   // Três tentativas: a Neon adormece sem uso e a primeira ligação pode passar dos 5 s do pool.

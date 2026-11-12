@@ -27,7 +27,7 @@ Há um resumo em inglês no README ("Key engineering decisions").
 
 **Alternativas consideradas.** Express 5 também servia e funcionava. Escolhi Hono pelos tipos de ponta a ponta, por permitir testes sem servidor a correr e por correr igual em Node, Bun ou edge, se um dia for preciso. Para um projeto novo em TypeScript foi menos código para o mesmo resultado.
 
-**Consequências.** As rotas testam-se com Vitest e `app.request()`: cada ficheiro de teste cria uma base PGlite em memória, aplica as migrações e o seed, e faz pedidos reais à app (123 testes no servidor, 214 no total do Vitest).
+**Consequências.** As rotas testam-se com Vitest e `app.request()`: cada ficheiro de teste cria uma base PGlite em memória, aplica as migrações e o seed, e faz pedidos reais à app (182 testes no servidor, 371 no total do Vitest).
 
 ---
 

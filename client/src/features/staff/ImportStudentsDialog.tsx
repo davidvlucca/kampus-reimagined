@@ -2,7 +2,7 @@ import type { StudentRow } from "@kampus/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
-import { api, errorMessage } from "../../api/client.ts";
+import { api, ApiRequestError, errorMessage } from "../../api/client.ts";
 import { useCohorts } from "../../api/hooks.ts";
 import { Badge, Button, Dialog, Select, Textarea, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
@@ -48,6 +48,11 @@ export function ImportStudentsDialog({ open, onOpenChange, defaultCohortId = "" 
         next.set(row.line, { ok: true });
       } catch (error) {
         next.set(row.line, { ok: false, error: errorMessage(error) });
+        // A sessão caiu: as linhas seguintes falhavam todas. Para aqui; o pedido do fim leva ao login.
+        if (error instanceof ApiRequestError && error.status === 401) {
+          setResults(new Map(next));
+          break;
+        }
       }
       setResults(new Map(next));
     }

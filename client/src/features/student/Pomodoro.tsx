@@ -1,5 +1,6 @@
 import { Minus, Pause, Play, Plus, RotateCcw, Timer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useCurrentUser } from "../../api/currentUser.ts";
 import { Button, Card, CardBody, CardHeader, IconButton, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 
@@ -21,7 +22,8 @@ const other = (mode: Mode): Mode => (mode === "focus" ? "break" : "focus");
 
 // O Pomodoro só existe no dashboard: sair da página desmontava-o e o tempo voltava ao início.
 // Guarda-se no sessionStorage (por separador), com a hora-alvo, para sobreviver a navegar e a recarregar.
-const STORAGE_KEY = "kampus.pomodoro";
+// Uma chave por utilizador: sem isso, o temporizador passava para quem entrasse a seguir no mesmo separador.
+const storageKey = (userId: string) => `kampus.pomodoro.${userId}`;
 
 interface Saved {
   mode: Mode;
@@ -35,9 +37,9 @@ interface Saved {
 
 const isMinutes = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= MIN_MINUTES && v <= MAX_MINUTES;
 
-function load(): Saved | null {
+function load(key: string): Saved | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(key);
     if (!raw) return null;
     const v = JSON.parse(raw) as Partial<Saved>;
     const modeOk = v.mode === "focus" || v.mode === "break";
@@ -52,10 +54,10 @@ function load(): Saved | null {
   }
 }
 
-function save(value: Saved | null) {
+function save(key: string, value: Saved | null) {
   try {
-    if (value) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    else sessionStorage.removeItem(STORAGE_KEY);
+    if (value) sessionStorage.setItem(key, JSON.stringify(value));
+    else sessionStorage.removeItem(key);
   } catch {
     // Sem storage: o temporizador funciona na mesma, só não sobrevive a sair da página.
   }
@@ -67,7 +69,8 @@ function save(value: Saved | null) {
  */
 export function Pomodoro() {
   const toast = useToast();
-  const [saved] = useState(load);
+  const key = storageKey(useCurrentUser().id);
+  const [saved] = useState(() => load(key));
   const [minutes, setMinutes] = useState<Record<Mode, number>>(saved?.minutes ?? { focus: 25, break: 5 });
   const [mode, setMode] = useState<Mode>(saved?.mode ?? "focus");
   const [status, setStatus] = useState<Status>(saved?.status ?? "idle");
@@ -89,8 +92,8 @@ export function Pomodoro() {
   // Guarda a cada mudança de estado, não a cada tique: a correr, a hora-alvo chega para recalcular.
   const frozen = status === "running" ? 0 : remaining;
   useEffect(() => {
-    save({ mode, status, minutes, target: status === "running" ? targetRef.current : null, remaining: frozen });
-  }, [mode, status, minutes, frozen]);
+    save(key, { mode, status, minutes, target: status === "running" ? targetRef.current : null, remaining: frozen });
+  }, [key, mode, status, minutes, frozen]);
 
   useEffect(() => {
     if (status !== "running") return;
