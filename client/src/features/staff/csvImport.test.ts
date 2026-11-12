@@ -34,4 +34,12 @@ describe("Import CSV", () => {
     // O email vai em minúsculas, como a API o guarda.
     expect(rows[0]!.input).toEqual({ firstName: "Ana", lastName: "Silva", email: "ana.silva@example.com", password: "Welcome2026", cohortId: COHORT });
   });
+
+  it("o número da linha é o do ficheiro, mesmo com linhas em branco pelo meio", () => {
+    const text = ["", "First name,Last name,Email,Password", "", "Ana,Silva,ana@example.com,Welcome2026", "", "", "Rui,Costa,not-an-email,Welcome2026"].join("\n");
+    expect(readImport(text, COHORT).map((r) => [r.line, r.error])).toEqual([
+      [4, null],
+      [7, "Email: Enter a valid email"],
+    ]);
+  });
 });

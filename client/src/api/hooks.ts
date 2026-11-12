@@ -1,7 +1,6 @@
 // Todos os pedidos à API passam por estes hooks. Os ecrãs não chamam fetch diretamente.
 import type {
   Assignment,
-  AssignmentDetail,
   ChangePasswordInput,
   Cohort,
   Contact,
@@ -45,7 +44,6 @@ export const keys = {
   studentsBy: (q: string, cohortId: string) => ["staff", "students", q, cohortId] as const,
   assignments: ["staff", "assignments"] as const,
   assignmentsBy: (cohortId: string) => ["staff", "assignments", "list", cohortId] as const,
-  assignment: (id: string) => ["staff", "assignments", "detail", id] as const,
 };
 
 // ---------- Sessão ----------
@@ -179,6 +177,8 @@ export function useNotes() {
   return useQuery({
     queryKey: keys.notes,
     queryFn: async () => (await api<{ notes: Note[] }>("/notes")).notes,
+    // Gravar já não volta a pedir a lista: o que outro separador mudou chega ao voltar a este.
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -203,9 +203,17 @@ export function useUpdateNote() {
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdateNoteInput & { id: string }) =>
       (await api<{ note: Note }>(`/notes/${id}`, { method: "PATCH", body: input })).note,
-    onSuccess: (note) => {
+    onSuccess: async (note) => {
       qc.setQueryData(keys.note(note.id), note);
-      return qc.invalidateQueries({ queryKey: keys.notes });
+      // Só a cache: voltar a pedir a lista a cada gravação automática descarregava todas as notas, com o texto todo.
+      // A editada passa para cima, como no servidor (por data de edição).
+      // Com um pedido da lista a meio (podia chegar depois, com a nota antiga), pede-se outra vez.
+      // Cancela-se primeiro: sem lista em cache, o invalidate reaproveitava o pedido que já ia a caminho.
+      if (qc.isFetching({ queryKey: keys.notes, exact: true })) {
+        await qc.cancelQueries({ queryKey: keys.notes, exact: true });
+        return qc.invalidateQueries({ queryKey: keys.notes, exact: true });
+      }
+      qc.setQueryData<Note[]>(keys.notes, (list) => list && [note, ...list.filter((n) => n.id !== note.id)]);
     },
     // A nota e a lista: o editor passa a mostrar "Note not found".
     onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: keys.notes }),
@@ -348,16 +356,6 @@ export function useAssignments(cohortId?: string) {
   });
 }
 
-/** Detalhe com o progresso por aluno; só pede quando `enabled` (ex.: ao abrir "See who"). */
-export function useAssignment(id: string, enabled = true) {
-  return useQuery({
-    queryKey: keys.assignment(id),
-    queryFn: async () => (await api<{ assignment: AssignmentDetail }>(`/staff/assignments/${id}`)).assignment,
-    enabled: enabled && Boolean(id),
-    refetchOnWindowFocus: true,
-  });
-}
-
 // Mudar tarefas da turma muda as contagens de tarefas dos alunos (lista e overview): invalida o staff todo.
 export function useCreateAssignment() {
   const qc = useQueryClient();
@@ -374,11 +372,7 @@ export function useUpdateAssignment() {
     mutationFn: async ({ id, ...input }: UpdateAssignmentInput & { id: string }) =>
       (await api<{ assignment: Assignment }>(`/staff/assignments/${id}`, { method: "PATCH", body: input })).assignment,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.assignments }),
-    onError: (error, { id }) => {
-      if (!isNotFound(error)) return;
-      qc.removeQueries({ queryKey: keys.assignment(id) });
-      return qc.invalidateQueries({ queryKey: ["staff"] });
-    },
+    onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: ["staff"] }),
   });
 }
 
@@ -386,15 +380,7 @@ export function useDeleteAssignment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api<undefined>(`/staff/assignments/${id}`, { method: "DELETE" }),
-    // Tira o detalhe da cache antes de invalidar, para não voltar a pedir uma tarefa apagada (404).
-    onSuccess: (_data, id) => {
-      qc.removeQueries({ queryKey: keys.assignment(id) });
-      return qc.invalidateQueries({ queryKey: ["staff"] });
-    },
-    onError: (error, id) => {
-      if (!isNotFound(error)) return;
-      qc.removeQueries({ queryKey: keys.assignment(id) });
-      return qc.invalidateQueries({ queryKey: ["staff"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff"] }),
+    onError: (error) => isNotFound(error) && qc.invalidateQueries({ queryKey: ["staff"] }),
   });
 }

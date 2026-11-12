@@ -8,6 +8,13 @@ export const MAX_IMPORT_ROWS = 100;
 
 /** Lê um CSV simples: vírgula ou ponto e vírgula, aspas com "" lá dentro, linhas vazias ignoradas. */
 export function parseCsv(text: string): string[][] {
+  return splitCsv(text).filter(notEmpty);
+}
+
+const notEmpty = (row: string[]) => row.some((c) => c !== "");
+
+/** Todas as linhas, vazias incluídas: o número da linha no ficheiro é o índice. */
+function splitCsv(text: string): string[][] {
   const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
   // O Excel em português grava com ponto e vírgula.
   const sep = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ";" : ",";
@@ -37,7 +44,7 @@ export function parseCsv(text: string): string[][] {
   }
   row.push(cell);
   rows.push(row);
-  return rows.map((r) => r.map((c) => c.trim())).filter((r) => r.some((c) => c !== ""));
+  return rows.map((r) => r.map((c) => c.trim()));
 }
 
 export interface ImportRow {
@@ -59,12 +66,14 @@ const FIELD_LABEL: Record<string, string> = { firstName: "First name", lastName:
  * recusava o segundo).
  */
 export function readImport(text: string, cohortId: string): ImportRow[] {
-  const rows = parseCsv(text);
-  const hasHeader = rows[0]?.some((c) => c.toLowerCase().replace(/\s/g, "") === "email") ?? false;
+  // O número conta-se antes de tirar as linhas em branco, para bater com o que se vê no ficheiro.
+  const rows = splitCsv(text)
+    .map((cells, i) => ({ cells, line: i + 1 }))
+    .filter((r) => notEmpty(r.cells));
+  const hasHeader = rows[0]?.cells.some((c) => c.toLowerCase().replace(/\s/g, "") === "email") ?? false;
   const seen = new Set<string>();
-  return rows.slice(hasHeader ? 1 : 0).map((cells, i) => {
+  return rows.slice(hasHeader ? 1 : 0).map(({ cells, line }) => {
     const [firstName = "", lastName = "", email = "", password = ""] = cells;
-    const line = i + (hasHeader ? 2 : 1);
     const base = { line, firstName, lastName, email };
     if (cells.length < 4) return { ...base, error: "Needs 4 columns: first name, last name, email, password", input: null };
     const parsed = createStudentSchema.safeParse({ firstName, lastName, email, password, cohortId });

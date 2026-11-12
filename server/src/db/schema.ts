@@ -136,4 +136,3 @@ export type SessionUser = Omit<UserRow, "passwordHash">;
 export type CohortRow = typeof cohorts.$inferSelect;
 export type TaskRow = typeof tasks.$inferSelect;
 export type NoteRow = typeof notes.$inferSelect;
-export type AssignmentRow = typeof assignments.$inferSelect;

@@ -8,7 +8,7 @@ By David Lucca · [LinkedIn](https://www.linkedin.com/in/davidvlucca/) · [GitHu
 
 This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
 
-**3D campus tour** in React Three Fiber with a 2D fallback · **214 Vitest tests** (123 on the API, against a real Postgres) + **43 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
+**3D campus tour** in React Three Fiber with a 2D fallback · **371 Vitest tests** (182 on the API, against a real Postgres) + **65 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
 
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
@@ -35,7 +35,7 @@ The reasoning behind each one, with the trade-offs, is in [`docs/DECISOES.md`](d
 - **Drizzle + Postgres:** relational data with foreign keys and cascades; PGlite in development, Neon in production, same SQL migrations. ([§3](docs/DECISOES.md#3-drizzle-orm--postgres), [§4](docs/DECISOES.md#4-pglite-em-desenvolvimento-neon-em-produção))
 - **Cookie sessions, not JWT:** `httpOnly` cookie, only the token's SHA-256 stored, argon2id passwords, and the same 401 with similar timing for unknown emails. ([§5](docs/DECISOES.md#5-sessões-em-cookie-httponly-em-vez-de-jwt))
 - **404, not 403, for another student's data:** a student can't even learn that someone else's note exists. ([§7](docs/DECISOES.md#7-respostas-404-e-não-403-para-dados-de-outro-aluno))
-- **Login rate limit in Postgres:** 5 failures per email and IP, 30 attempts per IP, shared by every serverless instance. ([§13](docs/DECISOES.md#13-limite-de-logins-guardado-em-postgres))
+- **Login rate limit in Postgres:** 5 failures per email and IP, 30 failures per IP, shared by every serverless instance. ([§13](docs/DECISOES.md#13-limite-de-logins-guardado-em-postgres))
 - **TanStack Query with optimistic updates:** ticking a task is instant and rolls back if the API fails; CSRF covered by `SameSite`, Hono's `csrf()` and JSON-only writes. ([§6](docs/DECISOES.md#6-tanstack-query-no-client-e-o-csrf-do-hono))
 - **3D tour in React Three Fiber:** a lazy chunk that is never downloaded with reduced motion or without WebGL, which get the accessible 2D tour. ([§20](docs/DECISOES.md#20-a-visita-em-3d-react-three-fiber-um-canvas-acessível-e-um-fallback-a-sério))
 - **A public demo that looks after itself:** a Vercel Cron resets the data every day, and the shared accounts can't be deleted or have their password changed. ([§12](docs/DECISOES.md#12-deploy-na-vercel-com-neon))
@@ -62,8 +62,8 @@ Other scripts:
 | --- | --- |
 | `npm run dev` | Starts API and web app (after a first `npm run demo`) |
 | `npm run db:reset` | Wipes the local database and loads the demo data again |
-| `npm test` | 214 Vitest tests: 123 on the API (auth, authorization, limits, cron), plus schemas, dates in three time zones and client logic |
-| `npm run e2e` | 43 end-to-end tests (Playwright): the main flows in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen, and the 3D tour in WebGL |
+| `npm test` | 371 Vitest tests: 182 on the API (auth, authorization, limits, cron), plus schemas, dates in three time zones and client logic |
+| `npm run e2e` | 65 end-to-end tests (Playwright): the main flows in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen, and the 3D tour in WebGL |
 | `npm run lint` / `npm run typecheck` / `npm run build` | ESLint, TypeScript, production build |
 | `npm run prints` | Screenshots of the main screens into `docs/prints/` (Playwright) |
 | `npm run video` | Records the demo video into `docs/video/` (Playwright + ffmpeg) |
@@ -84,7 +84,7 @@ In production the API reads `DATABASE_URL` (a Postgres such as Neon) instead of 
 
 </details>
 
-The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits logins (5 failures per email and IP, and 30 attempts per IP, in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
+The public demo resets itself every day at 04:00 UTC (`/api/cron/reset-demo`, protected by `CRON_SECRET`). It also limits logins (5 failures per email and IP, and 30 failures per IP, in 15 minutes, then `429`), protects the two shared demo accounts from being deleted or having their email or password changed, returns a real `404` for unknown URLs, and is hidden from search engines (`NOINDEX` in `scripts/vercel-routes.ts`).
 
 ## Before and after
 
@@ -130,7 +130,7 @@ On a phone (390px), where the 2023 screens broke:
 | Two `cors()` calls; only two hard-coded origins worked. | One CORS config from the `CORS_ORIGIN` environment variable, plus CSRF protection. | Deployable anywhere without code changes. |
 | The Pomodoro started at 0/0 minutes and didn't run until you moved the sliders. | 25/5 by default, adjustable, with pause, resume and reset, and a timer that doesn't drift in background tabs. | It now works the moment you see it. |
 | Notes could be created and deleted, not edited. | A list and an editor, with "unsaved changes" and Ctrl/Cmd+S. | Notes are meant to grow during the course. |
-| The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 7 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). Like a visual novel, you can ask each guide questions, and the guides change expression and move their lips while they talk. On top of it, a **3D model of the campus** (React Three Fiber, every desk and sofa built in code): tap a room and the camera flies in, the next room glows, and the 2D tour stays as the fallback. | Accessible, faster, legally clean, and the audio always matches the text. |
+| The tour was mouse-only, broke on mobile, used 10 MB of pre-recorded audio and images found online with no license. | Keyboard (← → Enter Esc), a progress bar with all 8 stops, screen-reader friendly text, the Web Speech API for "Play audio", and new SVG illustrations for every room and guide (about 10 KB each, instead of 1.5 MB JPGs). Like a visual novel, you can ask each guide questions, and the guides change expression and move their lips while they talk. On top of it, a **3D model of the campus** (React Three Fiber, every desk and sofa built in code): tap a room and the camera flies in, the next room glows, and the 2D tour stays as the fallback. | Accessible, faster, legally clean, and the audio always matches the text. |
 | Deadlines were compared with the current time, so "days left" changed during the day. | Deadlines are dates; "Due today", "3 days left" and "Overdue" use the browser's local date, tested in three time zones. | A deadline is a day, not an instant. |
 
 **Cohort tasks**, which the 2023 version didn't have: staff give a task to a whole cohort ("Sign the learning agreement"), students see it in their list as "From Marta Lopes · Program Manager" and can only tick it, and staff see "12 of 20 done" and who hasn't done it yet. One row per cohort task plus one row per completion, so editing the deadline reaches everyone and students who join later see it too.
