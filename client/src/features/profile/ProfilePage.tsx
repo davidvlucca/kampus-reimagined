@@ -247,7 +247,7 @@ function ChecklistRow({ tourDone }: { tourDone: boolean }) {
         <Skeleton className="h-4 w-48" />
       </div>
     );
-  else if (all.isError) summary = <p className="text-sm text-muted">Couldn't load your tasks.</p>;
+  else if (all.isLoadingError) summary = <p className="text-sm text-muted">Couldn't load your tasks.</p>;
   else {
     const total = all.data.length + 1;
     const done = all.data.filter((t) => t.done).length + (tourDone ? 1 : 0);

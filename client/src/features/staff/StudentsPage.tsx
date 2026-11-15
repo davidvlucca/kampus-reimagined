@@ -152,7 +152,7 @@ export function StudentsPage() {
       : undefined;
   const visible = rows?.filter((r) => matchesFilter(r.progress.status, status));
   const pending = students.isPending || assignments.isPending;
-  const failed = students.isError ? students : assignments.isError ? assignments : null;
+  const failed = students.isLoadingError ? students : assignments.isLoadingError ? assignments : null;
 
   return (
     <>

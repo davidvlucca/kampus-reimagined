@@ -93,7 +93,7 @@ export function AssignmentsPage() {
 
   const list = assignments.data?.filter((a) => a.cohort.id === cohortId);
   const members = students.data?.filter((s) => s.cohort?.id === cohortId);
-  const failed = cohorts.isError ? cohorts : assignments.isError ? assignments : students.isError ? students : null;
+  const failed = cohorts.isLoadingError ? cohorts : assignments.isLoadingError ? assignments : students.isLoadingError ? students : null;
 
   return (
     <>

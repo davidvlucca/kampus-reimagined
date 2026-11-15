@@ -137,3 +137,36 @@ test.describe("visita com animações", () => {
     await expect(question).toBeFocused();
   });
 });
+
+test("um refetch falhado não troca a lista de tarefas por um erro", async ({ page }) => {
+  await loginAs(page, "student");
+  await page.goto("/app/tasks");
+  const task = page.getByRole("checkbox", { name: /Join the cohort chat and say hi/ });
+  await expect(task).not.toBeChecked();
+
+  // A lista passa a falhar (o PATCH não): o refetch depois de marcar dá 500 nas três tentativas.
+  let failed = 0;
+  await page.route(/\/api\/tasks\?/, (route) => {
+    failed++;
+    return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Boom" }) });
+  });
+  await task.click();
+  await expect.poll(() => failed, { timeout: 15_000 }).toBe(3);
+  // Sem sinal no ecrã quando corre bem: dá tempo ao erro para aparecer, se fosse aparecer.
+  await page.waitForTimeout(500);
+  await expect(page.getByText("Couldn't load this")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Done/ })).toBeVisible();
+});
+
+test("errar a password no login de staff não tira a sessão de aluno", async ({ page }) => {
+  await loginAs(page, "student");
+  await page.goto("/login/staff");
+  await page.getByLabel("Email").fill("staff@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("not-the-password");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByText("Wrong email or password.")).toBeVisible();
+
+  // Sem recarregar: a sessão em cache continua lá e o Welcome reconhece o aluno.
+  await page.getByRole("link", { name: "Kampus, go to the welcome page" }).click();
+  await expect(page.getByRole("link", { name: /^Continue as/ })).toBeVisible();
+});

@@ -50,7 +50,7 @@ export function TasksPage() {
             <SkeletonList rows={4} className="py-3" label="Loading tasks" />
           </CardBody>
         </Card>
-      ) : tasks.isError ? (
+      ) : tasks.isLoadingError ? (
         <Card>
           <CardBody className="py-2">
             <ErrorState message={errorMessage(tasks.error)} onRetry={() => tasks.refetch()} />

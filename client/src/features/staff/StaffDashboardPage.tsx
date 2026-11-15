@@ -23,7 +23,7 @@ export function StaffDashboardPage() {
   const assignments = useAssignments();
 
   const queries = [cohorts, students, assignments];
-  const failed = queries.find((q) => q.isError);
+  const failed = queries.find((q) => q.isLoadingError);
   const ready = cohorts.data && students.data && assignments.data;
 
   const description = ready ? `${todayLabel()} · ${plural(cohorts.data.length, "cohort")}, ${plural(students.data.length, "student")}` : todayLabel();
@@ -43,7 +43,7 @@ export function StaffDashboardPage() {
 
       {failed ? (
         <Card>
-          <ErrorState message={errorMessage(failed.error)} onRetry={() => queries.forEach((q) => q.isError && q.refetch())} />
+          <ErrorState message={errorMessage(failed.error)} onRetry={() => queries.forEach((q) => q.isLoadingError && q.refetch())} />
         </Card>
       ) : !ready ? (
         <DashboardSkeleton />
@@ -377,7 +377,7 @@ function RecentActivity({ overview }: { overview: ReturnType<typeof useStaffOver
         </div>
       </Card>
     );
-  if (overview.isError)
+  if (overview.isLoadingError)
     return (
       <Card>
         {header}

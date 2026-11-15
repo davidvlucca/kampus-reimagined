@@ -189,7 +189,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
           label="Cohort"
           required
           value={values.cohortId}
-          error={errors.cohortId ?? (cohorts.isError ? "Couldn't load cohorts. Close and try again." : undefined)}
+          error={errors.cohortId ?? (cohorts.isLoadingError ? "Couldn't load cohorts. Close and try again." : undefined)}
           disabled={cohorts.isPending}
           onChange={(e) => set("cohortId")(e.target.value)}
         >
