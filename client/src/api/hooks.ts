@@ -2,7 +2,6 @@
 import type {
   Assignment,
   ChangePasswordInput,
-  Cohort,
   Contact,
   CreateAssignmentInput,
   CreateNoteInput,
@@ -15,7 +14,6 @@ import type {
   StaffOverview,
   StudentRow,
   Task,
-  TaskFilter,
   UpdateAssignmentInput,
   UpdateNoteInput,
   UpdateProfileInput,
@@ -34,13 +32,10 @@ export const keys = {
   /** `true` depois de um "Log out": o RequireAuth leva ao login sem "Please log in to continue". */
   signedOut: ["signedOut"] as const,
   tasks: ["tasks"] as const,
-  tasksBy: (filter: TaskFilter) => ["tasks", filter] as const,
   notes: ["notes"] as const,
   note: (id: string) => ["notes", id] as const,
   contacts: ["contacts"] as const,
-  cohorts: ["cohorts"] as const,
   overview: ["staff", "overview"] as const,
-  students: ["staff", "students"] as const,
   studentsBy: (q: string, cohortId: string) => ["staff", "students", q, cohortId] as const,
   assignments: ["staff", "assignments"] as const,
   assignmentsBy: (cohortId: string) => ["staff", "assignments", "list", cohortId] as const,
@@ -130,10 +125,15 @@ export function useSkipTour() {
 
 // ---------- Tarefas ----------
 
-export function useTasks(filter: TaskFilter = "all") {
+/** As tarefas por fazer, para o `select` do `useTasks` (a ordem do servidor já as põe primeiro). */
+export const openTasks = (tasks: Task[]) => tasks.filter((t) => !t.done);
+
+/** Uma só lista em cache; quem quer só parte dela passa um `select` (ex.: `openTasks`). */
+export function useTasks<T = Task[]>(select?: (tasks: Task[]) => T) {
   return useQuery({
-    queryKey: keys.tasksBy(filter),
-    queryFn: async () => (await api<{ tasks: Task[] }>(`/tasks?status=${filter}`)).tasks,
+    queryKey: keys.tasks,
+    queryFn: async () => (await api<{ tasks: Task[] }>("/tasks")).tasks,
+    select,
   });
 }
 
@@ -274,19 +274,11 @@ export function useContacts() {
 
 // ---------- Staff ----------
 
-export function useCohorts() {
-  return useQuery({
-    queryKey: keys.cohorts,
-    queryFn: async () => (await api<{ cohorts: Cohort[] }>("/cohorts")).cohorts,
-    staleTime: 5 * 60_000,
-  });
-}
-
 /** Um 200 com outra forma (proxy, versão antiga da API) dá um ErrorState em vez de rebentar no render. */
 function isStaffOverview(data: unknown): data is StaffOverview {
   if (!data || typeof data !== "object") return false;
   const o = data as Record<string, unknown>;
-  return typeof o.totalStudents === "number" && Array.isArray(o.byCohort) && Array.isArray(o.pendingTour) && Array.isArray(o.recentActivity);
+  return Array.isArray(o.recentActivity);
 }
 
 export function useStaffOverview() {

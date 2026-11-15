@@ -215,17 +215,6 @@ export interface Assignment {
   done: number;
 }
 
-export interface AssignmentStudentStatus {
-  student: { id: string; firstName: string; lastName: string };
-  done: boolean;
-  completedAt: string | null;
-}
-
-export interface AssignmentDetail extends Assignment {
-  /** Um por aluno da turma: primeiro quem ainda não a fez, depois por nome. */
-  progress: AssignmentStudentStatus[];
-}
-
 // ---------- Notas ----------
 
 export const createNoteSchema = z.object({
@@ -348,9 +337,6 @@ export interface ActivityItem {
 }
 
 export interface StaffOverview {
-  totalStudents: number;
-  byCohort: { cohort: Cohort; students: number; tourDone: number }[];
-  pendingTour: { id: string; firstName: string; lastName: string; cohort: Cohort | null }[];
   recentActivity: ActivityItem[];
 }
 

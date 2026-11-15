@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "../../api/currentUser.ts";
 import { Button, Card, CardBody, CardHeader, IconButton, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
+import { nextPhase, type Mode } from "./pomodoroTimer.ts";
 
-type Mode = "focus" | "break";
 type Status = "idle" | "running" | "paused";
 
 const MIN_MINUTES = 1;
@@ -17,8 +17,6 @@ function formatClock(ms: number): string {
   const s = total % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
-
-const other = (mode: Mode): Mode => (mode === "focus" ? "break" : "focus");
 
 // O Pomodoro só existe no dashboard: sair da página desmontava-o e o tempo voltava ao início.
 // Guarda-se no sessionStorage (por separador), com a hora-alvo, para sobreviver a navegar e a recarregar.
@@ -106,12 +104,7 @@ export function Pomodoro() {
         return;
       }
       // Acabou: troca de modo e encadeia a partir da hora-alvo (sem perder tempo).
-      let nextMode = other(modeRef.current);
-      let nextTarget = target + minutesRef.current[nextMode] * 60_000;
-      while (nextTarget <= now) {
-        nextMode = other(nextMode);
-        nextTarget += minutesRef.current[nextMode] * 60_000;
-      }
+      const { mode: nextMode, target: nextTarget } = nextPhase(modeRef.current, target, minutesRef.current, now);
       targetRef.current = nextTarget;
       modeRef.current = nextMode;
       setMode(nextMode);

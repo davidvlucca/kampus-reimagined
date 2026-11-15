@@ -1,10 +1,10 @@
 import { DATE_INPUT_MAX, DATE_INPUT_MIN, type StaffRef, type Task } from "@kampus/shared";
 import { CalendarX, Lock, MoreVertical, Pencil, Trash2 } from "lucide-react";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
 import { useDeleteTask, useUpdateTask } from "../../api/hooks.ts";
-import { Button, Checkbox, ConfirmDialog, Dialog, IconButton, Input, useToast } from "../../components/ui/index.ts";
+import { Button, Checkbox, ConfirmDialog, Dialog, IconButton, Input, Menu, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { fullName } from "../../lib/format.ts";
 import { useSubmitLock } from "../../lib/submitLock.ts";
@@ -104,7 +104,15 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
             <IconButton label={`Delete "${task.title}"`} variant="danger" icon={<Trash2 aria-hidden />} onClick={() => setDeleting(true)} />
           </div>
           {/* No telemóvel os dois botões (88px) partiam o título em duas linhas: ficam num menu. */}
-          <TaskActionsMenu title={task.title} onEdit={() => setEditing(true)} onDelete={() => setDeleting(true)} />
+          <Menu
+            className="ml-auto shrink-0 sm:hidden"
+            label={`More actions for "${task.title}"`}
+            icon={<MoreVertical aria-hidden />}
+            items={[
+              { label: "Edit", icon: <Pencil aria-hidden />, onSelect: () => setEditing(true) },
+              { label: "Delete", icon: <Trash2 aria-hidden />, tone: "danger", onSelect: () => setDeleting(true) },
+            ]}
+          />
           {editing && <EditTaskDialog task={task} onClose={() => setEditing(false)} />}
           <DeleteTaskDialog task={task} open={deleting} onOpenChange={setDeleting} />
         </>
@@ -114,72 +122,6 @@ export function TaskItem({ task, actions = false }: { task: Task; actions?: bool
 }
 
 const COHORT_HINT = "Set by staff, so you can only mark it as done";
-
-/** "More actions": um menu simples (botão com aria-expanded); fecha com Esc, clique fora ou Tab para fora. */
-function TaskActionsMenu({ title, onEdit, onDelete }: { title: string; onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const firstItemRef = useRef<HTMLButtonElement>(null);
-  const menuId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    firstItemRef.current?.focus();
-    const onPointerDown = (e: PointerEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
-  // O foco volta ao botão antes de abrir o dialog: é a ele que o dialog o devolve ao fechar.
-  const choose = (action: () => void) => {
-    triggerRef.current?.focus();
-    setOpen(false);
-    action();
-  };
-
-  const item = "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition";
-
-  return (
-    <div
-      ref={wrapperRef}
-      className="relative ml-auto shrink-0 sm:hidden"
-      onKeyDown={(e) => {
-        if (e.key === "Escape" && open) {
-          e.stopPropagation();
-          setOpen(false);
-          triggerRef.current?.focus();
-        }
-      }}
-      onBlur={(e) => {
-        if (open && !e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
-      }}
-    >
-      <IconButton
-        ref={triggerRef}
-        label={`More actions for "${title}"`}
-        icon={<MoreVertical aria-hidden />}
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((v) => !v)}
-      />
-      {open && (
-        <div id={menuId} className="absolute top-full right-0 z-20 mt-1 flex w-max min-w-36 flex-col rounded-xl border border-line bg-card p-1 shadow-card">
-          <button ref={firstItemRef} type="button" className={cn(item, "text-kampus-navy hover:bg-kampus-blue-soft")} onClick={() => choose(onEdit)}>
-            <Pencil aria-hidden className="size-4" />
-            Edit
-          </button>
-          <button type="button" className={cn(item, "text-danger hover:bg-danger-soft")} onClick={() => choose(onDelete)}>
-            <Trash2 aria-hidden className="size-4" />
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /** Depois de mostrar os erros, o foco vai para o primeiro campo inválido do formulário. */
 function focusFirstInvalid(form: HTMLFormElement | null) {

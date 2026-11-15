@@ -6,14 +6,13 @@ import { errorMessage } from "../../api/client.ts";
 import { useAssignments, useCurrentUser, useStaffOverview, useStudents } from "../../api/hooks.ts";
 import { Badge, Button, buttonClasses, Card, CardHeader, EmptyState, ErrorState, PageHeader, ProgressBar, Skeleton } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
-import { fullName, timeAgo } from "../../lib/format.ts";
+import { fullName, plural, timeAgo } from "../../lib/format.ts";
 import { cohortSummary, dayLabel, isWeekZero, percent, timingBadge, timingText, todayLabel, type CohortSummary } from "./progress.ts";
 import { useStaffCohorts } from "./staffQueries.ts";
 
 const DUE_NEXT = 4;
 const ACTIVITY_PREVIEW = 6;
 const linkClass = "inline-flex min-h-11 items-center gap-1 rounded-lg text-sm font-semibold text-kampus-blue hover:underline";
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function StaffDashboardPage() {
   const user = useCurrentUser();

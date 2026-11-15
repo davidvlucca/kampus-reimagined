@@ -3,13 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import { api, ApiRequestError, errorMessage } from "../../api/client.ts";
-import { useCohorts } from "../../api/hooks.ts";
+import { byName, useStaffCohorts } from "./staffQueries.ts";
 import { Badge, Button, Dialog, Select, Textarea, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { MAX_IMPORT_ROWS, readImport, type ImportRow } from "./csvImport.ts";
+import { plural } from "../../lib/format.ts";
 
 type Result = { ok: true } | { ok: false; error: string };
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
  * Importar alunos de um CSV sem endpoint novo: pré-visualiza e valida cada linha no browser e
@@ -19,7 +19,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export function ImportStudentsDialog({ open, onOpenChange, defaultCohortId = "" }: { open: boolean; onOpenChange: (open: boolean) => void; defaultCohortId?: string }) {
   const toast = useToast();
   const qc = useQueryClient();
-  const cohorts = useCohorts();
+  const cohorts = useStaffCohorts(byName);
   const [cohortId, setCohortId] = useState(defaultCohortId);
   const [text, setText] = useState("");
   const [results, setResults] = useState<Map<number, Result> | null>(null);

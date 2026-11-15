@@ -5,9 +5,8 @@ import {
   limitMessage,
   updateAssignmentSchema,
   type Assignment,
-  type AssignmentDetail,
 } from "@kampus/shared";
-import { and, asc, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import type { Db } from "../db/client.ts";
@@ -15,7 +14,7 @@ import { assignmentCompletions, assignments, cohorts, users } from "../db/schema
 import { creator, creatorColumns, toStaffRef } from "../lib/assignments.ts";
 import type { AppEnv } from "../lib/env.ts";
 import { atLimit } from "../lib/limits.ts";
-import { iso, toCohort } from "../lib/serialize.ts";
+import { toCohort } from "../lib/serialize.ts";
 import { cohortExists, isStudent, UNKNOWN_COHORT } from "../lib/cohorts.ts";
 import { uuidParam, validate } from "../lib/validate.ts";
 
@@ -75,43 +74,12 @@ async function listAssignments(db: Db, where: SQL | undefined): Promise<Assignme
   }));
 }
 
-async function loadDetail(db: Db, id: string): Promise<AssignmentDetail | null> {
-  const [assignment] = await listAssignments(db, eq(assignments.id, id));
-  if (!assignment) return null;
-  const rows = await db
-    .select({
-      id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      completedAt: assignmentCompletions.completedAt,
-    })
-    .from(users)
-    .leftJoin(assignmentCompletions, and(eq(assignmentCompletions.assignmentId, id), eq(assignmentCompletions.userId, users.id)))
-    .where(and(isStudent, eq(users.cohortId, assignment.cohort.id)))
-    // Quem ainda não a fez primeiro (false < true), depois por nome.
-    .orderBy(sql`${assignmentCompletions.userId} is not null`, asc(users.firstName), asc(users.lastName));
-  return {
-    ...assignment,
-    progress: rows.map((r) => ({
-      student: { id: r.id, firstName: r.firstName, lastName: r.lastName },
-      done: r.completedAt !== null,
-      completedAt: iso(r.completedAt),
-    })),
-  };
-}
-
 export const assignmentRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("staff"))
   .get("/", validate("query", assignmentQuerySchema), async (c) => {
     const { cohortId } = c.req.valid("query");
     const where = cohortId ? eq(assignments.cohortId, cohortId) : undefined;
     return c.json({ assignments: await listAssignments(c.var.db, where) });
-  })
-  .get("/:id", uuidParam(NOT_FOUND), async (c) => {
-    const id = c.req.param("id");
-    const assignment = await loadDetail(c.var.db, id);
-    if (!assignment) return c.json(NOT_FOUND, 404);
-    return c.json({ assignment });
   })
   .post("/", validate("json", createAssignmentSchema), async (c) => {
     const input = c.req.valid("json");

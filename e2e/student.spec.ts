@@ -146,7 +146,7 @@ test("um refetch falhado não troca a lista de tarefas por um erro", async ({ pa
 
   // A lista passa a falhar (o PATCH não): o refetch depois de marcar dá 500 nas três tentativas.
   let failed = 0;
-  await page.route(/\/api\/tasks\?/, (route) => {
+  await page.route(/\/api\/tasks$/, (route) => {
     failed++;
     return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Boom" }) });
   });
@@ -169,4 +169,32 @@ test("errar a password no login de staff não tira a sessão de aluno", async ({
   // Sem recarregar: a sessão em cache continua lá e o Welcome reconhece o aluno.
   await page.getByRole("link", { name: "Kampus, go to the welcome page" }).click();
   await expect(page.getByRole("link", { name: /^Continue as/ })).toBeVisible();
+});
+
+test("se marcar uma tarefa falha, a caixa volta ao que estava", async ({ page }) => {
+  await loginAs(page, "student");
+  await page.goto("/app/tasks");
+  const task = page.getByRole("checkbox", { name: /Join the cohort chat and say hi/ });
+  await expect(task).not.toBeChecked();
+
+  // O PATCH falha, e a lista também: se ela respondesse, o refetch repunha a caixa e o
+  // rollback do update otimista não era posto à prova.
+  await page.route(/\/api\/tasks(\/[^/]+)?$/, (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Boom" }) }));
+  await task.click();
+  await expect(page.getByText("Couldn't update the task").first()).toBeVisible();
+  await expect(task).not.toBeChecked();
+});
+
+test("com a sessão caída a meio, o pedido seguinte leva ao login com o aviso", async ({ page }) => {
+  await loginAs(page, "student");
+  await page.goto("/app/tasks");
+  const task = page.getByRole("checkbox", { name: /Join the cohort chat and say hi/ });
+  await expect(task).not.toBeChecked();
+
+  // A sessão acaba no servidor sem a app saber: o PATCH seguinte responde 401.
+  // Com o header Origin: sem ele, a proteção de CSRF recusa um POST sem corpo.
+  expect((await page.request.post("/api/auth/logout", { headers: { origin: new URL(page.url()).origin } })).status()).toBe(204);
+  await task.click();
+  await expect(page).toHaveURL(/\/login\/student$/);
+  await expect(page.getByText("Please log in to continue.")).toBeVisible();
 });

@@ -6,14 +6,13 @@ import { errorMessage } from "../../api/client.ts";
 import { useAssignments, useCurrentUser, useDeleteAssignment, useStudents } from "../../api/hooks.ts";
 import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, ErrorState, IconButton, PageHeader, ProgressBar, Select, Skeleton, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
-import { fullName, timeAgo } from "../../lib/format.ts";
+import { fullName, plural, timeAgo } from "../../lib/format.ts";
 import { AssignmentFormDialog } from "./AssignmentFormDialog.tsx";
 import { cohortFilter } from "./cohortFilter.ts";
 import { cohortTiming, dayLabel, mailto, relativeDay, taskReminder, type Sender } from "./progress.ts";
 import { MailLink } from "./StaffParts.tsx";
 import { useStaffCohorts } from "./staffQueries.ts";
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
  * Sem `?cohort=` no URL: a turma que começa a seguir (a que mais precisa das tarefas

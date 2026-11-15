@@ -2,9 +2,11 @@ import { createAssignmentSchema, DATE_INPUT_MAX, DATE_INPUT_MIN, updateAssignmen
 import { CalendarX } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
-import { useCohorts, useCreateAssignment, useUpdateAssignment } from "../../api/hooks.ts";
+import { useCreateAssignment, useUpdateAssignment } from "../../api/hooks.ts";
+import { byName, useStaffCohorts } from "./staffQueries.ts";
 import { Button, Dialog, Input, Select, useToast } from "../../components/ui/index.ts";
 import { useSubmitLock } from "../../lib/submitLock.ts";
+import { issuesByField } from "../../lib/issues.ts";
 
 type FieldName = "cohortId" | "title" | "dueDate";
 type Values = Record<FieldName, string>;
@@ -23,18 +25,6 @@ function initialValues(assignment: Assignment | null, defaultCohortId: string): 
     title: assignment?.title ?? "",
     dueDate: assignment?.dueDate ?? "",
   };
-}
-
-/** Primeiro erro de cada campo, a partir dos issues do Zod. */
-function issuesToErrors(issues: readonly { path: readonly PropertyKey[]; message: string }[]): Errors {
-  const errors: Errors = {};
-  for (const issue of issues) {
-    const key = issue.path[0];
-    if (typeof key === "string" && !(key in errors)) {
-      errors[key as FieldName] = issue.message === "Required" ? (REQUIRED[key as FieldName] ?? issue.message) : issue.message;
-    }
-  }
-  return errors;
 }
 
 /**
@@ -58,7 +48,7 @@ export function AssignmentFormDialog({
 }) {
   const isEdit = assignment !== null;
   const toast = useToast();
-  const cohorts = useCohorts();
+  const cohorts = useStaffCohorts(byName);
   const createAssignment = useCreateAssignment();
   const updateAssignment = useUpdateAssignment();
   const [values, setValues] = useState<Values>(() => initialValues(assignment, defaultCohortId));
@@ -87,7 +77,7 @@ export function AssignmentFormDialog({
       try {
         if (!isEdit) {
           const parsed = createAssignmentSchema.safeParse({ ...values, dueDate: values.dueDate || null });
-          if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
+          if (!parsed.success) return showErrors(issuesByField(parsed.error.issues, REQUIRED));
           const created = await createAssignment.mutateAsync(parsed.data);
           toast({ title: "Task added", description: `Everyone in ${created.cohort.name} can see it now.`, tone: "success" });
           onCreated?.(created);
@@ -102,7 +92,7 @@ export function AssignmentFormDialog({
             return;
           }
           const parsed = updateAssignmentSchema.safeParse(changes);
-          if (!parsed.success) return showErrors(issuesToErrors(parsed.error.issues));
+          if (!parsed.success) return showErrors(issuesByField(parsed.error.issues, REQUIRED));
           await updateAssignment.mutateAsync({ id: assignment.id, ...parsed.data });
           toast({ title: "Changes saved", tone: "success" });
         }

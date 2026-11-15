@@ -21,7 +21,7 @@ const GROUP_TONE: Record<TaskGroup["id"], string> = {
 const headingClass = "text-xs font-semibold tracking-wider uppercase";
 
 export function TasksPage() {
-  const tasks = useTasks("all");
+  const tasks = useTasks();
   const titleRef = useRef<HTMLInputElement>(null);
   const { groups, done } = groupTasks(tasks.data ?? []);
   const openCount = groups.reduce((n, g) => n + g.tasks.length, 0);

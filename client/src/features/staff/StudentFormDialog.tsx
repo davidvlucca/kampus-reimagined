@@ -1,10 +1,12 @@
 import { createStudentSchema, isProtectedDemoEmail, updateStudentSchema, type StudentRow, type UpdateStudentInput } from "@kampus/shared";
 import { useRef, useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors, isNotFound } from "../../api/client.ts";
-import { useCohorts, useCreateStudent, useUpdateStudent } from "../../api/hooks.ts";
+import { useCreateStudent, useUpdateStudent } from "../../api/hooks.ts";
+import { byName, useStaffCohorts } from "./staffQueries.ts";
 import { Button, Dialog, Input, Select, useToast } from "../../components/ui/index.ts";
 import { fullName } from "../../lib/format.ts";
 import { useSubmitLock } from "../../lib/submitLock.ts";
+import { issuesByField } from "../../lib/issues.ts";
 
 type FieldName = "firstName" | "lastName" | "email" | "cohortId" | "password";
 type Values = Record<FieldName, string>;
@@ -33,19 +35,6 @@ function initialValues(student: StudentRow | null): Values {
   };
 }
 
-/** Primeiro erro de cada campo, a partir dos issues do Zod. */
-function issuesToErrors(issues: readonly { path: readonly PropertyKey[]; message: string }[]): Errors {
-  const errors: Errors = {};
-  for (const issue of issues) {
-    const key = issue.path[0];
-    if (typeof key === "string" && !(key in errors)) {
-      const field = key as FieldName;
-      errors[field] = issue.message === "Required" ? REQUIRED[field] : issue.message;
-    }
-  }
-  return errors;
-}
-
 /** Um campo vazio diz o que falta ("Enter an email"), não a regra de formato. */
 function withEmptyMessages(errors: Errors, values: Values): Errors {
   const next = { ...errors };
@@ -61,7 +50,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
   // A conta partilhada da demo: a API recusa mudar o email e a password, por isso nem se deixa tentar.
   const isDemo = student !== null && isProtectedDemoEmail(student.email);
   const toast = useToast();
-  const cohorts = useCohorts();
+  const cohorts = useStaffCohorts(byName);
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
   const [values, setValues] = useState<Values>(() => initialValues(student));
@@ -90,7 +79,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
       try {
         if (!isEdit) {
           const parsed = createStudentSchema.safeParse(values);
-          if (!parsed.success) return showErrors(withEmptyMessages(issuesToErrors(parsed.error.issues), values));
+          if (!parsed.success) return showErrors(withEmptyMessages(issuesByField(parsed.error.issues, REQUIRED), values));
           await createStudent.mutateAsync(parsed.data);
           toast({ title: "Student added", description: `${fullName(parsed.data)} can now log in.`, tone: "success" });
         } else {
@@ -107,7 +96,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: { open: boole
             return;
           }
           const parsed = updateStudentSchema.safeParse(changes);
-          if (!parsed.success) return showErrors(withEmptyMessages(issuesToErrors(parsed.error.issues), values));
+          if (!parsed.success) return showErrors(withEmptyMessages(issuesByField(parsed.error.issues, REQUIRED), values));
           await updateStudent.mutateAsync({ id: student.id, ...parsed.data });
           toast({ title: "Changes saved", tone: "success" });
         }

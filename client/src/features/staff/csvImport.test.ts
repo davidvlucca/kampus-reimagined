@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { parseCsv, readImport } from "./csvImport.ts";
+import { readImport } from "./csvImport.ts";
 
 const COHORT = "7986c509-4171-4a90-bd63-5d6bad8059e5";
 
 describe("Import CSV", () => {
   it("lê vírgulas, ponto e vírgula, aspas e linhas vazias", () => {
-    expect(parseCsv('a,b\r\n\r\n"c, d","e ""x"""\n')).toEqual([
-      ["a", "b"],
-      ["c, d", 'e "x"'],
-    ]);
-    expect(parseCsv("Ana;Silva;ana@example.com;Welcome2026")).toEqual([["Ana", "Silva", "ana@example.com", "Welcome2026"]]);
+    const quoted = readImport('"Ana, Maria","Silva ""Sil""",ana@example.com,Welcome2026\r\n\r\n', COHORT);
+    expect(quoted.map((r) => [r.firstName, r.lastName, r.error])).toEqual([["Ana, Maria", 'Silva "Sil"', null]]);
+    const semicolons = readImport("Ana;Silva;ana@example.com;Welcome2026", COHORT);
+    expect(semicolons).toMatchObject([{ firstName: "Ana", lastName: "Silva", email: "ana@example.com", error: null }]);
   });
 
   it("salta o cabeçalho, valida com o Zod da API e apanha emails repetidos", () => {

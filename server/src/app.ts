@@ -15,7 +15,7 @@ import { assignmentRoutes } from "./routes/assignments.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { meRoutes } from "./routes/me.ts";
 import { noteRoutes } from "./routes/notes.ts";
-import { cohortRoutes, staffRoutes } from "./routes/staff.ts";
+import { staffRoutes } from "./routes/staff.ts";
 import { contactRoutes, tourRoutes } from "./routes/student.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 
@@ -138,7 +138,6 @@ export function createApp(config: AppConfig) {
     .route("/notes", noteRoutes)
     .route("/contacts", contactRoutes)
     .route("/tour", tourRoutes)
-    .route("/cohorts", cohortRoutes)
     // Antes de /staff: assim o requireUser não corre duas vezes nestes pedidos.
     .route("/staff/assignments", assignmentRoutes)
     .route("/staff", staffRoutes);

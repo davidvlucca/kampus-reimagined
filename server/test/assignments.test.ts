@@ -1,4 +1,4 @@
-import { COHORT_TASK_MESSAGE, type Assignment, type AssignmentDetail, type Cohort, type StudentRow, type Task } from "@kampus/shared";
+import { COHORT_TASK_MESSAGE, type Assignment, type Cohort, type StudentRow, type Task } from "@kampus/shared";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { users } from "../src/db/schema.ts";
@@ -26,7 +26,7 @@ beforeAll(async () => {
   a = await t.login(STUDENT_A, "student");
   b = await t.login(STUDENT_B, "student");
   staff = await t.login(STAFF, "staff");
-  const cohorts = (await t.request<{ cohorts: Cohort[] }>("GET", "/api/cohorts", { cookie: staff })).json.cohorts;
+  const cohorts = (await t.request<{ cohorts: Cohort[] }>("GET", "/api/staff/cohorts", { cookie: staff })).json.cohorts;
   web = cohorts.find((c) => c.name === "Web Dev Oct 2026")!;
   ux = cohorts.find((c) => c.name === "UX/UI Oct 2026")!;
 });
@@ -157,7 +157,7 @@ describe("gestão das tarefas da turma pelo staff", () => {
     expect(assignment).toMatchObject({
       title: "Bring your laptop charger",
       dueDate: "2026-11-04",
-      cohort: web,
+      cohort: { id: web.id, name: web.name },
       createdBy: { firstName: "Marta", lastName: "Lopes", title: "Program Manager" },
       students: 8,
       done: 0,
@@ -167,22 +167,12 @@ describe("gestão das tarefas da turma pelo staff", () => {
     expect(byTitle(await tasksOf(a), "Bring your laptop charger").source).toBe("cohort");
     await t.request("PATCH", `/api/tasks/${assignment.id}`, { cookie: a, body: { done: true } });
 
-    const detail = await t.request<{ assignment: AssignmentDetail }>("GET", `/api/staff/assignments/${assignment.id}`, { cookie: staff });
-    expect(detail.status).toBe(200);
-    expect(detail.json.assignment.done).toBe(1);
-    // Primeiro quem não a fez (por nome), no fim a Diana, que já a fez.
-    expect(detail.json.assignment.progress.map((p) => [p.student.firstName, p.done])).toEqual([
-      ["André", false],
-      ["Beatriz", false],
-      ["Carlos", false],
-      ["Elena", false],
-      ["Filipe", false],
-      ["Hana", false],
-      ["Lucas", false],
-      ["Diana", true],
-    ]);
-    expect(detail.json.assignment.progress.at(-1)!.completedAt).not.toBeNull();
-    expect(detail.json.assignment.progress[0]!.completedAt).toBeNull();
+    // O progresso sai da lista de tarefas (contagem) e da lista de alunos (quem e quando).
+    const listed = (await t.request<{ assignments: Assignment[] }>("GET", `/api/staff/assignments?cohortId=${web.id}`, { cookie: staff })).json.assignments;
+    expect(listed.find((x) => x.id === assignment.id)).toMatchObject({ students: 8, done: 1 });
+    const members = (await t.request<{ students: StudentRow[] }>("GET", `/api/staff/students?cohortId=${web.id}`, { cookie: staff })).json.students;
+    const doneBy = members.filter((s) => s.completions.some((c) => c.assignmentId === assignment.id)).map((s) => s.firstName);
+    expect(doneBy).toEqual(["Diana"]);
 
     const edited = await t.request<{ assignment: Assignment }>("PATCH", `/api/staff/assignments/${assignment.id}`, {
       cookie: staff,
@@ -195,7 +185,8 @@ describe("gestão das tarefas da turma pelo staff", () => {
     expect(byTitle(await tasksOf(a), "Bring your charger")).toMatchObject({ dueDate: null, done: true });
 
     expect((await t.request("DELETE", `/api/staff/assignments/${assignment.id}`, { cookie: staff })).status).toBe(204);
-    expect((await t.request("GET", `/api/staff/assignments/${assignment.id}`, { cookie: staff })).status).toBe(404);
+    const afterDelete = (await t.request<{ assignments: Assignment[] }>("GET", "/api/staff/assignments", { cookie: staff })).json.assignments;
+    expect(afterDelete.map((x) => x.id)).not.toContain(assignment.id);
     expect((await tasksOf(a)).map((x) => x.id)).not.toContain(assignment.id);
     expect((await t.request("DELETE", `/api/staff/assignments/${assignment.id}`, { cookie: staff })).status).toBe(404);
   });
@@ -220,7 +211,7 @@ describe("gestão das tarefas da turma pelo staff", () => {
   it("um id desconhecido ou que não é UUID dá 404", async () => {
     const unknown = "00000000-0000-4000-8000-000000000000";
     for (const id of [unknown, "123"]) {
-      for (const [method, body] of [["GET"], ["PATCH", { title: "X" }], ["DELETE"]] as const) {
+      for (const [method, body] of [["PATCH", { title: "X" }], ["DELETE"]] as const) {
         const res = await t.request<{ error: string }>(method, `/api/staff/assignments/${id}`, { cookie: staff, body });
         expect(res.status).toBe(404);
         expect(res.json.error).toBe("Task not found.");
@@ -274,8 +265,8 @@ describe("autor apagado", () => {
     await t.db.delete(users).where(eq(users.id, await t.userId(email)));
 
     expect(byTitle(await tasksOf(a), "Collect your locker key")).toMatchObject({ source: "cohort", assignedBy: null });
-    const detail = await t.request<{ assignment: AssignmentDetail }>("GET", `/api/staff/assignments/${created.json.assignment.id}`, { cookie: staff });
-    expect(detail.json.assignment.createdBy).toBeNull();
+    const listed = (await t.request<{ assignments: Assignment[] }>("GET", "/api/staff/assignments", { cookie: staff })).json.assignments;
+    expect(listed.find((x) => x.id === created.json.assignment.id)!.createdBy).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@ import { ArrowRight, CircleCheck, ListTodo, Map as MapIcon, NotebookPen, Plus, R
 import { useRef, useState, type FormEvent, type RefObject } from "react";
 import { Link } from "react-router";
 import { errorMessage, fieldErrors } from "../../api/client.ts";
-import { useCreateTask, useCurrentUser, useNotes, useTasks } from "../../api/hooks.ts";
+import { openTasks, useCreateTask, useCurrentUser, useNotes, useTasks } from "../../api/hooks.ts";
 import { Button, buttonClasses, Card, CardBody, CardHeader, EmptyState, ErrorState, Input, PageHeader, ProgressBar, Skeleton, SkeletonList, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
 import { editedAt } from "../../lib/format.ts";
@@ -40,7 +40,7 @@ export function DashboardPage() {
 }
 
 function TasksCard({ tourDone }: { tourDone: boolean }) {
-  const tasks = useTasks("open");
+  const tasks = useTasks(openTasks);
   const titleRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -87,7 +87,7 @@ function TasksCard({ tourDone }: { tourDone: boolean }) {
 
 /** As tarefas mais a visita, como no antigo cartão de progresso (sem o "Week 1", que seria inventado). */
 function Progress({ tourDone }: { tourDone: boolean }) {
-  const tasks = useTasks("all");
+  const tasks = useTasks();
   // No telemóvel passa para a linha de baixo, a toda a largura.
   const box = "flex w-full flex-col gap-1.5 sm:mt-1 sm:w-56";
   if (tasks.isPending) {

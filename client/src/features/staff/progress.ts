@@ -1,4 +1,5 @@
 import { daysBetween, localDateKey, type Assignment, type StaffCohort, type StudentRow } from "@kampus/shared";
+import { plural } from "../../lib/format.ts";
 
 // Regras do staff (dashboard, alunos, tarefas da turma) num sítio só, sem React, para se
 // poderem testar. Tudo com a data LOCAL do browser, como os prazos (ver o ADR 8).
@@ -198,7 +199,6 @@ function taskLine(a: Assignment, today: string): string {
   return `- ${a.title} (${a.dueDate < today ? "overdue, was due" : "due"} ${dayLabel(a.dueDate)})`;
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export interface Mail {
   subject: string;
