@@ -19,7 +19,7 @@ export function RequireAuth({ role }: { role: Role }) {
   const location = useLocation();
 
   if (me.isPending) return <FullPageSpinner label="Checking your session" />;
-  if (me.isError) return <ErrorState className="min-h-dvh justify-center" message="We couldn't check your session." onRetry={() => me.refetch()} />;
+  if (me.isLoadingError) return <ErrorState className="min-h-dvh justify-center" message="We couldn't check your session." onRetry={() => me.refetch()} />;
   if (!me.data) {
     // Depois de "Log out" é só o login; com a sessão expirada, avisa e volta depois à página.
     const signedOut = qc.getQueryData<boolean>(keys.signedOut) === true;

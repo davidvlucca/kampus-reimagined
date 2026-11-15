@@ -92,7 +92,7 @@ function NoteList({ selectedId, onCreate, creating }: { selectedId?: string; onC
   const notes = useNotes();
   const [query, setQuery] = useState("");
   if (notes.isPending) return <SkeletonList rows={4} label="Loading notes" />;
-  if (notes.isError)
+  if (notes.isLoadingError)
     return (
       <Card>
         <ErrorState message={errorMessage(notes.error)} onRetry={() => notes.refetch()} />
@@ -187,26 +187,27 @@ function NoteEditor({ noteId }: { noteId: string }) {
         </Card>
       </>
     );
-  if (note.isError) {
-    if (note.error instanceof ApiRequestError && note.error.status === 404)
-      return (
-        <>
-          <AllNotesLink className="mb-2 lg:hidden" />
-          <Card>
-            <OrphanDraft noteId={noteId} />
-            <EmptyState
-              icon={<FileQuestion aria-hidden />}
-              title="Note not found"
-              description="It may have been deleted, or the link is wrong."
-              action={
-                <Link to="/app/notes" className={buttonClasses({ variant: "secondary", size: "sm" })}>
-                  Back to notes
-                </Link>
-              }
-            />
-          </Card>
-        </>
-      );
+  // O 404 vale mesmo com a nota em cache (apagada noutro separador); outro erro só sem dados.
+  if (note.error instanceof ApiRequestError && note.error.status === 404)
+    return (
+      <>
+        <AllNotesLink className="mb-2 lg:hidden" />
+        <Card>
+          <OrphanDraft noteId={noteId} />
+          <EmptyState
+            icon={<FileQuestion aria-hidden />}
+            title="Note not found"
+            description="It may have been deleted, or the link is wrong."
+            action={
+              <Link to="/app/notes" className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                Back to notes
+              </Link>
+            }
+          />
+        </Card>
+      </>
+    );
+  if (note.isLoadingError)
     return (
       <>
         <AllNotesLink className="mb-2 lg:hidden" />
@@ -215,7 +216,6 @@ function NoteEditor({ noteId }: { noteId: string }) {
         </Card>
       </>
     );
-  }
   return <NoteForm note={note.data} />;
 }
 

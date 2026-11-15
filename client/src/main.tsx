@@ -23,7 +23,7 @@ const onSessionLost = (error: unknown) => {
 
 const queryClient: QueryClient = new QueryClient({
   queryCache: new QueryCache({ onError: onSessionLost }),
-  mutationCache: new MutationCache({ onError: onSessionLost }),
+  mutationCache: new MutationCache({ onError: (error, _variables, _context, mutation) => mutation.meta?.keepsSession || onSessionLost(error) }),
   defaultOptions: {
     queries: {
       // Não insiste em erros 4xx (sem sessão, sem acesso) nem em pedidos que esgotaram o

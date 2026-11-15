@@ -123,7 +123,7 @@ export function ContactsPage() {
             <Skeleton key={i} className="h-72 rounded-[var(--radius-card)]" />
           ))}
         </div>
-      ) : contacts.isError ? (
+      ) : contacts.isLoadingError ? (
         <Card>
           <ErrorState message={errorMessage(contacts.error)} onRetry={() => contacts.refetch()} />
         </Card>

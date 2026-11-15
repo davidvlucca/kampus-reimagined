@@ -71,6 +71,8 @@ export function useLogin() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: LoginInput) => api<{ user: PublicUser }>("/auth/login", { method: "POST", body: input }),
+    // O 401 daqui é "password errada", não "a sessão caiu" (ver o onSessionLost do main.tsx).
+    meta: { keepsSession: true },
     onSuccess: ({ user }) => {
       qc.clear();
       qc.setQueryData(keys.me, user);
@@ -311,6 +313,8 @@ export function useStudents(filters: { q?: string; cohortId?: string } = {}) {
       return (await api<{ students: StudentRow[] }>(`/staff/students${qs ? `?${qs}` : ""}`)).students;
     },
     placeholderData: (previous) => previous,
+    // Como o useAssignments: a lista de quem falta sai daqui e tem de bater com a barra de progresso.
+    refetchOnWindowFocus: true,
   });
 }
 

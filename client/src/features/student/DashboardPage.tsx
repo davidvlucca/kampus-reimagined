@@ -52,7 +52,7 @@ function TasksCard({ tourDone }: { tourDone: boolean }) {
         <div data-task-list>
           {tasks.isPending ? (
             <SkeletonList rows={3} className="py-3" label="Loading tasks" />
-          ) : tasks.isError ? (
+          ) : tasks.isLoadingError ? (
             <ErrorState message={errorMessage(tasks.error)} onRetry={() => tasks.refetch()} />
           ) : tasks.data.length === 0 ? (
             <EmptyState
@@ -100,7 +100,7 @@ function Progress({ tourDone }: { tourDone: boolean }) {
     );
   }
   // O erro já aparece na lista, por baixo: aqui não se repete.
-  if (tasks.isError) return null;
+  if (tasks.isLoadingError) return null;
   const total = tasks.data.length + 1;
   const done = tasks.data.filter((t) => t.done).length + (tourDone ? 1 : 0);
   return (
@@ -219,7 +219,7 @@ function RecentNotes() {
       <CardBody className="flex flex-1 flex-col gap-4">
         {notes.isPending ? (
           <SkeletonList rows={3} label="Loading notes" />
-        ) : notes.isError ? (
+        ) : notes.isLoadingError ? (
           <ErrorState message={errorMessage(notes.error)} onRetry={() => notes.refetch()} />
         ) : notes.data.length === 0 ? (
           <EmptyState
