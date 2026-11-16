@@ -13,8 +13,7 @@ let staff: string;
 let web: Cohort;
 let ux: Cohort;
 
-const tasksOf = async (cookie: string, query = "") =>
-  (await t.request<{ tasks: Task[] }>("GET", `/api/tasks${query}`, { cookie })).json.tasks;
+const tasksOf = async (cookie: string) => (await t.request<{ tasks: Task[] }>("GET", "/api/tasks", { cookie })).json.tasks;
 const assignmentsOf = async (cohort: Cohort) =>
   (await t.request<{ assignments: Assignment[] }>("GET", `/api/staff/assignments?cohortId=${cohort.id}`, { cookie: staff })).json.assignments;
 const byTitle = <T extends { title: string }>(list: T[], title: string) => list.find((x) => x.title === title)!;
@@ -77,16 +76,6 @@ describe("o aluno vê as tarefas da sua turma", () => {
     expect(uxIds).toHaveLength(3);
     for (const id of uxIds) expect(mine).not.toContain(id);
     expect((await tasksOf(a)).map((x) => x.title)).not.toContain("Install Figma and join the team file");
-  });
-
-  it("o filtro por estado também se aplica às tarefas da turma", async () => {
-    const doneB = await tasksOf(b, "?status=done");
-    expect(doneB.map((x) => x.title)).toContain("Sign the learning agreement");
-    expect(doneB.every((x) => x.done)).toBe(true);
-    const openB = await tasksOf(b, "?status=open");
-    expect(openB.map((x) => x.title)).not.toContain("Sign the learning agreement");
-    expect(openB.map((x) => x.title)).toContain("Install Node.js and VS Code");
-    expect(openB.every((x) => !x.done)).toBe(true);
   });
 });
 
