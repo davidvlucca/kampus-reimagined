@@ -23,19 +23,20 @@ describe("atividade recente do staff", () => {
     await t.db.update(users).set({ lastLoginAt: sql`now() - interval '3 days'` }).where(eq(users.id, old));
 
     // Um aluno criado agora: o evento mais recente que não é um login.
-    const { cohorts } = (await t.request<{ cohorts: { id: string }[] }>("GET", "/api/cohorts", { cookie: staff })).json;
+    const { cohorts } = (await t.request<{ cohorts: { id: string }[] }>("GET", "/api/staff/cohorts", { cookie: staff })).json;
     const created = await t.request<{ student: { id: string } }>("POST", "/api/staff/students", {
       cookie: staff,
       body: { firstName: "Nova", lastName: "Aluna", email: "nova.aluna@example.com", cohortId: cohorts[0]!.id, password: "Kampus123" },
     });
     expect(created.status).toBe(201);
 
-    const { recentActivity, totalStudents } = await overview();
+    const { recentActivity } = await overview();
     const logins = recentActivity.filter((i) => i.kind === "login");
     const others = recentActivity.filter((i) => i.kind !== "login");
 
     // Todos menos o de há 3 dias e o aluno novo (que nunca entrou).
-    expect(logins).toHaveLength(totalStudents - 2);
+    // 20 do seed mais a aluna nova, menos esses dois.
+    expect(logins).toHaveLength(21 - 2);
     expect(logins.map((i) => i.student.id)).not.toContain(old);
     expect(others).toHaveLength(10);
     expect(others.some((i) => i.kind === "tour_completed")).toBe(true);

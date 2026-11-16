@@ -11,6 +11,7 @@ import { cn } from "../../lib/cn.ts";
 import { isProgramManager } from "../contacts/contactGroups.ts";
 import { formatDate, fullName } from "../../lib/format.ts";
 import { useSubmitLock } from "../../lib/submitLock.ts";
+import { issuesByField } from "../../lib/issues.ts";
 
 // Com texto a 200% num ecrã de 320px, um botão de uma linha só ficava mais largo do que o ecrã.
 const WRAP = "h-auto min-h-11 max-w-full py-2 text-center whitespace-normal";
@@ -19,16 +20,6 @@ const WRAP = "h-auto min-h-11 max-w-full py-2 text-center whitespace-normal";
 function showErrors(form: HTMLFormElement | null, setErrors: (errors: Record<string, string>) => void, errors: Record<string, string>) {
   flushSync(() => setErrors(errors));
   form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-}
-
-/** Primeira mensagem de erro por campo, a partir dos issues do Zod. */
-function issuesByField(issues: readonly { path: readonly PropertyKey[]; message: string }[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const issue of issues) {
-    const key = String(issue.path[0] ?? "");
-    if (key && !out[key]) out[key] = issue.message;
-  }
-  return out;
 }
 
 function ProfileSummary({ user, className }: { user: PublicUser; className?: string }) {
@@ -236,8 +227,7 @@ function PasswordForm({ email, className }: { email: string; className?: string 
 
 /** Como no cartão de tarefas do Home: as tarefas mais a visita, "N of M steps done". */
 function ChecklistRow({ tourDone }: { tourDone: boolean }) {
-  const all = useTasks("all");
-  const open = useTasks("open");
+  const all = useTasks();
   let summary: ReactNode;
   if (all.isPending)
     summary = (
@@ -251,7 +241,7 @@ function ChecklistRow({ tourDone }: { tourDone: boolean }) {
   else {
     const total = all.data.length + 1;
     const done = all.data.filter((t) => t.done).length + (tourDone ? 1 : 0);
-    const next = open.data?.[0];
+    const next = all.data.find((t) => !t.done);
     summary = (
       <>
         <ProgressBar value={done} max={total} label="Your progress" className="h-1.5" />

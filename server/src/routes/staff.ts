@@ -12,7 +12,7 @@ import {
   type StaffOverview,
   type StudentRow,
 } from "@kampus/shared";
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import { hashPassword } from "../auth/password.ts";
@@ -123,17 +123,9 @@ async function listStudents(db: Db, where: SQL | undefined): Promise<StudentRow[
   }));
 }
 
-export const cohortRoutes = new Hono<AppEnv>()
-  .use(requireUser, requireRole("staff"))
-  .get("/", async (c) => {
-    const rows = await c.var.db.select().from(cohorts).orderBy(asc(cohorts.name));
-    return c.json({ cohorts: rows.map(toCohort) });
-  });
-
 export const staffRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("staff"))
   // As turmas com a data de início (a semana do dashboard e a linha do tempo das tarefas).
-  // À parte de /api/cohorts, que dá o mesmo `Cohort` das outras respostas.
   .get("/cohorts", async (c) => {
     const rows = await c.var.db.select().from(cohorts).orderBy(asc(cohorts.startsOn), asc(cohorts.name));
     const list: StaffCohort[] = rows.map((r) => ({ ...toCohort(r), startsOn: r.startsOn }));
@@ -141,25 +133,6 @@ export const staffRoutes = new Hono<AppEnv>()
   })
   .get("/overview", async (c) => {
     const db = c.var.db;
-
-    const byCohortRows = await db
-      .select({
-        id: cohorts.id,
-        name: cohorts.name,
-        students: sql<number>`count(${users.id})::int`,
-        tourDone: sql<number>`count(${users.tourCompletedAt})::int`,
-      })
-      .from(cohorts)
-      .leftJoin(users, and(eq(users.cohortId, cohorts.id), isStudent))
-      .groupBy(cohorts.id, cohorts.name)
-      .orderBy(asc(cohorts.name));
-
-    const pending = await db
-      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, cohortId: cohorts.id, cohortName: cohorts.name })
-      .from(users)
-      .leftJoin(cohorts, eq(cohorts.id, users.cohortId))
-      .where(and(isStudent, isNull(users.tourCompletedAt)))
-      .orderBy(asc(users.lastName), asc(users.firstName));
 
     // "Atividade recente" sem tabela de eventos, a partir de colunas que já existem: as 10
     // visitas concluídas, tarefas da turma marcadas e alunos criados mais recentes, mais os
@@ -217,17 +190,7 @@ export const staffRoutes = new Hono<AppEnv>()
     const events = [...toItems("tour_completed", tours), ...completedItems, ...toItems("student_created", created)].sort(byNewest).slice(0, RECENT_EVENTS);
     const recentActivity = [...toItems("login", logins), ...events].sort(byNewest);
 
-    const overview: StaffOverview = {
-      totalStudents: byCohortRows.reduce((sum, r) => sum + r.students, 0),
-      byCohort: byCohortRows.map((r) => ({ cohort: { id: r.id, name: r.name }, students: r.students, tourDone: r.tourDone })),
-      pendingTour: pending.map((p) => ({
-        id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        cohort: p.cohortId && p.cohortName ? { id: p.cohortId, name: p.cohortName } : null,
-      })),
-      recentActivity,
-    };
+    const overview: StaffOverview = { recentActivity };
     return c.json(overview);
   })
   .get("/students", validate("query", studentQuerySchema), async (c) => {

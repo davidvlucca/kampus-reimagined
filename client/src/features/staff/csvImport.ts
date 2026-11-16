@@ -6,14 +6,12 @@ import { createStudentSchema, type CreateStudentInput } from "@kampus/shared";
 /** Mais do que isto de uma vez não faz sentido numa turma (e cada aluno custa um argon2 no servidor). */
 export const MAX_IMPORT_ROWS = 100;
 
-/** Lê um CSV simples: vírgula ou ponto e vírgula, aspas com "" lá dentro, linhas vazias ignoradas. */
-export function parseCsv(text: string): string[][] {
-  return splitCsv(text).filter(notEmpty);
-}
-
 const notEmpty = (row: string[]) => row.some((c) => c !== "");
 
-/** Todas as linhas, vazias incluídas: o número da linha no ficheiro é o índice. */
+/**
+ * Lê um CSV simples: vírgula ou ponto e vírgula, aspas com "" lá dentro. Devolve todas as
+ * linhas, vazias incluídas: o número da linha no ficheiro é o índice.
+ */
 function splitCsv(text: string): string[][] {
   const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
   // O Excel em português grava com ponto e vírgula.

@@ -70,3 +70,6 @@ export function firstGrapheme(value: string): string {
 export function initials(firstName: string, lastName: string): string {
   return `${firstGrapheme(firstName)}${firstGrapheme(lastName)}`.toUpperCase();
 }
+
+/** "1 student", "3 students". */
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;

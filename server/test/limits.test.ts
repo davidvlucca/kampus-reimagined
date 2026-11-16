@@ -14,7 +14,7 @@ beforeAll(async () => {
   t = await setup();
   student = await t.login(STUDENT_A, "student");
   staff = await t.login(STAFF, "staff");
-  cohortId = (await t.request<{ cohorts: Cohort[] }>("GET", "/api/cohorts", { cookie: staff })).json.cohorts[0]!.id;
+  cohortId = (await t.request<{ cohorts: Cohort[] }>("GET", "/api/staff/cohorts", { cookie: staff })).json.cohorts[0]!.id;
 });
 afterAll(() => t.close());
 

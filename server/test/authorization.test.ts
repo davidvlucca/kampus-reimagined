@@ -62,7 +62,6 @@ describe("um aluno só vê e altera os próprios dados", () => {
       ["GET", "/api/notes/123", a],
       ["PATCH", "/api/notes/123", a],
       ["DELETE", "/api/notes/123", a],
-      ["GET", "/api/staff/assignments/123", staff],
       ["PATCH", "/api/staff/assignments/123", staff],
       ["DELETE", "/api/staff/assignments/123", staff],
       ["PATCH", "/api/staff/students/123", staff],
@@ -79,12 +78,11 @@ describe("rotas de staff", () => {
   const staffRoutes: [string, string, unknown?][] = [
     ["GET", "/api/staff/overview"],
     ["GET", "/api/staff/students"],
-    ["GET", "/api/cohorts"],
+    ["GET", "/api/staff/cohorts"],
     ["POST", "/api/staff/students", { firstName: "X", lastName: "Y", email: "x@example.com", cohortId: "00000000-0000-4000-8000-000000000000", password: "Password1" }],
     ["PATCH", "/api/staff/students/00000000-0000-4000-8000-000000000000", { firstName: "X" }],
     ["DELETE", "/api/staff/students/00000000-0000-4000-8000-000000000000"],
     ["GET", "/api/staff/assignments"],
-    ["GET", "/api/staff/assignments/00000000-0000-4000-8000-000000000000"],
     ["POST", "/api/staff/assignments", { cohortId: "00000000-0000-4000-8000-000000000000", title: "X" }],
     ["PATCH", "/api/staff/assignments/00000000-0000-4000-8000-000000000000", { title: "X" }],
     ["DELETE", "/api/staff/assignments/00000000-0000-4000-8000-000000000000"],
@@ -169,11 +167,8 @@ describe("gestão de alunos pelo staff", () => {
     expect(filtered.every((s) => s.cohort?.id === cohortId)).toBe(true);
   });
 
-  it("overview conta alunos por turma e quem ainda não fez a visita", async () => {
+  it("overview traz a atividade recente", async () => {
     const res = await t.request<StaffOverview>("GET", "/api/staff/overview", { cookie: staff });
-    expect(res.json.byCohort).toHaveLength(3);
-    expect(res.json.totalStudents).toBe(20);
-    expect(res.json.pendingTour.map((p) => p.firstName)).toContain("Diana");
     expect(res.json.recentActivity.length).toBeGreaterThan(0);
   });
 });
@@ -223,7 +218,7 @@ describe("o hash da password nunca sai na API", () => {
     // Percorre ainda as rotas de leitura, com cada perfil.
     for (const [cookie, paths] of [
       [a, ["/api/auth/me", "/api/tasks", "/api/notes", "/api/contacts"]],
-      [staff, ["/api/auth/me", "/api/staff/overview", "/api/staff/students", "/api/cohorts", "/api/staff/assignments"]],
+      [staff, ["/api/auth/me", "/api/staff/overview", "/api/staff/students", "/api/staff/cohorts", "/api/staff/assignments"]],
     ] as const) {
       for (const path of paths) await t.request("GET", path, { cookie });
     }

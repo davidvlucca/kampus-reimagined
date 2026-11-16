@@ -3,10 +3,10 @@ import { ChevronDown, ChevronLeft, ChevronRight, Lock, Pencil, Search, SearchX, 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client.ts";
-import { useAssignments, useCohorts, useCurrentUser, useDeleteStudent, useStudents } from "../../api/hooks.ts";
+import { useAssignments, useCurrentUser, useDeleteStudent, useStudents } from "../../api/hooks.ts";
 import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, ErrorState, IconButton, Input, PageHeader, ProgressBar, Select, Skeleton, useToast } from "../../components/ui/index.ts";
 import { cn } from "../../lib/cn.ts";
-import { fullName, timeAgo } from "../../lib/format.ts";
+import { fullName, plural, timeAgo } from "../../lib/format.ts";
 import { cohortFilter } from "./cohortFilter.ts";
 import { ImportStudentsDialog } from "./ImportStudentsDialog.tsx";
 import {
@@ -27,9 +27,8 @@ import {
 } from "./progress.ts";
 import { StudentFormDialog } from "./StudentFormDialog.tsx";
 import { MailLink, StatusBadge } from "./StaffParts.tsx";
-import { useStaffCohorts } from "./staffQueries.ts";
+import { byName, useStaffCohorts } from "./staffQueries.ts";
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 /** Linhas por página na tabela; nos cartões, quantos aparecem antes do "Show more". */
 const PAGE_SIZE = 10;
 
@@ -72,8 +71,7 @@ export function StudentsPage() {
     return () => window.clearTimeout(id);
   }, [search, q, setParams]);
 
-  const cohorts = useCohorts();
-  const staffCohorts = useStaffCohorts();
+  const cohorts = useStaffCohorts(byName);
   const cohortId = cohortFilter(params.get("cohort"), cohorts.data);
   const status = statusFilter(params.get("status"));
   const students = useStudents({ q, cohortId });
@@ -237,7 +235,7 @@ export function StudentsPage() {
           status={status}
           onStatus={(value) => setParam("status", value === "all" ? "" : value)}
           showCohort={!cohortId}
-          cohorts={staffCohorts.data}
+          cohorts={cohorts.data}
           sender={user}
           resetKey={`${q}|${cohortId}|${status}`}
           onEdit={openEdit}
