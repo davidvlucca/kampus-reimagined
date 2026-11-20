@@ -156,7 +156,7 @@ export function TourPage() {
   function toggleAudio() {
     if (!speech.supported) return;
     if (speech.speaking) speech.stop();
-    else speech.speak(line);
+    else speech.speak(line, guide.voice === "male");
   }
 
   const prevStop = prev !== null ? TOUR_STOPS[prev] : undefined;
