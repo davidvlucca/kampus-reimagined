@@ -136,9 +136,6 @@ export const isUuid = (value: string) => z.uuid().safeParse(value).success;
 
 // ---------- Tarefas ----------
 
-export const TASK_FILTERS = ["all", "open", "done"] as const;
-export type TaskFilter = (typeof TASK_FILTERS)[number];
-
 const taskTitle = singleLine(120);
 
 export const createTaskSchema = z.object({
