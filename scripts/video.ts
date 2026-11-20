@@ -95,7 +95,7 @@ async function staffFlow(page: Page) {
   await dialog.getByLabel("First name").fill("Alex");
   await dialog.getByLabel("Last name").fill("Rivera");
   await dialog.getByLabel("Email").fill("alex.rivera@example.com");
-  await dialog.getByLabel("Cohort").selectOption({ label: "UX/UI Oct 2026" });
+  await dialog.getByLabel("Cohort").selectOption({ label: "UX/UI" });
   await dialog.getByLabel(/password/i).fill("Welcome2026");
   await pause(page, 500);
   await dialog.getByRole("button", { name: "Add student" }).click();

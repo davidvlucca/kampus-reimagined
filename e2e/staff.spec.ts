@@ -42,7 +42,7 @@ test("o staff entra com um clique, cria um aluno e apaga-o", async ({ page }) =>
 test("o cartão da turma leva aos alunos que precisam de um empurrão", async ({ page }) => {
   await loginAs(page, "staff");
   await page.goto("/staff");
-  await page.getByRole("link", { name: /need(s)? a nudge in Web Dev Oct 2026/ }).click();
+  await page.getByRole("link", { name: /need(s)? a nudge in Web Dev/ }).click();
   await expect(page).toHaveURL(/\/staff\/students\?cohort=.+&status=nudge$/);
   // "nudge" acende os dois filtros que o compõem.
   const filters = page.getByRole("group", { name: "Filter by status" });

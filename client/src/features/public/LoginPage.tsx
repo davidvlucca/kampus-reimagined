@@ -242,7 +242,7 @@ export function LoginPage({ portal }: { portal: Portal }) {
               <dt className="text-subtle">Password</dt>
               <dd className="font-medium text-text">{DEMO_PASSWORD}</dd>
             </dl>
-            <Button variant="secondary" size="sm" className="mt-4" loading={demo.isPending} disabled={login.isPending} onClick={() => demo.start(portal, (user) => targetAfterLogin(user, portal, redirect?.from))}>
+            <Button variant="secondary" size="sm" className="mt-4" loading={demo.isPending} disabled={login.isPending} onClick={() => demo.start(portal, redirect?.from ? (user) => targetAfterLogin(user, portal, redirect?.from) : undefined)}>
               Explore with the demo account
             </Button>
           </aside>

@@ -59,7 +59,7 @@ function Sidebar({ role }: { role: Role }) {
       <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3">
         <Avatar firstName={user.firstName} lastName={user.lastName} size="md" className="bg-white/20" />
         <div className="min-w-0 flex-1">
-          {/* Duas linhas antes de cortar: "Program Manager" ou "Web Dev Oct 2026" não cabiam numa. */}
+          {/* Duas linhas antes de cortar: "Program Manager" ou "Data Analytics" não cabiam numa. */}
           <p className="line-clamp-2 text-sm font-semibold break-words">
             {user.firstName} {user.lastName}
           </p>

@@ -41,6 +41,16 @@ test("um clique no Welcome abre a demo de aluno e a visita, que se faz até ao f
   await expect(page).toHaveURL(/\/app$/);
 });
 
+test("a conta demo é partilhada: depois de outro visitante saltar a visita, o seguinte também começa por ela", async ({ page }) => {
+  await loginAs(page, "student");
+  expect((await page.request.post("/api/tour/skip", { data: {} })).ok()).toBe(true);
+  await page.context().clearCookies();
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore as a student" }).click();
+  await expect(page).toHaveURL(/\/app\/tour$/);
+});
+
 test("marcar uma tarefa como feita fica guardado depois de recarregar (o bug de 2023)", async ({ page }) => {
   await loginAs(page, "student");
   await page.goto("/app/tasks");

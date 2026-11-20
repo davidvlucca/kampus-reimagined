@@ -27,8 +27,8 @@ beforeAll(async () => {
   b = await t.login(STUDENT_B, "student");
   staff = await t.login(STAFF, "staff");
   const cohorts = (await t.request<{ cohorts: Cohort[] }>("GET", "/api/staff/cohorts", { cookie: staff })).json.cohorts;
-  web = cohorts.find((c) => c.name === "Web Dev Oct 2026")!;
-  ux = cohorts.find((c) => c.name === "UX/UI Oct 2026")!;
+  web = cohorts.find((c) => c.name === "Web Dev")!;
+  ux = cohorts.find((c) => c.name === "UX/UI")!;
 });
 afterAll(() => t.close());
 

@@ -8,7 +8,7 @@ By David Lucca · [LinkedIn](https://www.linkedin.com/in/davidvlucca/) · [GitHu
 
 This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
 
-**3D campus tour** in React Three Fiber with a 2D fallback · **372 Vitest tests** (180 on the API, against a real Postgres) + **73 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
+**3D campus tour** in React Three Fiber with a 2D fallback · **372 Vitest tests** (180 on the API, against a real Postgres) + **75 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
 
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
@@ -63,7 +63,7 @@ Other scripts:
 | `npm run dev` | Starts API and web app (after a first `npm run demo`) |
 | `npm run db:reset` | Wipes the local database and loads the demo data again |
 | `npm test` | 372 Vitest tests: 180 on the API (auth, authorization, limits, cron), plus schemas, dates in three time zones and client logic |
-| `npm run e2e` | 73 end-to-end tests (Playwright): the main flows in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen, and the 3D tour in WebGL |
+| `npm run e2e` | 75 end-to-end tests (Playwright): the main flows in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen, and the 3D tour in WebGL |
 | `npm run lint` / `npm run typecheck` / `npm run build` | ESLint, TypeScript, production build |
 | `npm run prints` | Screenshots of the main screens into `docs/prints/` (Playwright) |
 | `npm run video` | Records the demo video into `docs/video/` (Playwright + ffmpeg) |
@@ -122,7 +122,7 @@ On a phone (390px), where the 2023 screens broke:
 
 | 2023 | 2026 | Why |
 | --- | --- | --- |
-| The API had no authentication: `/auth/users` returned every user **with their password hash**, and anyone could edit or delete tasks, notes and users. | Session cookie (`httpOnly`, `SameSite=Lax`), sessions stored in the database, passwords hashed with argon2id. A student only sees their own data, only staff manage students, and the hash never leaves the API. | It's the first thing a reviewer checks. The API's 123 tests try to break it: reading another student's notes, a student calling staff routes, looking for the hash in every response. |
+| The API had no authentication: `/auth/users` returned every user **with their password hash**, and anyone could edit or delete tasks, notes and users. | Session cookie (`httpOnly`, `SameSite=Lax`), sessions stored in the database, passwords hashed with argon2id. A student only sees their own data, only staff manage students, and the hash never leaves the API. | It's the first thing a reviewer checks. The API's tests try to break it: reading another student's notes, a student calling staff routes, looking for the hash in every response. |
 | Anyone could sign up as staff. Editing a user saved the password exactly as received. | No public sign-up: staff accounts come from the seed, students are created by staff with a temporary password, and changing a password asks for the current one and logs out other devices. | Fewer ways in, and a real password flow. |
 | The task checkbox always started as "To do", so finished tasks looked unfinished. | The checkbox reads the saved state; ticking it is instant (optimistic) and rolls back if the API fails. | The bug from the original report, fixed and tested. |
 | Not responsive: every screen broke on a phone. | Mobile-first for students (390px), sidebar on desktop and a bottom bar on mobile, like apps students already use. | New students live on their phones. |
