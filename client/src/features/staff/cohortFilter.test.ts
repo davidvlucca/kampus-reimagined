@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cohortFilter } from "./cohortFilter.ts";
 
-const WEB = { id: "7986c509-4171-4a90-bd63-5d6bad8059e5", name: "Web Dev Oct 2026" };
+const WEB = { id: "7986c509-4171-4a90-bd63-5d6bad8059e5", name: "Web Dev" };
 const OTHER = "0f8fad5b-d9cb-469f-a165-70867728950e";
 
 describe("filtro de turma a partir do URL", () => {

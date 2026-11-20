@@ -17,8 +17,8 @@ import {
 
 // "Hoje" é quinta, 5 de novembro de 2026, ao meio-dia (hora local).
 const NOW = new Date(2026, 10, 5, 12, 0);
-const WEB: StaffCohort = { id: "c-web", name: "Web Dev Oct 2026", startsOn: "2026-11-09" };
-const UX: StaffCohort = { id: "c-ux", name: "UX/UI Oct 2026", startsOn: "2026-10-26" };
+const WEB: StaffCohort = { id: "c-web", name: "Web Dev", startsOn: "2026-11-09" };
+const UX: StaffCohort = { id: "c-ux", name: "UX/UI", startsOn: "2026-10-26" };
 
 const task = (id: string, dueDate: string | null, cohort: StaffCohort = WEB, title = `Task ${id}`): Assignment => ({
   id,

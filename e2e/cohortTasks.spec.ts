@@ -19,7 +19,7 @@ test("o staff dá uma tarefa à turma, o aluno marca-a como feita e o staff vê 
   await staff.getByRole("button", { name: "New task" }).first().click();
   const dialog = staff.getByRole("dialog", { name: "New cohort task" });
   await expect(dialog.getByLabel("Cohort").locator("option")).toHaveCount(4);
-  await dialog.getByLabel("Cohort").selectOption({ label: "Web Dev Oct 2026" });
+  await dialog.getByLabel("Cohort").selectOption({ label: "Web Dev" });
   await dialog.getByLabel("Title").fill(TITLE);
   await expectAccessible(staff);
   await dialog.getByRole("button", { name: "Add task" }).click();

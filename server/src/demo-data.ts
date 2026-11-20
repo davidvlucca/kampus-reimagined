@@ -47,9 +47,9 @@ const STAFF = [
 // Cada turma num momento diferente, para a demo mostrar os três estados: a semana zero
 // (Web Dev arranca daqui a 4 dias), uma turma a decorrer e uma que ainda está longe.
 const COHORTS = [
-  { key: "web", name: "Web Dev Oct 2026", setup: "Install Node.js and VS Code", startsIn: 4 },
-  { key: "ux", name: "UX/UI Oct 2026", setup: "Install Figma and join the team file", startsIn: -7 },
-  { key: "data", name: "Data Analytics Oct 2026", setup: "Install Python and Jupyter", startsIn: 18 },
+  { key: "web", name: "Web Dev", setup: "Install Node.js and VS Code", startsIn: 4 },
+  { key: "ux", name: "UX/UI", setup: "Install Figma and join the team file", startsIn: -7 },
+  { key: "data", name: "Data Analytics", setup: "Install Python and Jupyter", startsIn: 18 },
 ] as const;
 type CohortKey = (typeof COHORTS)[number]["key"];
 

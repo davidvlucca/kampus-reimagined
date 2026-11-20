@@ -12,6 +12,9 @@ export const DEMO_ACCOUNTS: Record<Portal, string> = {
 };
 export { DEMO_PASSWORD };
 
+// A conta de aluno é partilhada: quem entrou antes já fez ou saltou a visita. Cada visitante começa por ela.
+const demoHome = (user: PublicUser) => (user.role === "student" ? "/app/tour" : homePathFor(user));
+
 /**
  * Entra numa conta demo com um clique. Quem visita o portfólio dá poucos minutos ao
  * site: copiar email e password é atrito a mais antes de ver a visita.
@@ -21,8 +24,8 @@ export function useDemoLogin() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  /** `target` decide para onde ir depois de entrar; por omissão, a casa do perfil. */
-  const start = (portal: Portal, target: (user: PublicUser) => string = homePathFor) => {
+  /** `target` decide para onde ir depois de entrar; por omissão, a casa da demo. */
+  const start = (portal: Portal, target: (user: PublicUser) => string = demoHome) => {
     login.mutate(
       { email: DEMO_ACCOUNTS[portal], password: DEMO_PASSWORD, portal },
       {

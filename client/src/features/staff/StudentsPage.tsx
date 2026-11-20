@@ -475,7 +475,8 @@ function StudentsTable(props: ListProps) {
                   <div className="flex items-center gap-3">
                     <Avatar firstName={s.firstName} lastName={s.lastName} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="flex min-w-0 items-center gap-2">
+                      {/* Com wrap: numa coluna estreita o selo da demo desce de linha em vez de cortar o nome a uma letra. */}
+                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span className="truncate font-semibold text-text" title={fullName(s)}>
                           {fullName(s)}
                         </span>
