@@ -6,6 +6,9 @@ export const TOTAL = TOUR_STOPS.length;
 
 export type TourView = "map" | "room";
 
+/** Quanto tempo, depois de a visita entrar sozinha na Entrance, os botões de sair dela não respondem. */
+const INTRO_GUARD_MS = 600;
+
 interface Options {
   is3D: boolean;
   /** O primeiro frame do 3D já foi desenhado (a introdução conta a partir daí). */
@@ -34,6 +37,11 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
   // desativado (o Back na primeira): o foco não pode cair no <body>.
   const focusAfterStopChange = useRef(false);
   const introDone = useRef(false);
+  // A entrada automática troca o cartão do mapa pelos botões da sala no mesmo sítio do ecrã: um toque
+  // que ia para o "Start at the Entrance" caía no "Map" ou no "Next". Logo a seguir a ela, ignoram-se
+  // (a pessoa queria entrar na Entrance, e já lá está).
+  const introAt = useRef<number | null>(null);
+  const justEntered = useCallback(() => introAt.current !== null && performance.now() - introAt.current < INTRO_GUARD_MS, []);
 
   // `prev` fica por baixo enquanto o cenário novo aparece (fade).
   const [{ index, prev }, setScenes] = useState<{ index: number; prev: number | null }>({ index: 0, prev: null });
@@ -41,7 +49,7 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
   const goTo = useCallback(
     (next: number) => {
       const target = Math.max(0, Math.min(TOTAL - 1, next));
-      if (target === index) return;
+      if (target === index || justEntered()) return;
       if (cardRef.current?.contains(document.activeElement)) focusAfterStopChange.current = true;
       stopSpeech();
       // Sai da ilustração: a câmara vai à vista geral e mergulha na sala nova.
@@ -49,7 +57,7 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
       onStopChange();
       setScenes({ index: target, prev: index });
     },
-    [index, cardRef, stopSpeech, onStopChange],
+    [index, cardRef, stopSpeech, onStopChange, justEntered],
   );
 
   /**
@@ -87,11 +95,12 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
   const selectFromMap = useCallback((i: number) => enterRoomRef.current(i, { focusDialog: true }), []);
 
   const backToMap = useCallback(() => {
+    if (justEntered()) return;
     keepFocus();
     stopSpeech();
     setArrived(null);
     setView("map");
-  }, [keepFocus, stopSpeech]);
+  }, [keepFocus, stopSpeech, justEntered]);
 
   /** Ao trocar de modo a meio da visita: o 3D entra já na sala da paragem atual, sem a introdução. */
   const enterCurrentRoom = useCallback(() => {
@@ -121,6 +130,7 @@ export function useTourNavigation({ is3D, mapReady, cardRef, mapHeadingRef, next
       // Se a pessoa já mudou de paragem no mapa (setas, botões), não entra sozinha noutra sala.
       if (view !== "map" || visited.size > 0 || index !== 0) return;
       keepFocus();
+      introAt.current = performance.now();
       setView("room");
     }, 1200);
     return () => window.clearTimeout(id);

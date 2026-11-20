@@ -15,21 +15,42 @@ const v = new Vector3();
 
 export type LabelRefs = RefObject<(HTMLSpanElement | null)[]>;
 
+/** Espaço mínimo, em px, entre a etiqueta do terraço e outra em que tocasse. */
+const LABEL_GAP = 3;
+
 export function LabelProjector({ labels }: { labels: LabelRefs }) {
   useFrame(({ camera, size }) => {
     // A câmara pode ter mudado neste frame (ex.: ao redimensionar com ela parada) e o renderer só
     // atualiza as matrizes depois: sem isto as etiquetas ficavam na posição antiga, fora do ecrã.
     camera.updateMatrixWorld();
-    anchors.forEach((anchor, i) => {
+    // O centro e o tamanho de cada etiqueta no ecrã.
+    const boxes = anchors.map((anchor, i) => {
       const el = labels.current[i];
-      if (!el) return;
+      if (!el) return null;
       v.copy(anchor).project(camera);
-      const x = ((v.x + 1) / 2) * size.width;
-      const y = ((1 - v.y) / 2) * size.height;
-      const lift = LABELED[i] === ROOFTOP ? -160 : -50;
-      el.style.transform = `translate(-50%, ${lift}%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      el.style.visibility = "visible";
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      // As das salas ficam centradas no ponto; a do terraço sobe mais uma altura de etiqueta.
+      const rise = LABELED[i] === ROOFTOP ? 1.1 * h : 0;
+      return { el, w, h, x: ((v.x + 1) / 2) * size.width, y: ((1 - v.y) / 2) * size.height - rise };
     });
+    // A do terraço não é de nenhuma sala do mapa: num ecrã ao alto caía em cima da "Open space".
+    // Afasta-se da etiqueta em que toca, para o lado em que já está.
+    // shortcut: uma só passagem (pode encostar a uma terceira); com mais etiquetas soltas, repetir até não tocar.
+    const roof = boxes[LABELED.indexOf(ROOFTOP)];
+    if (roof) {
+      for (const other of boxes) {
+        if (!other || other === roof) continue;
+        const dy = roof.y - other.y;
+        const reach = (roof.h + other.h) / 2 + LABEL_GAP;
+        if (Math.abs(roof.x - other.x) < (roof.w + other.w) / 2 && Math.abs(dy) < reach) roof.y = other.y + (dy < 0 ? -reach : reach);
+      }
+    }
+    for (const box of boxes) {
+      if (!box) continue;
+      box.el.style.transform = `translate(-50%, -50%) translate(${box.x.toFixed(1)}px, ${box.y.toFixed(1)}px)`;
+      box.el.style.visibility = "visible";
+    }
   });
   return null;
 }

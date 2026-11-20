@@ -51,7 +51,55 @@ async function openTour3D(page: Page) {
   await expect(page.locator("canvas")).toBeVisible();
   // Abre na vista geral e voa sozinha para a Entrance.
   await expect(root(page)).toHaveAttribute("data-tour-view", "room", { timeout: 15_000 });
+  // Logo a seguir à entrada automática, o "Back to map" e o "Next" não respondem (ver o teste do toque).
+  await page.waitForTimeout(700);
 }
+
+test("um toque no Map no instante da entrada automática não tira a pessoa da Entrance", async ({ page }) => {
+  // Os botões da sala aparecem onde estava o "Start at the Entrance": clica no "Back to map" no
+  // mesmo instante em que a vista muda, como um dedo que já ia a caminho.
+  await page.addInitScript(() => {
+    new MutationObserver((_, observer) => {
+      if (!document.querySelector('[data-tour-view="room"]')) return;
+      observer.disconnect();
+      const button = document.querySelector<HTMLButtonElement>("[data-back-to-map]");
+      button?.click();
+      (window as unknown as { tappedAtEntry?: boolean }).tappedAtEntry = Boolean(button);
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ["data-tour-view"] });
+  });
+  await loginAs(page, "student");
+  await page.goto("/app/tour");
+  // Continua na sala: a câmara chega à Entrance (no mapa nunca chegava).
+  await expect(root(page)).toHaveAttribute("data-tour-interior", "entrance", FLIGHT);
+  expect(await page.evaluate(() => (window as unknown as { tappedAtEntry?: boolean }).tappedAtEntry)).toBe(true);
+  // Passado esse instante, o botão volta a responder.
+  await page.getByRole("button", { name: "Back to map" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+});
+
+test("no telemóvel ao alto, as etiquetas do mapa não ficam umas por cima das outras", async ({ page }) => {
+  // O espaço que o Safari de um iPhone deixa à página com as barras dele à vista: é com esta
+  // altura (e não com os 844 do ecrã inteiro) que a do terraço tocava na "Open space".
+  await page.setViewportSize({ width: 402, height: 712 });
+  await openTour3D(page);
+  await page.getByRole("button", { name: "Back to map" }).click();
+  await expect(root(page)).toHaveAttribute("data-tour-view", "map");
+  const labels = page.locator("[data-lit-room] span");
+  await settledBox(labels.filter({ hasText: "Rooftop terrace" }));
+  const boxes = await labels.evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { name: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    }),
+  );
+  const touching = boxes.flatMap((a, i) =>
+    boxes
+      .slice(i + 1)
+      .filter((b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom)
+      .map((b) => `${a.name} / ${b.name}`),
+  );
+  expect(touching).toEqual([]);
+});
 
 test("o canvas aparece, o botão de uma sala abre o diálogo dela, o Next acende a seguinte e Back to map volta", async ({ page }) => {
   await openTour3D(page);
