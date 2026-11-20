@@ -8,7 +8,7 @@ By David Lucca · [LinkedIn](https://www.linkedin.com/in/davidvlucca/) · [GitHu
 
 This is a 2026 remake of **Kampus**, a team project from the Ironhack Web Development bootcamp (2023) that took **1st place**. Same idea and the same blue identity, rebuilt from scratch with real authentication, a responsive layout and the 2023 bugs fixed.
 
-**3D campus tour** in React Three Fiber with a 2D fallback · **371 Vitest tests** (179 on the API, against a real Postgres) + **77 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
+**3D campus tour** in React Three Fiber with a 2D fallback · **374 Vitest tests** (179 on the API, against a real Postgres) + **77 Playwright end-to-end tests** with axe · **CI** on every push · **Postgres** on Neon · deployed on **Vercel**
 
 ![Logging in as a student: the virtual tour opens on the first login](docs/video/kampus-demo.gif)
 
@@ -62,7 +62,7 @@ Other scripts:
 | --- | --- |
 | `npm run dev` | Starts API and web app (after a first `npm run demo`) |
 | `npm run db:reset` | Wipes the local database and loads the demo data again |
-| `npm test` | 371 Vitest tests: 179 on the API (auth, authorization, limits, cron), plus schemas, dates in three time zones and client logic |
+| `npm test` | 374 Vitest tests: 179 on the API (auth, authorization, limits, cron), plus schemas, dates in three time zones and client logic |
 | `npm run e2e` | 77 end-to-end tests (Playwright): the main flows in a desktop and a mobile Chromium, with an accessibility check (axe, WCAG 2.1 AA) on every screen, and the 3D tour in WebGL |
 | `npm run lint` / `npm run typecheck` / `npm run build` | ESLint, TypeScript, production build |
 | `npm run prints` | Screenshots of the main screens into `docs/prints/` (Playwright) |

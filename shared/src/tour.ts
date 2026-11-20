@@ -25,11 +25,13 @@ export interface TourGuide {
   /** Tem de bater com `staff_title` de um staff do seed. */
   title: string;
   image: string;
+  /** A voz do "Play audio" quando o guia é um homem; sem isto, a voz por omissão (de mulher). */
+  voice?: "male";
 }
 
 export const GUIDES: Record<GuideId, TourGuide> = {
   "program-manager": { id: "program-manager", title: "Program Manager", image: guideImage("program-manager") },
-  "lead-teacher": { id: "lead-teacher", title: "Lead Teacher", image: guideImage("lead-teacher") },
+  "lead-teacher": { id: "lead-teacher", title: "Lead Teacher", image: guideImage("lead-teacher"), voice: "male" },
   "teaching-assistant": { id: "teaching-assistant", title: "Teaching Assistant", image: guideImage("teaching-assistant") },
   "career-coach": { id: "career-coach", title: "Career Coach", image: guideImage("career-coach") },
 };

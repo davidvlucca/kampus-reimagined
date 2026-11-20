@@ -16,11 +16,11 @@ export function useSpeech() {
     setSpeaking(false);
   }, []);
 
-  const speak = useCallback((text: string) => {
+  const speak = useCallback((text: string, male = false) => {
     if (!supported) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const voice = pickVoice(window.speechSynthesis.getVoices());
+    const voice = pickVoice(window.speechSynthesis.getVoices(), male);
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? "en-US";
     const end = () => {
