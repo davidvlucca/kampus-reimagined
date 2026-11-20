@@ -1,7 +1,6 @@
-import { COHORT_TASK_MESSAGE, createTaskSchema, LIMITS, limitMessage, TASK_FILTERS, updateTaskSchema, type Task, type TaskFilter } from "@kampus/shared";
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { COHORT_TASK_MESSAGE, createTaskSchema, LIMITS, limitMessage, updateTaskSchema, type Task } from "@kampus/shared";
+import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { z } from "zod";
 import { requireRole, requireUser } from "../auth/middleware.ts";
 import type { Db } from "../db/client.ts";
 import { assignmentCompletions, assignments, tasks, type SessionUser, type TaskRow } from "../db/schema.ts";
@@ -32,7 +31,7 @@ const TOO_MANY = { error: limitMessage(LIMITS.tasksPerStudent, "tasks") };
  * Tarefas da turma ATUAL do aluno, no formato de `Task`. "Feita" quer dizer que existe
  * uma linha de conclusão deste aluno. Um aluno sem turma não tem nenhuma.
  */
-async function cohortTasks(db: Db, user: Pick<SessionUser, "id" | "cohortId">, opts: { id?: string; status?: TaskFilter } = {}): Promise<Task[]> {
+async function cohortTasks(db: Db, user: Pick<SessionUser, "id" | "cohortId">, opts: { id?: string } = {}): Promise<Task[]> {
   if (!user.cohortId) return [];
   const rows = await db
     .select({
@@ -54,7 +53,6 @@ async function cohortTasks(db: Db, user: Pick<SessionUser, "id" | "cohortId">, o
       and(
         eq(assignments.cohortId, user.cohortId),
         opts.id ? eq(assignments.id, opts.id) : undefined,
-        opts.status === "done" ? isNotNull(assignmentCompletions.userId) : opts.status === "open" ? isNull(assignmentCompletions.userId) : undefined,
       ),
     );
   return rows.map((r) => ({
@@ -87,13 +85,10 @@ function byListOrder(a: Task, b: Task): number {
 // não existisse.
 export const taskRoutes = new Hono<AppEnv>()
   .use(requireUser, requireRole("student"))
-  .get("/", validate("query", z.object({ status: z.enum(TASK_FILTERS).default("all") })), async (c) => {
-    const { status } = c.req.valid("query");
-    const mine = eq(tasks.userId, c.var.user.id);
-    const where = status === "all" ? mine : and(mine, eq(tasks.done, status === "done"));
+  .get("/", async (c) => {
     const [rows, fromCohort] = await Promise.all([
-      c.var.db.select().from(tasks).where(where),
-      cohortTasks(c.var.db, c.var.user, { status }),
+      c.var.db.select().from(tasks).where(eq(tasks.userId, c.var.user.id)),
+      cohortTasks(c.var.db, c.var.user),
     ]);
     return c.json({ tasks: [...rows.map(toTask), ...fromCohort].sort(byListOrder) });
   })

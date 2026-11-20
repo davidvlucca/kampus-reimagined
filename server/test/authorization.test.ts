@@ -207,9 +207,8 @@ describe("visita e tarefas do aluno", () => {
     expect(undone.json.task.done).toBe(false);
     expect(undone.json.task.completedAt).toBeNull();
 
-    const open = (await t.request<{ tasks: Task[] }>("GET", "/api/tasks?status=open", { cookie: a })).json.tasks;
-    expect(open.every((x) => !x.done)).toBe(true);
-    expect(open.map((x) => x.id)).toContain(id);
+    const listed = (await t.request<{ tasks: Task[] }>("GET", "/api/tasks", { cookie: a })).json.tasks;
+    expect(listed.find((x) => x.id === id)).toMatchObject({ done: false, completedAt: null });
   });
 });
 
